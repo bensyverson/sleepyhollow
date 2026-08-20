@@ -1,0 +1,8 @@
+#!/bin/sh
+# Pre-commit: formatter lint + full test suite, from the repo root.
+# Never recurses into .claude/worktrees: swiftformat excludes .claude via
+# .swiftformat, and swift test builds only this package's targets.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+swiftformat . --lint --quiet
+swift test --quiet

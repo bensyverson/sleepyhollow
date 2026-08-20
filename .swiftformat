@@ -1,0 +1,4 @@
+# SleepyHollow formatting — swiftformat defaults unless noted.
+--swiftversion 6.3
+# Never format build products or agent worktrees.
+--exclude .build,.claude
