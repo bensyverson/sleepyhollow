@@ -1,0 +1,19 @@
+.DS_Store
+/.build
+/Packages
+xcuserdata/
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+
+# SQLite databases (server data store + local job state) and WAL sidecars
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# timetattle local time-tracking marker (machine-generated, per-clone)
+.timetattle-project.json
+

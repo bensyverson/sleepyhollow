@@ -1,0 +1,8 @@
+modules:
+  - core
+  - principles
+  - stage-build
+  - swift
+  - docs
+  - delegation-brief
+  - delegation
