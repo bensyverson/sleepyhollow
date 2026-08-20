@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Theme fixture</title>
+  <style>
+    body { background: #ffffff; color: #111111; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #111111; color: #eeeeee; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Theme fixture</h1>
+  <p id="mode"></p>
+  <script>
+    document.getElementById('mode').textContent =
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  </script>
+</body>
+</html>

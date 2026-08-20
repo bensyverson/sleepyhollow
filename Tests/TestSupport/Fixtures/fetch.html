@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fetch fixture</title>
+</head>
+<body>
+  <h1>Fetch fixture</h1>
+  <pre id="log"></pre>
+  <script>
+    // Sequential on purpose: the log's entry order stays deterministic.
+    window.addEventListener('load', async () => {
+      const log = document.getElementById('log');
+      try {
+        const got = await fetch('/fetch-target.txt');
+        log.textContent += 'get:' + got.status + ';';
+      } catch {
+        log.textContent += 'get:error;';
+      }
+      try {
+        const posted = await fetch('/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'field=starlight',
+        });
+        log.textContent += 'post:' + posted.status + ';';
+      } catch {
+        log.textContent += 'post:error;';
+      }
+    });
+  </script>
+</body>
+</html>

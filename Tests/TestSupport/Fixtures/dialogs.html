@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dialogs fixture</title>
+</head>
+<body>
+  <h1>Dialogs fixture</h1>
+  <p>
+    <button id="alert" type="button">Raise alert</button>
+    <button id="confirm" type="button">Raise confirm</button>
+    <button id="prompt" type="button">Raise prompt</button>
+  </p>
+  <pre id="log"></pre>
+  <script>
+    const log = (entry) => {
+      document.getElementById('log').textContent += entry + ';';
+    };
+    document.getElementById('alert').addEventListener('click', () => {
+      alert('fixture alert');
+      log('alerted');
+    });
+    document.getElementById('confirm').addEventListener('click', () => {
+      log('confirm:' + confirm('fixture confirm'));
+    });
+    document.getElementById('prompt').addEventListener('click', () => {
+      log('prompt:' + prompt('fixture prompt', 'suggested'));
+    });
+    // ?auto raises all three during load, for hosts that cannot click yet.
+    if (window.location.search.includes('auto')) {
+      alert('fixture alert');
+      log('alerted');
+      log('confirm:' + confirm('fixture confirm'));
+      log('prompt:' + prompt('fixture prompt', 'suggested'));
+    }
+  </script>
+</body>
+</html>

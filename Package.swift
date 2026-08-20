@@ -40,6 +40,9 @@ let package = Package(
             name: "TestSupport",
             dependencies: ["SleepyHollow"],
             path: "Tests/TestSupport",
+            resources: [
+                .copy("Fixtures"),
+            ],
         ),
         .testTarget(
             name: "SleepyHollowTests",
@@ -48,6 +51,7 @@ let package = Package(
         .testTarget(
             name: "SleepyGoldenTests",
             dependencies: ["SleepyHollow", "TestSupport"],
+            exclude: ["README.md"],
         ),
     ],
     swiftLanguageModes: [.v6],

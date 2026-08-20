@@ -15,3 +15,5 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 **`swift package` commands fail inside Claude Code's sandbox.** SwiftPM applies its own `sandbox-exec`, which the session sandbox refuses (`sandbox_apply: Operation not permitted`), and the user-level caches under `~/Library` are unreadable. Run `swift build` / `swift test` / `swift package …` with the sandbox disabled.
 
 **Agents can't mark `job` criteria — only `job done` sets them.** Briefs ban agents from running `done`, and `job` has no standalone criterion-marking verb, so criteria stay pending until the integrator closes the leaf with `--criterion <label>=passed`. Write briefs so agents note "criteria factually met" and leave marking to the main thread.
+
+**`swiftformat . --lint` silently lints nothing inside an agent worktree.** The repo `.swiftformat` excludes `.claude`, and worktrees live under `.claude/worktrees/`, so a bare lint there reports success while checking zero files. Inside a worktree, pass the config explicitly: `swiftformat . --lint --config .swiftformat`. Put this in every implementation brief.

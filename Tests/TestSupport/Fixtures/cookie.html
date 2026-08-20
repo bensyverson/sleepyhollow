@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cookie fixture</title>
+</head>
+<body>
+  <h1>Cookie fixture</h1>
+  <pre id="cookies"></pre>
+  <script>
+    window.addEventListener('load', () => {
+      document.getElementById('cookies').textContent = document.cookie;
+    });
+  </script>
+</body>
+</html>
