@@ -8,6 +8,9 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 
 - [project/](project/) — dated plans, findings and decisions
 - [project/2026-08-20-vision.md](project/2026-08-20-vision.md) — the agreed direction: why, philosophy, required verbs, non-goals; read this first
+- [project/2026-08-20-implementation-plan.md](project/2026-08-20-implementation-plan.md) — the 1.0 plan: architecture decisions, file ownership, waves, and the imported task tree
+- [project/2026-08-20-ax-spike.md](project/2026-08-20-ax-spike.md) — findings: `sleepy ax` reads via injected JS computation; the native AX path is dead for a headless CLI
+- [project/2026-08-20-wire-spike.md](project/2026-08-20-wire-spike.md) — findings: inventory-layer field availability, the fetch-recorder shape, and the headless timer-throttling trap
 - [project/gotchas.md](project/gotchas.md) — project quirks and rule corrections
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - README.md — not yet written (see Documentation practice below)
