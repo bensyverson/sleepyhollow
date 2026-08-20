@@ -17,3 +17,6 @@ DerivedData/
 # timetattle local time-tracking marker (machine-generated, per-clone)
 .timetattle-project.json
 
+
+# Claude Code agent worktrees — never committed
+.claude/worktrees/

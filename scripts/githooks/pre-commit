@@ -1,8 +1,27 @@
-#!/bin/sh
-# Pre-commit: formatter lint + full test suite, from the repo root.
-# Never recurses into .claude/worktrees: swiftformat excludes .claude via
-# .swiftformat, and swift test builds only this package's targets.
+#!/bin/bash
+# Pre-commit: swiftformat the staged Swift files, then run the full suite.
+# Never recurses into .claude/worktrees: only staged paths are formatted, and
+# swift test builds only this package's targets.
 set -e
 cd "$(git rev-parse --show-toplevel)"
-swiftformat . --lint --quiet
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+
+if [ -n "$STAGED_FILES" ]; then
+    if ! command -v swiftformat &> /dev/null; then
+        echo "Error: swiftformat is not installed."
+        echo "Install it with: brew install swiftformat"
+        exit 1
+    fi
+    # Note: re-adding stages the whole file, including any unstaged hunks —
+    # the accepted tradeoff of format-on-commit.
+    echo "Running SwiftFormat on staged files..."
+    for FILE in $STAGED_FILES; do
+        if [ -f "$FILE" ]; then
+            swiftformat "$FILE" --quiet
+            git add "$FILE"
+        fi
+    done
+fi
+
 swift test --quiet
