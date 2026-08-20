@@ -29,10 +29,18 @@ let package = Package(
         .target(
             name: "SleepyHollow",
         ),
+        .target(
+            name: "SleepyCLIKit",
+            dependencies: [
+                "SleepyHollow",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+        ),
         .executableTarget(
             name: "sleepy",
             dependencies: [
                 "SleepyHollow",
+                "SleepyCLIKit",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
         ),
@@ -46,7 +54,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SleepyHollowTests",
-            dependencies: ["SleepyHollow", "TestSupport"],
+            dependencies: ["SleepyHollow", "TestSupport", "SleepyCLIKit"],
         ),
         .testTarget(
             name: "SleepyGoldenTests",
