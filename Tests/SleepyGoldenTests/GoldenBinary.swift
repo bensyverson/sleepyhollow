@@ -84,19 +84,31 @@ enum GoldenBinary {
     ///
     /// Hopping to a GCD queue moves the blocking wait to a thread pool that
     /// can grow, leaving the cooperative pool free to serve the page.
-    static func runOffPool(_ arguments: [String]) async throws -> CliInvocation {
+    ///
+    /// - Parameter environment: variables overlaid on the parent environment —
+    ///   how a golden test points the subprocess at a throwaway
+    ///   `SLEEPYHOLLOW_HOME` instead of the real one.
+    static func runOffPool(
+        _ arguments: [String],
+        environment: [String: String] = [:],
+    ) async throws -> CliInvocation {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
-                continuation.resume(with: Result { try run(arguments) })
+                continuation.resume(with: Result { try run(arguments, environment: environment) })
             }
         }
     }
 
     /// Runs `sleepy` with `arguments` and captures its exit code and output.
-    static func run(_ arguments: [String]) throws -> CliInvocation {
+    ///
+    /// - Parameter environment: variables overlaid on the parent environment.
+    static func run(_ arguments: [String], environment: [String: String] = [:]) throws -> CliInvocation {
         let process = Process()
         process.executableURL = productsDirectory().appendingPathComponent("sleepy")
         process.arguments = arguments
+        if !environment.isEmpty {
+            process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
+        }
 
         let standardOutput = Pipe()
         let standardError = Pipe()

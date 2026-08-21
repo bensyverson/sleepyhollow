@@ -18,15 +18,20 @@ struct PageHostScopeTests {
         }
     }
 
+    /// The jar mechanism itself is covered by ``PageHostJarTests``; what this
+    /// suite still owes is that a named jar is *in* scope — no refusal, and
+    /// nothing written outside the root it was pointed at.
     @Test
     @MainActor
-    func `a named jar is refused, naming the leaf that will deliver jars`() async throws {
+    func `a named jar is honoured rather than refused`() async throws {
+        let root: URL = try SessionTestRoot.make()
+        defer { SessionTestRoot.remove(root) }
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.jar = JarName("login-flow")
-            let error: SleepyError? = await failure(for: options, base: base)
-            #expect(error?.kind == .environment)
-            #expect(error?.description.contains("XDmfo") == true)
+            let host = PageHost(options: options, jars: JarStore(root: root))
+            _ = try await host.load(URL(string: "static.html", relativeTo: base)!)
+            #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("jars").path))
         }
     }
 

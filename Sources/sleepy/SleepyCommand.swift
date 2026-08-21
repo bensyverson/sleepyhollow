@@ -15,7 +15,7 @@ struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleepy",
         abstract: "A headless WebKit browser for agents.",
-        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ConsoleCommand.self, WireCommand.self, HostCommand.self],
+        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ConsoleCommand.self, WireCommand.self, JarsCommand.self, CookiesCommand.self, HostCommand.self],
     )
 
     /// What the tool is, the three most common invocations, and where help

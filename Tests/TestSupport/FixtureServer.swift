@@ -13,6 +13,9 @@ import Network
 ///   artificial delay of `<ms>` milliseconds — the slow-resource fixture.
 /// - `/cookie` serves the cookie fixture page with a
 ///   `Set-Cookie: sleepy=hollow; Path=/` header.
+/// - `/echo-cookie` serves `cookie-echo.html` with the request's own `Cookie`
+///   header substituted into it, and sets nothing — the page that proves what
+///   a jar actually put on the wire.
 /// - `POST /submit` answers 200 echoing the received body — the target the
 ///   form and fetch fixtures post to.
 ///
@@ -215,6 +218,8 @@ public actor FixtureServer {
         switch (request.method, request.path) {
         case ("GET", "/cookie"):
             return cookieResponse()
+        case ("GET", "/echo-cookie"):
+            return echoCookieResponse(for: request)
         case ("POST", "/submit"):
             return FixtureResponse(
                 status: 200,
@@ -241,6 +246,21 @@ public actor FixtureServer {
     private func cookieResponse() -> FixtureResponse {
         var response = fileResponse(for: "/" + FixturePage.cookie.fileName)
         response.headers["Set-Cookie"] = "sleepy=hollow; Path=/"
+        return response
+    }
+
+    /// The name of the cookie-echo fixture's placeholder, replaced with the
+    /// request's `Cookie` header (or `none` when it carried none).
+    public static let cookieHeaderPlaceholder: String = "__COOKIE_HEADER__"
+
+    /// The cookie-echo page with the request's `Cookie` header substituted in.
+    private func echoCookieResponse(for request: FixtureRequest) -> FixtureResponse {
+        var response = fileResponse(for: "/cookie-echo.html")
+        guard response.status == 200 else { return response }
+        let sent: String = request.header("Cookie") ?? "none"
+        let html = String(decoding: response.body, as: UTF8.self)
+            .replacingOccurrences(of: Self.cookieHeaderPlaceholder, with: sent)
+        response.body = Data(html.utf8)
         return response
     }
 

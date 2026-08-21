@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cookie echo fixture</title>
+</head>
+<body>
+  <h1>Cookie echo fixture</h1>
+  <!-- The server substitutes the request's Cookie header here, so the page
+       proves what actually went over the wire, not just what document.cookie
+       reports. -->
+  <pre id="sent">__COOKIE_HEADER__</pre>
+  <pre id="visible"></pre>
+  <script>
+    window.addEventListener('load', () => {
+      document.getElementById('visible').textContent = document.cookie;
+    });
+  </script>
+</body>
+</html>

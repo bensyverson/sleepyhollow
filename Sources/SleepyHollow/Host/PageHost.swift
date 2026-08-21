@@ -96,6 +96,13 @@ public final class PageHost {
     /// alone is the condition.
     private let waiter: WaitEngine?
 
+    /// Where ``LoadOptions/jar`` is read from and written back to. Never
+    /// touched unless a jar was named — see ``PageHost/importJarIfNeeded()``.
+    let jars: JarStore
+
+    /// Whether this host has already pulled the jar into its cookie store.
+    var hasImportedJar = false
+
     private var isLoading = false
     private var pendingNavigation: CheckedContinuation<NavigationOutcome, Never>?
     private var navigationFailure: (any Error)?
@@ -104,8 +111,17 @@ public final class PageHost {
     /// Creates a headless host: a web view with a non-persistent data store,
     /// the options' viewport and theme, the console capture, and the options'
     /// injected scripts, all installed before any load.
-    public init(options: LoadOptions = LoadOptions()) {
+    ///
+    /// The data store is non-persistent even when ``LoadOptions/jar`` names a
+    /// jar: jar persistence is the host's own import/export around the load
+    /// (see ``PageHost/saveJar()``), which is what keeps a bare invocation
+    /// from writing anything at all.
+    ///
+    /// - Parameter jars: where a named jar is read and written; the default
+    ///   store honours `SLEEPYHOLLOW_HOME`, and tests inject a throwaway root.
+    public init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {
         self.options = options
+        self.jars = jars
         waiter = WaitEngine(condition: options.wait)
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
@@ -144,6 +160,12 @@ public final class PageHost {
     /// spends, waiting does not get again — so a loading verb inherits waiting
     /// by passing its ``LoadOptions`` through unchanged.
     ///
+    /// When ``LoadOptions/jar`` names a jar, its cookies are imported before
+    /// the first navigation and the store is written back afterwards — after
+    /// settling and after the action steps, so a cookie the page sets late
+    /// still lands. A load that throws saves too, quietly: a login that
+    /// redirected and then timed out has still minted its cookie.
+    ///
     /// - Returns: the load's ``PageFacts`` — also left in ``facts``.
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when the
     ///   budget runs out, whether navigating or waiting (the page's last state
@@ -172,7 +194,20 @@ public final class PageHost {
         }
         isLoading = true
         defer { isLoading = false }
-        try validateSupportedOptions()
+        try await importJarIfNeeded()
+        do {
+            let loaded: PageFacts = try await navigateAndSettle(url)
+            try await saveJar()
+            return loaded
+        } catch {
+            await saveJarIgnoringFailure()
+            throw error
+        }
+    }
+
+    /// The load pipeline proper: navigate, settle, act. Split out of
+    /// ``load(_:)`` so the jar's import and export can bracket every exit.
+    private func navigateAndSettle(_ url: URL) async throws -> PageFacts {
         facts = PageFacts()
         navigationFailure = nil
         delegate.mainFrameStatus = nil
@@ -269,18 +304,5 @@ public final class PageHost {
             message: "Could not load \(url.absoluteString): \(reason)",
             nextMove: "Check the URL and that its host is reachable from this machine.",
         )
-    }
-
-    /// Rejects options whose implementation belongs to a later leaf, naming it,
-    /// rather than half-honouring them. Action steps are refused by their own
-    /// pipeline phase (``runActionSteps(by:)``) instead of here.
-    private func validateSupportedOptions() throws {
-        if let jar: JarName = options.jar {
-            throw SleepyError(
-                kind: .environment,
-                message: "Cookie jar '\(jar)' was requested, but this host only has an in-memory store.",
-                nextMove: "Jars land with leaf XDmfo; until then run without --jar.",
-            )
-        }
     }
 }
