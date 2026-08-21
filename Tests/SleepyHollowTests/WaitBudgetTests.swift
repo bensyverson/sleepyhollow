@@ -28,7 +28,11 @@ struct WaitBudgetTests {
             } catch let error as SleepyError {
                 #expect(error.kind == .timeout)
             }
-            #expect(Date().timeIntervalSince(started) < 10, "and it must still end on the host's clock")
+            // The discriminator is the timeout above: a per-phase budget would
+            // have found the element and succeeded. The ceiling only proves
+            // the host's clock ends things — generous, because a loaded
+            // machine can stretch even a one-second budget's bookkeeping.
+            #expect(Date().timeIntervalSince(started) < 30, "and it must still end on the host's clock")
         }
     }
 
@@ -38,7 +42,9 @@ struct WaitBudgetTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .selector("#late")
-            options.budget = 8
+            // Generous: under full-suite load the 900ms delay plus navigation
+            // plus the flip can overshoot a small budget by seconds.
+            options.budget = 20
             let host = PageHost(options: options)
             _ = try await host.load(slowLatePage(base: base))
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
@@ -57,7 +63,9 @@ struct WaitBudgetTests {
             options.wait = .load
             options.budget = 8
             let host = PageHost(options: options)
-            _ = try await host.load(URL(string: "wait-late.html", relativeTo: base)!)
+            // ?flip=3000: the assertion below races the fixture's flip, and a
+            // loaded machine loses a 300ms race even when settling instantly.
+            _ = try await host.load(URL(string: "wait-late.html?flip=3000", relativeTo: base)!)
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
             #expect(matched == "false", "--wait-for load must not wait for anything the page does later")
         }

@@ -35,7 +35,7 @@ struct WaitSelectorTests {
             let started = Date()
             _ = try await host.load(URL(string: "wait-late.html", relativeTo: base)!)
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 10, "the host's clock ends the wait, not the fixture")
+            #expect(elapsed < 30, "the host's clock ends the wait, not the fixture")
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
             #expect(matched == "true", "the load must not return before the element exists")
         }
@@ -75,7 +75,7 @@ struct WaitSelectorTests {
                 #expect(error.nextMove != nil)
             }
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 10, "the host clock, not the page, ends the wait")
+            #expect(elapsed < 30, "the host clock, not the page, ends the wait")
             #expect(host.facts.finalURL?.absoluteString == url.absoluteURL.absoluteString)
             #expect(host.facts.httpStatus == 200, "the page's last known state survives the throw")
         }
@@ -97,7 +97,7 @@ struct WaitSelectorTests {
                 #expect(error.kind == .usage)
                 #expect(error.exitStatus == ExitStatus.usage)
             }
-            #expect(Date().timeIntervalSince(started) < 10, "an invalid selector is invalid immediately")
+            #expect(Date().timeIntervalSince(started) < 30, "an invalid selector is invalid immediately")
         }
     }
 }

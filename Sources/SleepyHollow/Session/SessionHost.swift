@@ -55,7 +55,7 @@ public final class SessionHost {
     private let idleTimeout: TimeInterval
 
     private var listener: NWListener?
-    private var lastActivity: Date = .init()
+    private(set) var lastActivity: Date = .init()
     private var idleTask: Task<Void, Never>?
     private var isReady = false
     private var didClaim = false

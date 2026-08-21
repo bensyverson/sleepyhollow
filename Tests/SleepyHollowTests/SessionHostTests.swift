@@ -57,6 +57,10 @@ struct SessionHostTests {
         #expect(!FileManager.default.fileExists(atPath: registry.directory(for: name).path))
     }
 
+    /// Asserts the mechanism (`lastActivity` advances when work is served),
+    /// not a race between wall-clock sleeps and the TTL — an earlier version
+    /// slept real seconds against a short TTL and lost under full-suite load.
+    /// The idle *expiry* path keeps its own cheap end-to-end test above.
     @Test func `work restarts the idle clock`() async throws {
         let root = try SessionTestRoot.make()
         defer { SessionTestRoot.remove(root) }
@@ -68,18 +72,18 @@ struct SessionHostTests {
             options: LoadOptions(),
             registry: registry,
             operations: SessionOperations.registry,
-            idleTimeout: 6,
+            idleTimeout: 60,
         )
         try await host.start()
+        let before: Date = host.lastActivity
+        // Only needs to be measurable, not to approach the TTL.
+        try await Task.sleep(nanoseconds: 50_000_000)
         let client = SessionClient(name: name, registry: registry)
-        // Generous margins: under full-suite load a sleep plus a connect can
-        // overshoot by seconds, and the work must land before the TTL.
-        try await Task.sleep(nanoseconds: 4_000_000_000)
         _ = try await client.run(ReadFactsOperation())
-        // Past the original deadline, but well under the TTL since the work.
-        try await Task.sleep(nanoseconds: 4_500_000_000)
+        #expect(host.lastActivity > before, "serving work must restart the idle clock")
         #expect(registry.liveness(of: name) == .live)
-        #expect(await stopped(host, within: 20))
+        try await client.shutdown()
+        await host.waitUntilStopped()
     }
 
     @Test func `a session whose first load fails leaves nothing behind`() async throws {

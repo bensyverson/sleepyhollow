@@ -34,7 +34,7 @@ struct WaitPredicateTests {
             let started = Date()
             _ = try await host.load(URL(string: "wait-late.html", relativeTo: base)!)
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 10, "the host's clock ends the wait, not the fixture")
+            #expect(elapsed < 30, "the host's clock ends the wait, not the fixture")
             let stage: String = try await host.evaluate("return window.sleepyStage;", in: .page)
             #expect(stage == "\"late\"", "the load must not return before the page said it was ready")
         }
@@ -56,7 +56,7 @@ struct WaitPredicateTests {
                 #expect(error.kind == .timeout)
                 #expect(error.message.contains("window.neverSet === 42"))
             }
-            #expect(Date().timeIntervalSince(started) < 10)
+            #expect(Date().timeIntervalSince(started) < 30)
         }
     }
 

@@ -231,15 +231,22 @@ final class WaitEngine {
         var previous: IdleWatch.Sample?
         var quietSince = DispatchTime.now()
         var last = IdleWatch.Sample.unknown
+        var samplesTaken = 0
+        var quietResets = 0
+        var failedSamples = 0
         while true {
-            let sample: IdleWatch.Sample = await sample(in: host)
-            last = sample
-            if sample.busy == 0, previous?.activity == sample.activity {
+            let sample: IdleWatch.Sample? = await sample(in: host)
+            samplesTaken += 1
+            if sample == nil { failedSamples += 1 }
+            last = sample ?? last
+            let current: IdleWatch.Sample = sample ?? IdleWatch.Sample.unknown
+            if current.busy == 0, previous?.activity == current.activity {
                 if DispatchTime.now() >= quietSince + IdleWatch.quietWindow { return }
             } else {
+                if previous != nil { quietResets += 1 }
                 quietSince = DispatchTime.now()
             }
-            previous = sample
+            previous = current
             guard DispatchTime.now() < deadline else { break }
             try? await Task.sleep(nanoseconds: Self.nanoseconds(Self.idleSampleInterval))
         }
@@ -247,17 +254,21 @@ final class WaitEngine {
             url: url,
             budget: budget,
             what: "never went quiet for --wait-for idle",
-            detail: "Its last sample had \(last.busy) request(s) or image(s) outstanding.",
+            detail: "Its last sample had \(last.busy) request(s) or image(s) outstanding "
+                + "(\(samplesTaken) samples, \(quietResets) quiet-window resets, "
+                + "\(failedSamples) unreadable, final activity count \(last.activity)).",
             nextMove: "Raise --budget, or wait for a selector or 'js:<expression>' — a page that polls is never idle.",
         )
     }
 
-    private func sample(in host: PageHost) async -> IdleWatch.Sample {
+    /// One activity reading; `nil` when the page could not be sampled (the
+    /// caller decides what an unreadable page means — see `settleIdle`).
+    private func sample(in host: PageHost) async -> IdleWatch.Sample? {
         guard
             let text: String = try? await host.evaluate(IdleWatch.sampleBody, in: .page),
             let sample: IdleWatch.Sample = try? Self.decode(IdleWatch.Sample.self, from: text)
         else {
-            return IdleWatch.Sample.unknown
+            return nil
         }
         return sample
     }
