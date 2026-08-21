@@ -13,15 +13,17 @@ import Foundation
 /// ``FixtureServer/withRunning(fixturesDirectory:_:)`` acquires the shared
 /// gate around every test body, so every current and future WebKit test is
 /// bounded without opting in. The width trades tail latency against wall
-/// time; it was measured, not guessed — see `project/gotchas.md`'s retired
-/// golden-contention entry for the history.
+/// time and was measured, not guessed (quiet machine, 418-test suite,
+/// `swift test --quiet`, 2026-08-20): ungated 35.0s, width 12 34.8s, width
+/// 8 42.6s; `scripts/flake-hunt.sh 8` at width 12 was 8/8 green. Ungated
+/// under parallel-agent load, the same suite flaked half its runs.
 ///
 /// Waiters are woken first-in-first-out and ignore task cancellation (a
 /// cancelled test still passes through briefly and releases; the body's own
 /// cancellation checks apply). Do not nest acquisitions.
 public actor WebKitGate {
     /// The gate every WebKit test flows through.
-    public static let shared = WebKitGate(width: 8)
+    public static let shared = WebKitGate(width: 12)
 
     /// How many holders may be live at once.
     public let width: Int
