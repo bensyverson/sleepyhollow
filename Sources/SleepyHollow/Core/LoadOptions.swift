@@ -27,14 +27,17 @@ public struct LoadOptions: Friendly {
     /// How dialogs are answered. Default declines everything and records it.
     public var dialogs: DialogPolicy
 
-    /// The condition that ends the settle phase; `nil` waits for load alone.
+    /// The condition that ends the settle phase — after any ``steps`` have
+    /// run, so it can name something the steps produce; `nil` waits for load
+    /// alone.
     public var wait: WaitCondition?
 
     /// Ceiling in seconds for load + settle + steps; `nil` applies
     /// ``defaultBudget``. The CLI expresses this in milliseconds.
     public var budget: TimeInterval?
 
-    /// Ordered actions executed after settle and before the verb's read.
+    /// Ordered actions executed after the load event and before ``wait``
+    /// gates the verb's read; each auto-waits for its selector.
     public var steps: [ActionStep]
 
     /// Creates options, defaulting every field to the deterministic baseline.

@@ -234,7 +234,9 @@ public final class PageHost {
             // Recorded before settling, so a wait that exhausts the budget
             // still leaves the page's status in ``facts``.
             facts.httpStatus = delegate.mainFrameStatus
-            try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
+            // Steps before the wait: the vision doc's ruling (corrected
+            // 2026-08-20) makes ``LoadOptions/wait`` the final gate after the
+            // steps, so it can name a condition the steps produce.
             try await runActionSteps(by: deadline)
             // A step may have navigated — even to the same URL; the facts must
             // describe the page the steps produced, the same one the verb's
@@ -243,6 +245,7 @@ public final class PageHost {
                 facts.finalURL = webView.url
                 facts.httpStatus = delegate.mainFrameStatus
             }
+            try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
             facts.consoleErrorCount = await consoleErrorCount()
             return facts
         case .failed:

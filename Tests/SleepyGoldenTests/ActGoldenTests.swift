@@ -36,12 +36,11 @@ struct ActGoldenTests {
         #expect(result.standardError.contains("DLHu7"))
     }
 
-    @Test func `a one-shot fill-click-wait-read flow reaches the submitted page`() async throws {
+    @Test func `a one-shot fill-click-read flow reaches the submitted page`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let page = baseURL.appendingPathComponent("form.html").absoluteString
             let result = try await GoldenBinary.runOffPool([
                 "dom", page,
-                "--wait-for", "#save",
                 "--fill", "#title=Hello",
                 "--click", "#save",
                 "--budget", "60000",
@@ -51,13 +50,27 @@ struct ActGoldenTests {
         }
     }
 
-    @Test func `a one-shot step that matches nothing is a clean negative`() async throws {
+    @Test func `the vision doc's one-shot example shape works as written`() async throws {
+        try await FixtureServer.withRunning { _, baseURL in
+            let page = baseURL.appendingPathComponent("act-late.html").absoluteString
+            let result = try await GoldenBinary.runOffPool([
+                "dom", page,
+                "--click", "#go",
+                "--wait-for", ".results",
+                "--budget", "60000",
+            ])
+            #expect(result.exitCode == 0)
+            #expect(result.standardOutput.contains("Results!"))
+        }
+    }
+
+    @Test func `a one-shot step that never matches is a timeout`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let page = baseURL.appendingPathComponent("form.html").absoluteString
             let result = try await GoldenBinary.runOffPool([
-                "load", page, "--click", "#nowhere", "--budget", "60000",
+                "load", page, "--click", "#nowhere", "--budget", "3000",
             ])
-            #expect(result.exitCode == 1)
+            #expect(result.exitCode == 3)
             #expect(result.standardError.contains("#nowhere"))
         }
     }

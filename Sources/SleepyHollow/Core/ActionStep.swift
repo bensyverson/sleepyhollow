@@ -1,5 +1,6 @@
-/// One ordered action in a one-shot flow, executed after settle and before
-/// the verb's read.
+/// One ordered action in a one-shot flow, executed after the load event and
+/// before the wait condition gates the verb's read. Each step auto-waits for
+/// its selector to become actionable within the load's budget.
 ///
 /// These are the flag forms (`--click`, `--fill`, `--submit`) that let a
 /// two-step check run without naming a session. Mechanism is honest:

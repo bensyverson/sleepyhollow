@@ -4,7 +4,8 @@ import Testing
 import TestSupport
 
 /// The load pipeline's action-step phase: ordered `--click`/`--fill`/`--submit`
-/// steps executed after settle and before the verb's read.
+/// steps executed after the load event, each auto-waiting for its selector,
+/// with the wait condition gating the read after them.
 @Suite("PageHost action steps", .serialized)
 struct PageHostActionStepTests {
     @MainActor
@@ -27,6 +28,9 @@ struct PageHostActionStepTests {
         try await host.execute(EvalOperation(source: "return document.body.innerText;", world: .page))
     }
 
+    /// The wait-vs-steps ruling (vision doc, corrected 2026-08-20) moved
+    /// `--wait-for` after the steps, so this flow no longer pre-gates on the
+    /// form's own button — the step auto-waits for it instead.
     @Test
     @MainActor
     func `a fill then a click reaches the page the click navigates to`() async throws {
@@ -35,10 +39,43 @@ struct PageHostActionStepTests {
                 "form.html",
                 base: base,
                 steps: [.fill(selector: "#title", value: "Hello"), .click(selector: "#save")],
-                wait: .selector("#save"),
             )
             let text: String = try await bodyText(of: host)
             #expect(text.contains("received: title=Hello"))
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a step waits for its selector to appear before acting`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            var options = LoadOptions()
+            options.steps = [ActionStep.click(selector: "#go")]
+            options.budget = 10
+            let host = PageHost(options: options)
+            // #go only exists ~300ms after the load event; the step must wait
+            // for it rather than failing on the empty page.
+            _ = try await host.load(URL(string: "act-late.html", relativeTo: base)!)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `the wait condition gates the read after the steps run`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            var options = LoadOptions()
+            options.steps = [ActionStep.click(selector: "#go")]
+            options.wait = .selector(".results")
+            options.budget = 8
+            let host = PageHost(options: options)
+            // .results exists only because the click happened: a wait that ran
+            // before the steps could never see it.
+            _ = try await host.load(URL(string: "act-late.html", relativeTo: base)!)
+            let results = try await host.execute(EvalOperation(
+                source: "return document.querySelector('.results').textContent;",
+                world: .page,
+            ))
+            #expect(results == "\"Results!\"")
         }
     }
 
@@ -84,18 +121,21 @@ struct PageHostActionStepTests {
         }
     }
 
+    /// The ruling makes a never-actionable step a timeout (it waited,
+    /// honestly, and ran out of budget), not an instant clean negative.
     @Test
     @MainActor
-    func `a step that cannot act fails the load and leaves the page readable`() async throws {
+    func `a step whose selector never appears times out and leaves the page readable`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.steps = [ActionStep.click(selector: "#nowhere")]
+            options.budget = 2
             let host = PageHost(options: options)
             do {
                 _ = try await host.load(URL(string: "form.html", relativeTo: base)!)
                 Issue.record("expected the step to fail the load")
             } catch let error as SleepyError {
-                #expect(error.kind == .negative)
+                #expect(error.kind == .timeout)
                 #expect(error.description.contains("#nowhere"))
             }
             let title = try await host.execute(EvalOperation(source: "return document.title;"))

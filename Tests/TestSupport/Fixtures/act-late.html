@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Late act fixture</title>
+</head>
+<body>
+  <h1>Late act fixture</h1>
+  <script>
+    // The go button appears late, and its results later still: one fixture
+    // for both step auto-wait (the button) and the post-steps --wait-for
+    // gate (the results). Timers, not rAF — rAF never fires headless.
+    setTimeout(function () {
+      var go = document.createElement('button');
+      go.id = 'go';
+      go.textContent = 'Go';
+      go.addEventListener('click', function () {
+        setTimeout(function () {
+          var results = document.createElement('div');
+          results.className = 'results';
+          results.textContent = 'Results!';
+          document.body.appendChild(results);
+        }, 300);
+      });
+      document.body.appendChild(go);
+    }, 300);
+  </script>
+</body>
+</html>
