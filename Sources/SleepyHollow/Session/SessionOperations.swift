@@ -13,6 +13,10 @@ public enum SessionOperations {
     public static var registry: OperationRegistry {
         var registry = OperationRegistry()
         registry.register(ReadFactsOperation.self)
+        registry.register(EvalOperation.self)
+        registry.register(ClickOperation.self)
+        registry.register(FillOperation.self)
+        registry.register(SubmitOperation.self)
         return registry
     }
 }

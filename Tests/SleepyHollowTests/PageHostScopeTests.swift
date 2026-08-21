@@ -45,16 +45,4 @@ struct PageHostScopeTests {
             #expect(await failure(for: LoadOptions(), base: base) == nil)
         }
     }
-
-    @Test
-    @MainActor
-    func `action steps are refused, naming the act leaf`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
-            var options = LoadOptions()
-            options.steps = [ActionStep.click(selector: "#go")]
-            let error: SleepyError? = await failure(for: options, base: base)
-            #expect(error?.kind == .environment)
-            #expect(error?.description.contains("q6mlw") == true)
-        }
-    }
 }

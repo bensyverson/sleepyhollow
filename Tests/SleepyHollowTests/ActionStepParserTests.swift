@@ -62,4 +62,50 @@ struct ActionStepParserTests {
         let steps = try ActionStepParser.parse(["--fill", "#q=a=b"])
         #expect(steps == [.fill(selector: "#q", value: "a=b")])
     }
+
+    // MARK: - Value-taking options
+
+    @Test func `another option's value that spells a step flag is not a step`() throws {
+        #expect(try ActionStepParser.parse(["load", "http://example.com", "--prompt-text", "--click"]).isEmpty)
+    }
+
+    @Test func `another option's value that spells a step flag does not swallow the next token`() throws {
+        let steps = try ActionStepParser.parse([
+            "load", "http://example.com",
+            "--prompt-text", "--click",
+            "--click", "#go",
+        ])
+        #expect(steps == [.click(selector: "#go")])
+    }
+
+    @Test func `a verb option's value that spells a step flag is not a step`() throws {
+        #expect(try ActionStepParser.parse(["find", "http://example.com", "--text", "--submit"]).isEmpty)
+        #expect(try ActionStepParser.parse(["query", "http://example.com", "--selector", "--fill"]).isEmpty)
+    }
+
+    @Test func `an inline --option=value does not shield the token after it`() throws {
+        let steps = try ActionStepParser.parse(["--wait-for=idle", "--click", "#go"])
+        #expect(steps == [.click(selector: "#go")])
+    }
+
+    @Test func `a caller may name extra value-taking options`() throws {
+        #expect(try ActionStepParser.parse(["--mine", "--click"], valueTakingOptions: ["--mine"]).isEmpty)
+    }
+
+    // MARK: - The `--` terminator
+
+    @Test func `arguments after -- are never scanned`() throws {
+        #expect(try ActionStepParser.parse(["load", "http://example.com", "--", "--click", "#go"]).isEmpty)
+    }
+
+    @Test func `-- ends the scan without discarding the steps before it`() throws {
+        let steps = try ActionStepParser.parse(["--click", "#go", "--", "--fill", "#q=webkit"])
+        #expect(steps == [.click(selector: "#go")])
+    }
+
+    @Test func `a step flag needing a value at the -- terminator is a usage error`() {
+        #expect(throws: SleepyError.self) {
+            try ActionStepParser.parse(["--click", "--", "#go"])
+        }
+    }
 }

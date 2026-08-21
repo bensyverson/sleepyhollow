@@ -236,6 +236,13 @@ public final class PageHost {
             facts.httpStatus = delegate.mainFrameStatus
             try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
             try await runActionSteps(by: deadline)
+            // A step may have navigated — even to the same URL; the facts must
+            // describe the page the steps produced, the same one the verb's
+            // read is about to see.
+            if !options.steps.isEmpty {
+                facts.finalURL = webView.url
+                facts.httpStatus = delegate.mainFrameStatus
+            }
             facts.consoleErrorCount = await consoleErrorCount()
             return facts
         case .failed:

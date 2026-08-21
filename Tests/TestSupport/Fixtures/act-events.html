@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Act events fixture</title>
+</head>
+<body>
+  <h1>Act events</h1>
+
+  <p><button id="go" type="button">Go</button></p>
+  <p id="click-log">none</p>
+
+  <p><input id="title" type="text" value=""></p>
+  <p><textarea id="notes"></textarea></p>
+  <p><input id="agree" type="checkbox"></p>
+  <p>
+    <select id="colour">
+      <option value="r">Red</option>
+      <option value="g">Green</option>
+    </select>
+  </p>
+  <p><input id="locked" type="text" value="fixed" readonly></p>
+  <p><button id="off" type="button" disabled>Off</button></p>
+  <p id="field-log">none</p>
+
+  <form id="local">
+    <input id="local-name" name="name" type="text" value="filled">
+    <button id="local-save" type="submit">Save</button>
+  </form>
+  <p id="submit-log">none</p>
+
+  <form id="strict">
+    <input id="strict-name" name="name" type="text" required>
+    <button id="strict-save" type="submit">Save</button>
+  </form>
+
+  <script>
+    const clickLog = document.getElementById('click-log');
+    const fieldLog = document.getElementById('field-log');
+    const submitLog = document.getElementById('submit-log');
+    const go = document.getElementById('go');
+    const before = [];
+    let clicks = 0;
+
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+      go.addEventListener(type, () => before.push(type));
+    }
+
+    go.addEventListener('click', (event) => {
+      clicks += 1;
+      const rect = go.getBoundingClientRect();
+      clickLog.textContent = JSON.stringify({
+        clicks,
+        type: event.type,
+        isTrusted: event.isTrusted,
+        bubbles: event.bubbles,
+        button: event.button,
+        insideX: event.clientX > rect.left && event.clientX < rect.right,
+        insideY: event.clientY > rect.top && event.clientY < rect.bottom,
+        before: before.slice(),
+      });
+    });
+
+    const record = (event) => {
+      const seen = JSON.parse(fieldLog.dataset.json || '[]');
+      seen.push({
+        id: event.target.id,
+        type: event.type,
+        value: event.target.value,
+        checked: !!event.target.checked,
+      });
+      fieldLog.dataset.json = JSON.stringify(seen);
+      fieldLog.textContent = fieldLog.dataset.json;
+    };
+
+    for (const id of ['title', 'notes', 'agree', 'colour']) {
+      const field = document.getElementById(id);
+      field.addEventListener('input', record);
+      field.addEventListener('change', record);
+    }
+
+    document.getElementById('local').addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitLog.textContent = JSON.stringify({
+        submitted: true,
+        name: event.target.elements.name.value,
+      });
+    });
+  </script>
+</body>
+</html>
