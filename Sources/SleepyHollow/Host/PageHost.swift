@@ -200,6 +200,7 @@ public final class PageHost {
             // still leaves the page's status in ``facts``.
             facts.httpStatus = delegate.mainFrameStatus
             try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
+            try await runActionSteps(by: deadline)
             facts.consoleErrorCount = await consoleErrorCount()
             return facts
         case .failed:
@@ -271,20 +272,14 @@ public final class PageHost {
     }
 
     /// Rejects options whose implementation belongs to a later leaf, naming it,
-    /// rather than half-honouring them.
+    /// rather than half-honouring them. Action steps are refused by their own
+    /// pipeline phase (``runActionSteps(by:)``) instead of here.
     private func validateSupportedOptions() throws {
         if let jar: JarName = options.jar {
             throw SleepyError(
                 kind: .environment,
                 message: "Cookie jar '\(jar)' was requested, but this host only has an in-memory store.",
                 nextMove: "Jars land with leaf XDmfo; until then run without --jar.",
-            )
-        }
-        if !options.steps.isEmpty {
-            throw SleepyError(
-                kind: .environment,
-                message: "\(options.steps.count) action step(s) were requested, but this host cannot act yet.",
-                nextMove: "Action steps land with leaf q6mlw; until then load without --click/--fill/--submit.",
             )
         }
     }
