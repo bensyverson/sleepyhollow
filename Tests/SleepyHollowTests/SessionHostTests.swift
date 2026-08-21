@@ -68,14 +68,16 @@ struct SessionHostTests {
             options: LoadOptions(),
             registry: registry,
             operations: SessionOperations.registry,
-            idleTimeout: 2,
+            idleTimeout: 6,
         )
         try await host.start()
         let client = SessionClient(name: name, registry: registry)
-        try await Task.sleep(nanoseconds: 1_400_000_000)
+        // Generous margins: under full-suite load a sleep plus a connect can
+        // overshoot by seconds, and the work must land before the TTL.
+        try await Task.sleep(nanoseconds: 4_000_000_000)
         _ = try await client.run(ReadFactsOperation())
-        // Past the original deadline, but only 0.9s since the work.
-        try await Task.sleep(nanoseconds: 900_000_000)
+        // Past the original deadline, but well under the TTL since the work.
+        try await Task.sleep(nanoseconds: 4_500_000_000)
         #expect(registry.liveness(of: name) == .live)
         #expect(await stopped(host, within: 20))
     }

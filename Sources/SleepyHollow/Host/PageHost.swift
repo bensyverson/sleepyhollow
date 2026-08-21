@@ -27,12 +27,14 @@ import WebKit
 /// ```
 @MainActor
 public final class PageHost {
-    /// The script-message name the baseline console capture posts on.
+    /// The script-message name the console capture posts on.
     ///
-    /// Each message is JSON text: `{"kind": "console.error" | "uncaught" |
-    /// "unhandledrejection", "text": "…"}`. The console verb subscribes with
-    /// ``messages(named:in:)`` — in ``InjectedScript/World/page``, where the
-    /// capture necessarily lives.
+    /// Each message is JSON text carrying `kind` (`console.<level>`,
+    /// `uncaught`, or `unhandledrejection`), `level`, `origin`, `text`, and
+    /// `timeMilliseconds` — see `ConsoleCapture`. Live subscription via
+    /// ``messages(named:in:)`` (in ``InjectedScript/World/page``, where the
+    /// capture necessarily lives) is a bonus; the capture also buffers
+    /// page-side, which is what one-shot verbs read after the fact.
     public static let consoleMessageName: String = "sleepyHollowConsole"
 
     /// How a navigation ended. The failure itself is held in

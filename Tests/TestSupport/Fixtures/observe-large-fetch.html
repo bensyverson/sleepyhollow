@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Large response fixture</title>
+</head>
+<body>
+  <h1>Large response fixture</h1>
+  <pre id="log"></pre>
+  <script>
+    // A response far larger than the recorder's byte cap, read by the page in
+    // full: the recorder's capped clone must report a truncation rather than
+    // hold the whole body — and the page must still get every byte.
+    window.addEventListener('load', async () => {
+      const log = document.getElementById('log');
+      try {
+        const response = await fetch('/observe-large');
+        const text = await response.text();
+        log.textContent += 'large:' + text.length + ';';
+      } catch (error) {
+        log.textContent += 'large:error;';
+      }
+    });
+  </script>
+</body>
+</html>

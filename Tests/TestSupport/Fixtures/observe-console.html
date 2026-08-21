@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Console levels fixture</title>
+</head>
+<body>
+  <h1>Console levels fixture</h1>
+  <script>
+    // One call per level, in a fixed order, so the console verb's ordering and
+    // level mapping are both assertable. Arguments are deliberately mixed types:
+    // the capture stringifies and joins them.
+    console.debug('a debug line');
+    console.log('a log line', 1, true);
+    console.info('an info line');
+    console.warn('a warn line');
+    console.error('an error line');
+  </script>
+  <script>
+    // Rejected with no handler: the capture reports it as an unhandled rejection.
+    Promise.reject(new Error('rejected on purpose'));
+  </script>
+  <p id="after">parsed</p>
+</body>
+</html>

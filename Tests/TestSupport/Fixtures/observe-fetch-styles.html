@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fetch call styles fixture</title>
+</head>
+<body>
+  <h1>Fetch call styles fixture</h1>
+  <pre id="log"></pre>
+  <script>
+    // The three call styles the wire spike found fragile, sequentially so the
+    // recorder's ordering is deterministic. The page's own results are logged:
+    // a recorder that changed what the page sees would show up here.
+    window.addEventListener('load', async () => {
+      const log = document.getElementById('log');
+      try {
+        const viaHeaders = await fetch('/submit', {
+          method: 'POST',
+          headers: new Headers({ 'X-Sleepy': 'via-headers' }),
+          body: 'hello-from-headers',
+        });
+        log.textContent += 'headers:' + (await viaHeaders.text()) + ';';
+      } catch (error) {
+        log.textContent += 'headers:error;';
+      }
+      try {
+        const viaRequest = await fetch(new Request('/submit', {
+          method: 'POST',
+          headers: { 'X-Sleepy': 'via-request' },
+          body: 'hello-from-request',
+        }));
+        log.textContent += 'request:' + (await viaRequest.text()) + ';';
+      } catch (error) {
+        log.textContent += 'request:error;';
+      }
+      try {
+        // `new Request(input, init)` throws on a GET with a body: the recorder
+        // must hand this to the native fetch untouched so the page still sees
+        // the platform's own failure.
+        await fetch('/submit', { method: 'GET', body: 'not allowed' });
+        log.textContent += 'illegal:resolved;';
+      } catch (error) {
+        log.textContent += 'illegal:rejected;';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inventory fixture</title>
+  <link rel="stylesheet" href="/slow.css">
+  <script src="/script.js"></script>
+</head>
+<body>
+  <h1>Inventory fixture</h1>
+  <img src="/pixel.png" alt="a pixel">
+  <pre id="log"></pre>
+  <script>
+    // A cross-origin image, when the test supplies a second origin as
+    // ?crossOrigin=<base>: its sizes are the honest-null case (WebKit reports
+    // 0 for cross-origin entries, Timing-Allow-Origin notwithstanding).
+    const crossOrigin = new URLSearchParams(location.search).get('crossOrigin');
+    if (crossOrigin) {
+      const image = document.createElement('img');
+      image.alt = 'a cross-origin pixel';
+      image.src = crossOrigin.replace(/\/$/, '') + '/pixel.png';
+      document.body.appendChild(image);
+    }
+    // XHR: invisible to the fetch recorder, fully visible to the inventory.
+    const request = new XMLHttpRequest();
+    request.open('GET', '/fetch-target.txt', false);
+    request.send();
+    document.getElementById('log').textContent = 'xhr:' + request.status + ';';
+  </script>
+</body>
+</html>

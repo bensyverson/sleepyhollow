@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Opaque response fixture</title>
+</head>
+<body>
+  <h1>Opaque response fixture</h1>
+  <pre id="log"></pre>
+  <script>
+    // A cross-origin no-cors fetch: the page gets an opaque response — status 0,
+    // no headers, an empty body — and the recorder must report exactly that
+    // rather than dressing it up as a network failure. The second origin comes
+    // from ?target=<url>, since the fixture server's port is ephemeral.
+    window.addEventListener('load', async () => {
+      const log = document.getElementById('log');
+      const target = new URLSearchParams(location.search).get('target');
+      try {
+        const response = await fetch(target, { mode: 'no-cors' });
+        log.textContent += 'opaque:' + response.type + ':' + response.status + ';';
+      } catch (error) {
+        log.textContent += 'opaque:error;';
+      }
+    });
+  </script>
+</body>
+</html>
