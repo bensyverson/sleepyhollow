@@ -9,8 +9,9 @@ import WebKit
 /// view and its non-persistent data store, the fixed viewport, the named
 /// theme, the dialog policy, the injected scripts, and the baseline console
 /// capture. ``load(_:)`` navigates and settles inside a budget the *host*
-/// keeps, never the page: a headless web view throttles page timers whenever
-/// the host is not evaluating JavaScript, so a page-side deadline would lie.
+/// keeps, never the page: a headless web view is free to throttle a hidden
+/// page's timers, and it never runs `requestAnimationFrame` at all, so a
+/// page-side deadline would lie.
 ///
 /// Nothing hangs. A navigation that never finishes becomes a
 /// ``SleepyError`` of kind ``SleepyError/Kind/timeout``; a navigation that
@@ -89,6 +90,10 @@ public final class PageHost {
     /// Hands out sink identities.
     var nextMessageSinkID: Int = 0
 
+    /// The settle phase for ``LoadOptions/wait``; `nil` when the load event
+    /// alone is the condition.
+    private let waiter: WaitEngine?
+
     private var isLoading = false
     private var pendingNavigation: CheckedContinuation<NavigationOutcome, Never>?
     private var navigationFailure: (any Error)?
@@ -99,6 +104,7 @@ public final class PageHost {
     /// injected scripts, all installed before any load.
     public init(options: LoadOptions = LoadOptions()) {
         self.options = options
+        waiter = WaitEngine(condition: options.wait)
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
         webView = WKWebView(
@@ -116,6 +122,12 @@ public final class PageHost {
         delegate.host = self
         register(messageName: Self.consoleMessageName, in: .page)
         install(ConsoleCapture.script(messageName: Self.consoleMessageName))
+        if let waiter {
+            register(messageName: WaitEngine.messageName, in: .isolated)
+            for script in waiter.scripts {
+                install(script)
+            }
+        }
         for script in options.scripts {
             install(script)
         }
@@ -123,17 +135,22 @@ public final class PageHost {
 
     /// Navigates to `url` and settles, inside the host's ``budget``.
     ///
-    /// Settling currently means the navigation's load event; the wait engine
-    /// (leaf `oCDLF`) adds the other ``WaitCondition`` kinds to this same
-    /// pipeline, so loading verbs gain them without changing.
+    /// Settling is the navigation's load event *and* ``LoadOptions/wait``:
+    /// the load event alone for ``WaitCondition/load`` or no condition, and
+    /// otherwise the wait engine's selector, predicate or idle phase running
+    /// on after it. Both phases share the one budget — whatever navigating
+    /// spends, waiting does not get again — so a loading verb inherits waiting
+    /// by passing its ``LoadOptions`` through unchanged.
     ///
     /// - Returns: the load's ``PageFacts`` — also left in ``facts``.
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when the
-    ///   budget runs out (the page's last state stays in ``facts``),
-    ///   ``SleepyError/Kind/loadFailure`` when the navigation fails, or
-    ///   ``SleepyError/Kind/environment`` when the options ask for something
-    ///   this host does not yet implement, or ``SleepyError/Kind/usage`` when
-    ///   a load is already in flight.
+    ///   budget runs out, whether navigating or waiting (the page's last state
+    ///   stays in ``facts``, and the page itself is left alone so it stays
+    ///   readable), ``SleepyError/Kind/loadFailure`` when the navigation
+    ///   fails, ``SleepyError/Kind/environment`` when the options ask for
+    ///   something this host does not yet implement, or
+    ///   ``SleepyError/Kind/usage`` when a load is already in flight or the
+    ///   wait condition can never be met as written.
     ///
     /// - Note: ``PageFacts/consoleErrorCount`` is `0` when a load times out.
     ///   Reading it needs a round-trip to a page that has just proved it will
@@ -158,6 +175,10 @@ public final class PageHost {
         navigationFailure = nil
         delegate.mainFrameStatus = nil
 
+        // One deadline for the whole pipeline: whatever navigating spends, the
+        // settle phase does not get again.
+        let deadline = DispatchTime.now() + budget
+        waiter?.startWatching(in: self)
         let outcome: NavigationOutcome = await navigate(to: url)
         facts.finalURL = webView.url
         switch outcome {
@@ -173,7 +194,10 @@ public final class PageHost {
                     nextMove: "Check the URL — WebKit refuses well-known service ports (9, 25, …) and unsupported schemes.",
                 )
             }
+            // Recorded before settling, so a wait that exhausts the budget
+            // still leaves the page's status in ``facts``.
             facts.httpStatus = delegate.mainFrameStatus
+            try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
             facts.consoleErrorCount = await consoleErrorCount()
             return facts
         case .failed:
@@ -252,16 +276,6 @@ public final class PageHost {
                 kind: .environment,
                 message: "Cookie jar '\(jar)' was requested, but this host only has an in-memory store.",
                 nextMove: "Jars land with leaf XDmfo; until then run without --jar.",
-            )
-        }
-        switch options.wait {
-        case .none, .load:
-            break
-        case .selector, .predicate, .idle:
-            throw SleepyError(
-                kind: .environment,
-                message: "This host settles on the load event only.",
-                nextMove: "The wait engine lands with leaf oCDLF; until then use --wait-for load.",
             )
         }
         if !options.steps.isEmpty {

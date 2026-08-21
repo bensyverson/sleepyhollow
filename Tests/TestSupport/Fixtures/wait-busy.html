@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Never-idle fixture</title>
+</head>
+<body>
+  <h1>Never-idle fixture</h1>
+  <pre id="log">0</pre>
+  <script>
+    // A page that always has a request in flight: each response starts the
+    // next one, so there is never a quiet window and no page timer is
+    // involved. --wait-for idle must end on the host's budget instead.
+    var count = 0;
+    function next() {
+      count += 1;
+      document.getElementById('log').textContent = String(count);
+      fetch('/delay/150/fetch-target.txt?n=' + count).then(next, next);
+    }
+    window.addEventListener('load', next);
+  </script>
+</body>
+</html>

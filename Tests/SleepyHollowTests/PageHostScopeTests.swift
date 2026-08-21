@@ -32,24 +32,6 @@ struct PageHostScopeTests {
 
     @Test
     @MainActor
-    func `wait conditions beyond load are refused, naming the wait-engine leaf`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
-            for condition in [
-                WaitCondition.selector("#greeting"),
-                WaitCondition.predicate("true"),
-                WaitCondition.idle,
-            ] {
-                var options = LoadOptions()
-                options.wait = condition
-                let error: SleepyError? = await failure(for: options, base: base)
-                #expect(error?.kind == .environment)
-                #expect(error?.description.contains("oCDLF") == true)
-            }
-        }
-    }
-
-    @Test
-    @MainActor
     func `waiting for load, or for nothing, is supported`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()

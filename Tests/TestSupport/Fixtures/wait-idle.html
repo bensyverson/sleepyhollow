@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Delayed resource fixture</title>
+</head>
+<body>
+  <h1>Delayed resource fixture</h1>
+  <pre id="log">pending</pre>
+  <script>
+    // The fetch starts inside the load event, so it is already in flight when
+    // the host's settle phase begins — the page is *not* idle at didFinish.
+    window.sleepyFetchDone = false;
+    window.addEventListener('load', function () {
+      fetch('/delay/600/fetch-target.txt').then(function (response) {
+        return response.text();
+      }).then(function (text) {
+        document.getElementById('log').textContent = text;
+        window.sleepyFetchDone = true;
+      }).catch(function () {
+        document.getElementById('log').textContent = 'error';
+        window.sleepyFetchDone = true;
+      });
+    });
+  </script>
+</body>
+</html>

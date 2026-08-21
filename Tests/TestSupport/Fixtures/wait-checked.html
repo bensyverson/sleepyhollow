@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Property-driven match fixture</title>
+</head>
+<body>
+  <h1>Property-driven match fixture</h1>
+  <input id="agree" type="checkbox">
+  <script>
+    // Setting the IDL property changes what `#agree:checked` matches without
+    // touching the content attribute — so this produces no MutationObserver
+    // record at all. The host's backstop check is the only thing that sees it.
+    setTimeout(function () {
+      document.getElementById('agree').checked = true;
+    }, 300);
+  </script>
+</body>
+</html>

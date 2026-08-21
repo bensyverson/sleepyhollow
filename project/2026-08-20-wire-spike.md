@@ -144,6 +144,20 @@ fetch untouched so the page gets the native error.
    budget belongs to the Swift host**, and trailing body reports may land on
    the next host interaction. (Flag for the pagehost/wait leaves: headless
    throttling affects any page that waits on its own timers.)
+
+   > **Corrected 2026-08-20 by the wait engine (leaf oCDLF): plain page
+   > timers are *not* throttled in the shipped host, and a host pump makes no
+   > difference.** Measured against a real `PageHost` with no host-side
+   > evaluation at all after `didFinish`: `setTimeout(…, 400)` fired at
+   > 400 ms and `setTimeout(…, 1500)` at 1501 ms; pumping every 250 ms or
+   > 50 ms gave 401/1501 ms. Network completions also arrive unpumped. What
+   > *never* fires headless is `requestAnimationFrame` — there is no window to
+   > render into — so the stalled 1.5 s deadline above was most likely the
+   > capped reader's stream-read resolution, not timer alignment. The
+   > conclusions above still stand for the recorder (the byte cap is the
+   > reliable guard; the host owns the budget), but no leaf should design
+   > around "page timers are throttled" as a general fact. Details and the
+   > reproducing probes: `project/2026-08-20-wait-engine.md`.
 6. **Large bodies cost memory, not time.** A 50 MB `Content-Length` response
    was fully read by the clone in 62 ms on localhost — the danger is holding
    50 MB strings per request, not stalling. A `Content-Length` pre-check can

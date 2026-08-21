@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Late element fixture</title>
+</head>
+<body>
+  <h1>Late element fixture</h1>
+  <p id="early">Present before the load event.</p>
+  <script>
+    // The element and the predicate global appear together, after the page's
+    // own delay, so one fixture serves both --wait-for kinds. The delay comes
+    // from ?flip=<ms> (default 300): appears-later tests keep it short, while
+    // settles-at-once tests raise it so a loaded machine can't lose the race.
+    var flip = parseInt(new URLSearchParams(location.search).get('flip') || '300', 10);
+    window.sleepyStage = 'early';
+    setTimeout(function () {
+      var late = document.createElement('div');
+      late.id = 'late';
+      late.textContent = 'Arrived late.';
+      document.body.appendChild(late);
+      window.sleepyStage = 'late';
+      window.sleepyReady = true;
+    }, flip);
+  </script>
+</body>
+</html>

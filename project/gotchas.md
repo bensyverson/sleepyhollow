@@ -22,4 +22,8 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **`swiftformat` (writing, not linting) also needs the sandbox disabled in a worktree.** `--lint` reads and works; the fixing pass reports `error: Failed to write file …` for every file, because the session sandbox denies writes under `.claude/`. Same fix as `swift build`: run it with the sandbox off.
 
+**Wall-clock assertions inflate 2–3× in the full suite.** Every WebKit test is `@MainActor` and Swift Testing runs suites in parallel, so ~130 tests contend for one actor: a load measured at 1.5 s with `--filter` measured 4.2 s in the full run, and tight bounds (`elapsed < 2.3`) fail only there. Assert *lower* bounds tightly (they are contention-proof), keep upper bounds generous (< 10 s), and when a test must prove *when* something settled, use the page's own late element as the clock instead of `Date()`.
+
+**`requestAnimationFrame` never fires in a headless `WKWebView`** — no window, no rendering update, no callback (measured; `setTimeout` is unaffected and fires on time). A fixture that schedules anything through a rAF chain will hang until the budget. Use `setTimeout` or a fetch completion.
+
 **Answer WebKit's delegate protocols with the exact SDK signature or you get no callbacks.** `WKUIDelegate`'s completion handlers are typed `@escaping @MainActor @Sendable`; a plain `@escaping (Bool) -> Void` compiles, produces only a "nearly matches optional requirement" *warning*, and then the dialog panels silently never fire. Treat that warning as an error.
