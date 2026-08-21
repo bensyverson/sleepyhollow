@@ -61,6 +61,12 @@ extension SessionHost {
                     )
                 }
                 let payload: Data = try await encodedOutput(of: executable)
+                // Any operation can change cookies — a set directly, a click
+                // or navigation via the page — so a jar-keeping session saves
+                // after each one. Loudly: state the client believes persisted
+                // and didn't is a broken flow, and the jar's own error names
+                // the next move.
+                try await page.saveJar()
                 return .output(payload)
             } catch let error as SleepyError {
                 return .failure(error)

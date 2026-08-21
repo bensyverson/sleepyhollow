@@ -148,6 +148,10 @@ public final class SessionHost {
     public func stop() async {
         guard !isStopped else { return }
         isStopped = true
+        // The session's last cookie state outlives it when a jar was named —
+        // whether this stop is a `close`, the idle TTL, or a failure path.
+        // Quiet on purpose: the stop must finish even if the disk will not.
+        await page.saveJarIgnoringFailure()
         idleTask?.cancel()
         idleTask = nil
         listener?.cancel()
