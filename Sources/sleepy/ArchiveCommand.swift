@@ -15,9 +15,10 @@ struct ArchiveCommand: AsyncParsableCommand {
         discussion: """
         Examples:
           sleepy archive http://localhost:3000/ --out page.webarchive
-          sleepy archive http://localhost:3000/report --out report.webarchive
+          sleepy archive http://localhost:3000/r --wait-for '#ready' --out r.webarchive
+          sleepy archive --session app --out app.webarchive
 
-        Exit codes: 0 success, 2 usage, 4 load failure, 5 environment.
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

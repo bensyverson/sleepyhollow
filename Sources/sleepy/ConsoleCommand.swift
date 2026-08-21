@@ -23,6 +23,10 @@ struct ConsoleCommand: AsyncParsableCommand {
           sleepy console http://localhost:3000/
           sleepy console http://localhost:3000/app --format text
           sleepy console http://localhost:3000/app --inject probe.js --out console.json
+          sleepy console --session app --format text
+
+        A page that complains is the answer, not a failure: the exit stays 0.
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 
@@ -39,7 +43,7 @@ struct ConsoleCommand: AsyncParsableCommand {
             verb: "console",
         )
         let log: ConsoleLog = try await PageExecution.run(ConsoleOperation(), on: source.resolve(), flags: flags)
-        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
+        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen, verb: "console")
         try out.sink.write(rendered)
     }
 }

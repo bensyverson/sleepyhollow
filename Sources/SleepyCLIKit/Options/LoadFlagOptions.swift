@@ -3,8 +3,8 @@ import Foundation
 import SleepyHollow
 
 /// The shared loading flags every loading verb takes: viewport, theme, jar,
-/// injected scripts, waiting, budget, dialog policy, and the ordered
-/// one-shot action flags.
+/// injected scripts and the world they land in, waiting, budget, dialog
+/// policy, and the ordered one-shot action flags.
 ///
 /// `--click`/`--fill`/`--submit` are declared here only so `--help` renders
 /// them; ArgumentParser loses interleave order across separate array
@@ -29,8 +29,18 @@ public struct LoadFlagOptions: ParsableArguments {
     @Option(name: .long, help: "Attach a persistent cookie jar by name.")
     public var jar: JarName?
 
-    @Option(name: .long, parsing: .singleValue, help: "Install a user script from this file before load (repeatable).")
+    @Option(
+        name: .long,
+        parsing: .singleValue,
+        help: "Install a user script from this file at document start, in the isolated world (repeatable).",
+    )
     public var inject: [String] = []
+
+    @Option(
+        name: .long,
+        help: "Which world --inject's scripts run in: isolated or page. Default isolated.",
+    )
+    public var injectWorld: InjectedScript.World?
 
     @Option(name: .long, help: "Wait condition: a selector, 'js:<expr>', 'idle', or 'load'.")
     public var waitFor: String?
@@ -68,6 +78,7 @@ public struct LoadFlagOptions: ParsableArguments {
             theme: theme,
             jar: jar,
             injectPaths: inject,
+            injectWorld: injectWorld,
             waitFor: waitFor,
             budgetMilliseconds: budget,
             confirm: confirm,
@@ -84,6 +95,7 @@ public struct LoadFlagOptions: ParsableArguments {
         theme: ColorTheme?,
         jar: JarName?,
         injectPaths: [String],
+        injectWorld: InjectedScript.World?,
         waitFor: String?,
         budgetMilliseconds: Int?,
         confirm: DialogChoice?,
@@ -94,7 +106,7 @@ public struct LoadFlagOptions: ParsableArguments {
             size: resolveSize(size) ?? ViewportSize.default,
             theme: theme ?? .light,
             jar: jar,
-            scripts: resolveScripts(injectPaths),
+            scripts: resolveScripts(injectPaths, in: injectWorld ?? .isolated),
             dialogs: DialogPolicy(acceptsConfirms: confirm == .accept, promptResponse: promptText),
             wait: resolveWait(waitFor),
             budget: resolveBudget(budgetMilliseconds),
@@ -119,7 +131,13 @@ public struct LoadFlagOptions: ParsableArguments {
         return ViewportSize(width: width, height: height)
     }
 
-    private static func resolveScripts(_ paths: [String]) throws -> [InjectedScript] {
+    /// Reads each `--inject` file and puts every one of them in `world` —
+    /// one flag for the whole invocation, because a per-script world would
+    /// need `--inject` to carry two values and the need has never come up.
+    private static func resolveScripts(
+        _ paths: [String],
+        in world: InjectedScript.World,
+    ) throws -> [InjectedScript] {
         try paths.map { path in
             guard let source = try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8) else {
                 throw SleepyError(
@@ -128,7 +146,7 @@ public struct LoadFlagOptions: ParsableArguments {
                     nextMove: "Check the path exists and is readable UTF-8 text.",
                 )
             }
-            return InjectedScript(source: source)
+            return InjectedScript(source: source, injectAt: .documentStart, world: world)
         }
     }
 

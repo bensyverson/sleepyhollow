@@ -16,9 +16,7 @@ struct SessionsCommand: AsyncParsableCommand {
         commandName: "sessions",
         abstract: "List, reap, and close named sessions.",
         discussion: """
-        Sessions live under $SLEEPYHOLLOW_HOME/sessions (default ~/.sleepyhollow/sessions).
-        Nothing supervises them: each helper reaps itself on an idle TTL, and whatever a
-        crash leaves behind is reaped lazily, here.
+        Sessions live under $SLEEPYHOLLOW_HOME/sessions (default ~/.sleepyhollow/sessions). Nothing supervises them: each helper reaps itself on an idle TTL, and whatever a crash leaves behind is reaped lazily, here.
 
         Examples:
           sleepy sessions list
@@ -39,6 +37,17 @@ struct SessionsCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "Show every session with its pid, liveness, age and URL; reap the dead ones.",
+            discussion: """
+            A dead session is reported once and then removed, so the next listing is clean.
+
+            Formats: text (default) — one line per session; json — the same entries with ISO dates.
+
+            Examples:
+              sleepy sessions list
+              sleepy sessions list --format json
+
+            Exit codes: 0 always — an empty list is an answer, not a failure.
+            """,
         )
 
         /// The formats `sessions list` supports.
@@ -74,6 +83,15 @@ struct SessionsCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "prune",
             abstract: "Remove every session whose helper is gone, and report what went.",
+            discussion: """
+            Prints one name per removed session. Live sessions are never touched — use
+            `sleepy close <name>` for those.
+
+            Examples:
+              sleepy sessions prune
+
+            Exit codes: 0 always — nothing to reap is an answer, not a failure.
+            """,
         )
 
         @OptionGroup var out: OutOption
@@ -90,6 +108,14 @@ struct SessionsCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "close",
             abstract: "End a named session; the name is free when this returns.",
+            discussion: """
+            The same act as `sleepy close <name>`, spelled the way the management verb reads.
+
+            Examples:
+              sleepy sessions close login
+
+            Exit codes: 0 closed (or already gone), 2 usage, 5 no session by that name.
+            """,
         )
 
         @Argument(help: "The session to close.")

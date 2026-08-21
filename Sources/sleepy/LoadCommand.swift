@@ -10,19 +10,28 @@ import SleepyHollow
 /// 500) still *loads*, so its status lands in the facts and the exit stays 0.
 /// Exit 4 means the navigation itself failed; exit 3 means the budget ran
 /// out.
+///
+/// A one-shot load whose page complained also writes one line to *standard
+/// error* — the vision's promise that `load` surfaces console errors. It is
+/// additive by design: stdout stays exactly the facts JSON, so a pipeline
+/// parsing stdout never sees it and a human watching a terminal cannot miss
+/// it.
 struct LoadCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "load",
         abstract: "Load a page and report the facts: final URL, HTTP status, console errors, dialogs.",
         discussion: """
-        `load` is the one verb that takes a URL *and* --session together: that pair
-        navigates the open session to the URL. With --session alone it reports the page
-        the session is already on.
+        `load` is the one verb that takes a URL *and* --session together: that pair navigates the open session to the URL. With --session alone it reports the page the session is already on.
+
+        A one-shot load whose page logged errors says so on stderr; stdout stays the facts.
 
         Examples:
           sleepy load http://localhost:3000/
           sleepy load http://localhost:3000/app --wait-for '#ready' --budget 5000
+          sleepy load http://localhost:3000/ --click '#go' --wait-for '.results'
           sleepy load --session login http://localhost:3000/dashboard
+
+        Exit codes: 0 loaded (404 and 500 included), 2 usage, 3 budget ran out, 4 the navigation failed, 5 no such session.
         """,
     )
 
@@ -41,5 +50,20 @@ struct LoadCommand: AsyncParsableCommand {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try out.sink.write(encoder.encode(facts))
+        noteConsoleErrors(facts, on: target)
+    }
+
+    /// Says on stderr that the page complained, and where to read what it
+    /// said.
+    ///
+    /// One-shot only: a session's page is long-lived and its console log
+    /// spans navigations, so the count belongs to whoever asks `sleepy
+    /// console --session <n>`, not to a single client invocation.
+    private func noteConsoleErrors(_ facts: PageFacts, on target: PageSourceOptions.LoadTarget) {
+        guard case let .ephemeral(url) = target, facts.consoleErrorCount > 0 else { return }
+        let plural: String = facts.consoleErrorCount == 1 ? "console error" : "console errors"
+        let note = "sleepy: the page logged \(facts.consoleErrorCount) \(plural). "
+            + "`sleepy console \(url.absoluteString)` prints them.\n"
+        FileHandle.standardError.write(Data(note.utf8))
     }
 }

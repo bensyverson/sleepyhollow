@@ -17,10 +17,16 @@ struct StyleCommand: AsyncParsableCommand {
         commandName: "style",
         abstract: "Read computed CSS values for the first element a selector matches.",
         discussion: """
+        Values are computed, not authored: what the cascade resolved to, in the page's own units.
+
+        Formats: json (default), text — one 'property: value' line per requested property.
+
         Examples:
           sleepy style http://localhost:3000/ --selector 'h1' --property display
-          sleepy style http://localhost:3000/ --selector body --property background-color --property color
-          sleepy style http://localhost:3000/ --selector 'h1' --property display --format text
+          sleepy style http://localhost:3000/ --selector body --property color
+          sleepy style --session app --selector h1 --property color --format text
+
+        Exit codes: 0 matched, 1 the selector matched nothing — 'matched: false' is still printed on stdout, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

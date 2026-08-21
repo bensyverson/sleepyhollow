@@ -16,9 +16,16 @@ struct FindCommand: AsyncParsableCommand {
         commandName: "find",
         abstract: "Search the rendered page for text, the way ⌘F would. Exit 0 if found, 1 if not.",
         discussion: """
+        The search is over rendered text, so a string split across elements still matches and a display:none one does not.
+
+        Formats: text (default) — 'matched' or 'no match'; json — a bare boolean.
+
         Examples:
           sleepy find http://localhost:3000/ --text 'Welcome back'
           sleepy find http://localhost:3000/ --text 'Welcome back' --format json
+          sleepy find --session app --text 'Saved'
+
+        Exit codes: 0 found, 1 not found — 'no match' is still printed on stdout, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

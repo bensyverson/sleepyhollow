@@ -13,12 +13,14 @@ struct FillCommand: AsyncParsableCommand {
         commandName: "fill",
         abstract: "Set a field's value in a live session, dispatching input and change.",
         discussion: """
-        Text fields take the value as typed; a checkbox or radio takes true/1/on/yes/checked;
-        a <select> takes an option's value or its visible label.
+        Text fields take the value as typed; a checkbox or radio takes true/1/on/yes/checked; a <select> takes an option's value or its visible label.
 
         Examples:
-          sleepy fill --session login --selector '#email' --value 'agent@example.com'
-          sleepy dom http://localhost:3000/ --fill '#q=webkit'   # the same action, one shot
+          sleepy fill --session login --selector '#email' --value 'a@example.com'
+          sleepy fill --session login --selector '#terms' --value true
+          sleepy dom http://localhost:3000/ --fill '#q=webkit'   # one shot
+
+        Exit codes: 0 filled, 1 nothing matched, or the field is disabled, read-only, or has no such option (the reason is on stderr; nothing on stdout), 2 usage — including a URL instead of --session, or a field that holds no value, 5 no such session.
         """,
     )
 

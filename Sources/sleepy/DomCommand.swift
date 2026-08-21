@@ -10,10 +10,17 @@ struct DomCommand: AsyncParsableCommand {
         commandName: "dom",
         abstract: "Serialize the page's DOM: HTML by default, a typed tree with --format json.",
         discussion: """
+        The DOM is the *rendered* one — script has run, so this is what the page became, not what the server sent.
+
+        Formats: html (default), json.
+
         Examples:
           sleepy dom http://localhost:3000/
           sleepy dom http://localhost:3000/ --format json
           sleepy dom http://localhost:3000/ --out page.html
+          sleepy dom --session app --format json
+
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

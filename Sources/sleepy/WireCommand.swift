@@ -40,6 +40,10 @@ struct WireCommand: AsyncParsableCommand {
           sleepy wire http://localhost:3000/app
           sleepy wire http://localhost:3000/app --format text
           sleepy wire http://localhost:3000/app --wait-for '.saved' --out wire.json
+          sleepy wire --session app --format text
+
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure,
+        5 no such session, or a session opened without --record-wire.
         """,
     )
 
@@ -61,7 +65,7 @@ struct WireCommand: AsyncParsableCommand {
             flags: flags,
             preparing: { $0.recordingWire() },
         )
-        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
+        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen, verb: "wire")
         try out.sink.write(rendered)
     }
 }

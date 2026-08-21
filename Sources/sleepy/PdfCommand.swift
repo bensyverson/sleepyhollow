@@ -15,8 +15,9 @@ struct PdfCommand: AsyncParsableCommand {
         Examples:
           sleepy pdf http://localhost:3000/ --out page.pdf
           sleepy pdf http://localhost:3000/report --theme dark --out report.pdf
+          sleepy pdf --session app --out app.pdf
 
-        Exit codes: 0 success, 2 usage, 4 load failure, 5 environment.
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

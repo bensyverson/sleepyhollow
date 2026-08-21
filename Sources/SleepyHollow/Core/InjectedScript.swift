@@ -13,7 +13,10 @@ public struct InjectedScript: Friendly {
     }
 
     /// Which JavaScript world the script runs in.
-    public enum World: String, Friendly {
+    ///
+    /// `CaseIterable` so the CLI's `--inject-world` can name both worlds when
+    /// it refuses a third.
+    public enum World: String, CaseIterable, Friendly {
         /// The tool's isolated world — instrumentation that cannot collide
         /// with page JS. The default.
         case isolated

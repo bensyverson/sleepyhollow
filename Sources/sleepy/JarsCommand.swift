@@ -36,6 +36,15 @@ struct JarsCommand: ParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "Show every jar with its cookie count and last write.",
+            discussion: """
+            Formats: text (default) — one line per jar; json — the same summaries with ISO dates.
+
+            Examples:
+              sleepy jars list
+              sleepy jars list --format json
+
+            Exit codes: 0 always — an empty list is an answer, not a failure.
+            """,
         )
 
         /// The formats `jars list` supports.
@@ -69,6 +78,14 @@ struct JarsCommand: ParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "clear",
             abstract: "Drop every cookie in a jar, keeping the jar itself.",
+            discussion: """
+            Emptying is how you log a flow out without losing the name it loads with.
+
+            Examples:
+              sleepy jars clear login
+
+            Exit codes: 0 emptied, 2 usage, 5 no jar by that name.
+            """,
         )
 
         @Argument(help: "The jar to empty.")
@@ -84,6 +101,14 @@ struct JarsCommand: ParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "rm",
             abstract: "Delete a jar and everything in it.",
+            discussion: """
+            The name is free afterwards: `--jar <name>` on a loading verb mints a fresh one.
+
+            Examples:
+              sleepy jars rm login
+
+            Exit codes: 0 deleted, 2 usage, 5 no jar by that name.
+            """,
         )
 
         @Argument(help: "The jar to delete.")

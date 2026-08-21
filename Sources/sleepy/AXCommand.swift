@@ -23,13 +23,17 @@ struct AXCommand: AsyncParsableCommand {
               checkbox "Notify subscribers" (checked)
               button "Publish" (disabled)
 
-        So the flagship query is a grep:
+        So the flagship query is a grep.
 
+        Formats: outline (default) and json.
+
+        Examples:
           sleepy ax http://localhost:3000/editor | grep 'button "Publish"'
           sleepy ax http://localhost:3000/ --format json --out tree.json
           sleepy ax http://localhost:3000/ --theme dark --budget 5000
+          sleepy ax --session app
 
-        Formats: outline (default) and json.
+        Exit codes: 0 success, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
 
         The tree is computed in the page from WAI-ARIA and AccName, not copied
         from WebKit's internal accessibility tree — a headless process cannot

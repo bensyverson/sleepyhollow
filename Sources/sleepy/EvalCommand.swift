@@ -24,10 +24,15 @@ struct EvalCommand: AsyncParsableCommand {
         discussion: """
         The script is an async function body: use 'return' to send a value back, and 'await' freely.
 
+        Formats: json (default), text — a string result comes back unquoted.
+
         Examples:
           sleepy eval http://localhost:3000/ --js 'return document.title;'
-          sleepy eval http://localhost:3000/ --js 'return await fetch("/health").then(r => r.status);'
-          sleepy eval http://localhost:3000/ --js 'return rows() === n;' --args '{"n": 3}' --page-world
+          sleepy eval http://localhost:3000/ --js 'return await probe();'
+          sleepy eval http://localhost:3000/ --js 'return rows()===n;' --args '{"n":3}'
+          sleepy eval --session app --js 'return window.store.ready;' --page-world
+
+        Exit codes: 0 success, 1 the result was exactly false — 'false' is still printed on stdout, 2 usage or the page rejected the script, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

@@ -22,11 +22,18 @@ struct QueryCommand: AsyncParsableCommand {
         commandName: "query",
         abstract: "Match a CSS selector and report each element's text, attributes, geometry, and visibility.",
         discussion: """
+        The selector is a flag, not a bare word: the page source owns the argument slot.
+
+        Formats: json (default), text — one line per element: tag, text, visibility, geometry.
+
         Examples:
           sleepy query http://localhost:3000/ --selector '#publish'
           sleepy query http://localhost:3000/ --selector '.error' --exists
           sleepy query http://localhost:3000/ --selector 'li' --count 3
           sleepy query http://localhost:3000/ --selector 'button' --format text
+          sleepy query --session app --selector '.row'
+
+        Exit codes: 0 success, 1 --exists or --count did not hold — the matched elements are still printed on stdout, 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

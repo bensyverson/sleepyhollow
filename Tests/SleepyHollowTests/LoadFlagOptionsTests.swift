@@ -12,7 +12,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `no flags resolve to the deterministic defaults`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.size == ViewportSize.default)
@@ -28,7 +28,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `--size parses WxH`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: "390x844", theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+            size: "390x844", theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.size == ViewportSize(width: 390, height: 844))
@@ -37,7 +37,7 @@ struct LoadFlagOptionsTests {
     @Test func `a malformed --size teaches the WxH shape`() {
         do {
             _ = try LoadFlagOptions.resolve(
-                size: "not-a-size", theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+                size: "not-a-size", theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
                 budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
             )
             Issue.record("expected a usage error")
@@ -52,7 +52,7 @@ struct LoadFlagOptionsTests {
     @Test func `--jar carries the given name`() throws {
         let jar = try #require(JarName("login"))
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: jar, injectPaths: [], waitFor: nil,
+            size: nil, theme: nil, jar: jar, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.jar == jar)
@@ -65,7 +65,7 @@ struct LoadFlagOptionsTests {
         defer { try? FileManager.default.removeItem(at: file) }
 
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [file.path], waitFor: nil,
+            size: nil, theme: nil, jar: nil, injectPaths: [file.path], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.scripts.count == 1)
@@ -77,7 +77,7 @@ struct LoadFlagOptionsTests {
     @Test func `--inject with a missing file teaches checking the path`() {
         do {
             _ = try LoadFlagOptions.resolve(
-                size: nil, theme: nil, jar: nil, injectPaths: ["/no/such/file.js"], waitFor: nil,
+                size: nil, theme: nil, jar: nil, injectPaths: ["/no/such/file.js"], injectWorld: nil, waitFor: nil,
                 budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
             )
             Issue.record("expected a usage error")
@@ -90,7 +90,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `bare selector wait-for resolves to a selector condition`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: "#done",
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "#done",
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.wait == .selector("#done"))
@@ -98,7 +98,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `a js: prefix resolves to a predicate condition`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: "js:window.ready === true",
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "js:window.ready === true",
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.wait == .predicate("window.ready === true"))
@@ -106,7 +106,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `the idle keyword resolves to the idle condition`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: "idle",
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "idle",
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.wait == .idle)
@@ -114,7 +114,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `the load keyword resolves to the load condition`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: "load",
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "load",
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.wait == .load)
@@ -122,7 +122,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `--budget converts milliseconds to seconds`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: 5000, confirm: nil, promptText: nil, steps: Self.noSteps,
         )
         #expect(options.budget == 5.0)
@@ -131,7 +131,7 @@ struct LoadFlagOptionsTests {
     @Test func `a non-positive --budget teaches a positive value`() {
         do {
             _ = try LoadFlagOptions.resolve(
-                size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+                size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
                 budgetMilliseconds: 0, confirm: nil, promptText: nil, steps: Self.noSteps,
             )
             Issue.record("expected a usage error")
@@ -144,7 +144,7 @@ struct LoadFlagOptionsTests {
 
     @Test func `--confirm accept with --prompt-text builds an accepting dialog policy`() throws {
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: .accept, promptText: "yes", steps: Self.noSteps,
         )
         #expect(options.dialogs.acceptsConfirms == true)
@@ -154,7 +154,7 @@ struct LoadFlagOptionsTests {
     @Test func `steps pass through untouched`() throws {
         let steps: [ActionStep] = [.click(selector: "#go")]
         let options = try LoadFlagOptions.resolve(
-            size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
             budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: steps,
         )
         #expect(options.steps == steps)

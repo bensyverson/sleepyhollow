@@ -41,6 +41,7 @@ struct PageExecutionRoutingTests {
             "--theme", "dark",
             "--jar", "login",
             "--inject", "a.js",
+            "--inject-world", "page",
             "--wait-for", "idle",
             "--confirm", "accept",
             "--prompt-text", "hi",
@@ -49,7 +50,7 @@ struct PageExecutionRoutingTests {
             "--submit", "form",
         ])
         #expect(PageExecution.loadShapingFlags(flags) == [
-            "--size", "--theme", "--jar", "--inject", "--wait-for",
+            "--size", "--theme", "--jar", "--inject", "--inject-world", "--wait-for",
             "--confirm", "--prompt-text", "--click", "--fill", "--submit",
         ])
     }

@@ -18,7 +18,19 @@ enum ObserveRendering {
 
     /// Encodes `value` as `format`, using `text` for
     /// `OutputFormat.text`.
-    static func render(_ value: some Encodable, text: String, as format: OutputFormat) throws -> Data {
+    ///
+    /// - Parameters:
+    ///   - value: the observe verb's result, encoded for `json`.
+    ///   - text: the result's own terse rendering, used for `text`.
+    ///   - format: the format the invocation resolved to.
+    ///   - verb: the verb doing the rendering, so an unsupported format names
+    ///     the invocation that produced it rather than "here".
+    static func render(
+        _ value: some Encodable,
+        text: String,
+        as format: OutputFormat,
+        verb: String,
+    ) throws -> Data {
         switch format {
         case .json:
             return try encoder.encode(value)
@@ -27,7 +39,7 @@ enum ObserveRendering {
         case .html, .outline:
             throw SleepyError(
                 kind: .usage,
-                message: "That format is not available here.",
+                message: "'\(verb)' doesn't support --format \(format.rawValue).",
                 nextMove: "Choose one of: json, text.",
             )
         }

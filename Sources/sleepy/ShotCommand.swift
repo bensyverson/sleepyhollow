@@ -22,8 +22,9 @@ struct ShotCommand: AsyncParsableCommand {
           sleepy shot http://localhost:3000/ --out shot.png
           sleepy shot http://localhost:3000/ --element '#save-button' --out button.png
           sleepy shot http://localhost:3000/ --full-page --theme dark --out page.png
+          sleepy shot --session app --element '.toast' --out toast.png
 
-        Exit codes: 0 success, 1 --element matched nothing, 2 usage, 4 load failure, 5 environment.
+        Exit codes: 0 success, 1 --element matched nothing (no PNG written; the reason is on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 

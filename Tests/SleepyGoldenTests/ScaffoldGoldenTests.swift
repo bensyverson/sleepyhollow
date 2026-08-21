@@ -32,11 +32,12 @@ struct ScaffoldGoldenTests {
     SleepyHollow is a headless WebKit browser for agents: it renders real pages with the system's WebKit engine and exposes them — pixels, DOM, computed style, the accessibility tree, the wire log — as verbs that emit structured text and exit codes that mean something.
 
     Common invocations:
-      sleepy load <url>                  load a page, report status and console errors
-      sleepy shot <url> --out shot.png   screenshot a page
-      sleepy open <url> --name app       keep a page alive, then `sleepy ax --session app`
+      sleepy load <url>                       load a page once; report status, console errors, dialogs
+      sleepy ax <url> | grep 'button "Save"'  read the page the way assistive technology does
+      sleepy open <url> --name app            keep one page alive, then act on it: `sleepy click --session app --selector '#save'`
 
-    Help: `sleepy <verb> --help` for a verb's flags and examples, `sleepy --help` to list every verb.
+    Every page verb takes a URL (a fresh page that exits with the command) or --session <name> (a live one).
+    Help: `sleepy <verb> --help` for a verb's flags, examples and exit codes; `sleepy --help` to list every verb.
 
     """
 }

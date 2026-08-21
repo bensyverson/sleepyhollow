@@ -66,8 +66,10 @@ public struct ShotOperation: ExecutablePageOperation {
             guard let measured = try await Self.boundingRect(of: element, on: host) else {
                 throw SleepyError(
                     kind: .negative,
-                    message: "No element matched '\(element)'.",
-                    nextMove: "Check the selector, e.g. with `sleepy query '\(element)'`.",
+                    message: "No element matched '\(element)', so there was nothing to crop to.",
+                    nextMove: "Check the selector against the page: "
+                        + "`sleepy query <page> --selector '\(element)'`; "
+                        + "if it arrives late, wait for it with --wait-for '\(element)'.",
                 )
             }
             rect = measured

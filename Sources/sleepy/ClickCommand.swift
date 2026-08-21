@@ -17,7 +17,9 @@ struct ClickCommand: AsyncParsableCommand {
 
         Examples:
           sleepy click --session login --selector '#sign-in'
-          sleepy dom http://localhost:3000/ --click '#go'      # the same action, one shot
+          sleepy dom http://localhost:3000/ --click '#go'   # one shot, no session
+
+        Exit codes: 0 clicked, 1 nothing matched or the element is disabled (the reason is on stderr; nothing on stdout), 2 usage — including a URL instead of --session, 5 no such session.
         """,
     )
 

@@ -38,6 +38,19 @@ struct CookiesCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "get",
             abstract: "Report the cookies in a jar, or in a page's live store.",
+            discussion: """
+            --jar alone reads the file and starts no browser. A URL loads the page and reads WKHTTPCookieStore; --session reads the live helper's.
+
+            Formats: text (default) — one line per cookie; json — the same records with ISO dates.
+
+            Examples:
+              sleepy cookies get --jar login
+              sleepy cookies get --jar login --name session --format json
+              sleepy cookies get http://localhost:3000/ --name session
+              sleepy cookies get --session app
+
+            Exit codes: 0 success — no cookies is an answer, not a failure, 2 usage, 3 budget ran out, 4 load failure, 5 no such jar or session.
+            """,
         )
 
         @OptionGroup var source: PageSourceOptions
@@ -82,6 +95,17 @@ struct CookiesCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "set",
             abstract: "Write one cookie into a jar, or into a page's live store.",
+            discussion: """
+            Writing straight into a jar mints a logged-in session by hand, with no browser and no login flow. A cookie written into a --session needs an explicit --domain.
+
+            Examples:
+              sleepy cookies set --jar login --name s --value abc --domain localhost
+              sleepy cookies set --jar login --name s --value v --domain localhost --secure
+              sleepy cookies set http://localhost:3000/ --jar login --name seen --value 1
+              sleepy cookies set --session app --name seen --value 1 --domain localhost
+
+            Exit codes: 0 written, 2 usage — including a missing --domain, 3 budget ran out, 4 load failure, 5 no such jar or session.
+            """,
         )
 
         @OptionGroup var source: PageSourceOptions

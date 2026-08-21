@@ -12,8 +12,9 @@ import SleepyHollow
 /// state: nothing is running until something is named.
 ///
 /// Because `open` performs a load, it takes the loading options (`--size`,
-/// `--theme`, `--jar`, `--inject`, `--wait-for`, the dialog flags) and hands
-/// them to the helper, where they shape every page that session ever loads.
+/// `--theme`, `--jar`, `--inject`, `--inject-world`, `--wait-for`, the dialog
+/// flags) and hands them to the helper, where they shape every page that
+/// session ever loads.
 /// This is the *only* place they can be given: a `--session` invocation later
 /// refuses them rather than pretending to apply them.
 ///
@@ -25,16 +26,17 @@ struct OpenCommand: AsyncParsableCommand {
         commandName: "open",
         abstract: "Open a named session: a helper process holding one live page.",
         discussion: """
-        The session outlives this invocation. Every page verb then takes --session <name>,
-        and `sleepy close <name>` ends it; a forgotten session reaps itself on its idle TTL.
+        The session outlives this invocation. Every page verb then takes --session <name>, and `sleepy close <name>` ends it; a forgotten session reaps itself on its idle TTL.
+
+        This is the only place the loading options can be given: a --session invocation later refuses them rather than pretending to apply them.
 
         Examples:
           sleepy open http://localhost:3000/login --name login
-          sleepy open http://localhost:3000/ --name app --size 1440x900 --theme dark --jar login
-          sleepy open http://localhost:3000/app --name app --wait-for '#ready' --record-wire
+          sleepy open http://localhost:3000/ --name app --size 1440x900 --jar login
+          sleepy open http://localhost:3000/app --name app --wait-for '#ready'
+          sleepy open http://localhost:3000/app --name app --record-wire
 
-        Exit codes: 0 success, 2 usage, 3 the helper never reported ready, 4 load failure,
-        5 the name is already open.
+        Exit codes: 0 success, 2 usage, 3 the helper never reported ready, 4 load failure, 5 the name is already open.
         """,
     )
 
@@ -129,6 +131,9 @@ struct OpenCommand: AsyncParsableCommand {
         }
         for path in flags.inject {
             arguments += ["--inject", path]
+        }
+        if let injectWorld: InjectedScript.World = flags.injectWorld {
+            arguments += ["--inject-world", injectWorld.rawValue]
         }
         if let waitFor: String = flags.waitFor {
             arguments += ["--wait-for", waitFor]

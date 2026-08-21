@@ -16,8 +16,9 @@ import SleepyHollow
 ///
 /// ## Flags a session refuses
 ///
-/// Loading options — `--size`, `--theme`, `--jar`, `--inject`, `--wait-for`,
-/// the dialog flags, the one-shot action flags — shape a *load*. A session's
+/// Loading options — `--size`, `--theme`, `--jar`, `--inject`,
+/// `--inject-world`, `--wait-for`, the dialog flags, the one-shot action
+/// flags — shape a *load*. A session's
 /// page host was built from the options its `sleepy open` carried, and its
 /// wait engine is fixed at construction, so honouring them later is not
 /// possible: they are refused with a usage error naming `sleepy open` rather
@@ -28,7 +29,7 @@ public enum PageExecution {
     /// Every load-shaping flag, in the order ``loadShapingFlags(_:)`` reports
     /// them: the order they appear in ``LoadFlagOptions``.
     public static let loadShapingFlagNames: [String] = [
-        "--size", "--theme", "--jar", "--inject", "--wait-for",
+        "--size", "--theme", "--jar", "--inject", "--inject-world", "--wait-for",
         "--confirm", "--prompt-text", "--click", "--fill", "--submit",
     ]
 
@@ -48,6 +49,7 @@ public enum PageExecution {
             flags.theme != nil,
             flags.jar != nil,
             !flags.inject.isEmpty,
+            flags.injectWorld != nil,
             flags.waitFor != nil,
             flags.confirm != nil,
             flags.promptText != nil,
@@ -145,7 +147,7 @@ public enum PageExecution {
             let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
             let resolved: LoadOptions = try flags?.resolveLoadOptions(steps: steps)
                 ?? LoadFlagOptions.resolve(
-                    size: nil, theme: nil, jar: nil, injectPaths: [], waitFor: nil,
+                    size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
                     budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: steps,
                 )
             let options: LoadOptions = preparing(resolved)

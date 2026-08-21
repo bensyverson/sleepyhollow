@@ -12,12 +12,14 @@ struct SubmitCommand: AsyncParsableCommand {
         commandName: "submit",
         abstract: "Submit the form a selector names, or the form its element belongs to.",
         discussion: """
-        The submission goes through a real, cancellable submit event: a page that calls
-        preventDefault() stops it, and an invalid form is refused with the field that failed.
+        The submission goes through a real, cancellable submit event: a page that calls preventDefault() stops it, and an invalid form is refused with the field that failed.
 
         Examples:
           sleepy submit --session login --selector '#sign-in-form'
-          sleepy dom http://localhost:3000/ --submit '#editor'   # the same action, one shot
+          sleepy submit --session login --selector '#email'      # its own form
+          sleepy dom http://localhost:3000/ --submit '#editor'   # one shot
+
+        Exit codes: 0 submitted, 1 nothing matched, or the form failed its constraints (the failing field is on stderr; nothing on stdout), 2 usage — including a URL instead of --session, or an element that is not in a form, 5 no such session.
         """,
     )
 

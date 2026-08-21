@@ -99,7 +99,11 @@ public struct SessionClient: Sendable {
     private func unreachable(_ liveness: SessionLiveness) -> SleepyError {
         switch liveness {
         case .live:
-            return SleepyError(kind: .environment, message: "Session '\(name)' is live.")
+            return SleepyError(
+                kind: .environment,
+                message: "Session '\(name)' is live, but this operation was refused before reaching it.",
+                nextMove: "Retry; if it happens again, `sleepy close \(name)` and open it fresh.",
+            )
         case .noRecord:
             return SleepyError(
                 kind: .environment,
