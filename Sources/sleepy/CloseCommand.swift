@@ -43,7 +43,7 @@ struct CloseCommand: AsyncParsableCommand {
 
     /// Resolves the two spellings to one name.
     ///
-    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when both
+    /// - Throws: `SleepyError` of kind `SleepyError.Kind.usage` when both
     ///   or neither was given, or the name is not a valid session name.
     static func resolve(name: String?, session: String?) throws -> SessionName {
         let raw: String

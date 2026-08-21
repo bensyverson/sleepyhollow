@@ -5,9 +5,9 @@ import SleepyHollow
 /// The one seam every page verb executes through: a URL loads an ephemeral
 /// page here, a `--session` ships the identical operation to a helper.
 ///
-/// A verb states *what* it wants — one ``ExecutablePageOperation`` — and this
+/// A verb states *what* it wants — one `ExecutablePageOperation` — and this
 /// decides *where* it runs. That is why adding a verb costs no session code:
-/// the operation is the same value either way (see ``PageOperation``), so the
+/// the operation is the same value either way (see `PageOperation`), so the
 /// two page sources differ only in who executes it.
 ///
 /// ```swift
@@ -60,7 +60,7 @@ public enum PageExecution {
 
     /// Refuses a `--session` invocation that carries load-shaping flags.
     ///
-    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` naming
+    /// - Throws: `SleepyError` of kind `SleepyError.Kind.usage` naming
     ///   every offending flag and where it belongs instead.
     public static func requireSessionCompatible(_ flags: LoadFlagOptions?) throws {
         let offenders: [String] = loadShapingFlags(flags)

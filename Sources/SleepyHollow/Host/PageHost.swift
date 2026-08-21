@@ -117,6 +117,8 @@ public final class PageHost {
     /// (see ``PageHost/saveJar()``), which is what keeps a bare invocation
     /// from writing anything at all.
     ///
+    /// - Parameter options: the load's shape — viewport, theme, injected
+    ///   scripts, waiting, and the rest of ``LoadOptions``.
     /// - Parameter jars: where a named jar is read and written; the default
     ///   store honours `SLEEPYHOLLOW_HOME`, and tests inject a throwaway root.
     public init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {

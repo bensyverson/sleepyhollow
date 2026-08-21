@@ -2,7 +2,7 @@ import ArgumentParser
 import SleepyHollow
 
 /// The shared `--format` flag every verb takes, resolved against the verb's
-/// own default and the subset of ``OutputFormat``s it supports.
+/// own default and the subset of `OutputFormat`s it supports.
 ///
 /// Each verb passes its own default (its tersest faithful form) and its
 /// supported subset; an unsupported choice is a teaching usage error that
@@ -16,7 +16,7 @@ public struct FormatOption: ParsableArguments {
 
     /// Resolves to `format`, or `defaultFormat` when none was given.
     ///
-    /// Throws a teaching ``SleepyError`` when the resolved format isn't in
+    /// Throws a teaching `SleepyError` when the resolved format isn't in
     /// `supported`.
     public func resolve(
         default defaultFormat: OutputFormat,

@@ -10,7 +10,7 @@ import SleepyHollow
 /// same binary by design (the vision's one-binary claim), so a session costs
 /// no second product and no bundled runtime.
 ///
-/// It prints one line of JSON — the session's ``SessionRecord`` — the moment
+/// It prints one line of JSON — the session's `SessionRecord` — the moment
 /// the socket is listening and the page has loaded, so whoever spawned it can
 /// wait for readiness without polling. Then it serves until a client shuts it
 /// down or the idle TTL expires, and exits 0 having deleted its directory.

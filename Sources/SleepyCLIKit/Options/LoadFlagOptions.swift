@@ -10,7 +10,7 @@ import SleepyHollow
 /// them; ArgumentParser loses interleave order across separate array
 /// options, so the ordered truth comes from ``ActionStepParser`` scanning
 /// the raw argument vector instead. Pass its result to
-/// ``resolveLoadOptions(steps:)`` to assemble a full ``LoadOptions``.
+/// ``resolveLoadOptions(steps:)`` to assemble a full `LoadOptions`.
 public struct LoadFlagOptions: ParsableArguments {
     /// How a `confirm()`/`prompt()` dialog is answered.
     public enum DialogChoice: String, ExpressibleByArgument, Friendly {
@@ -61,7 +61,7 @@ public struct LoadFlagOptions: ParsableArguments {
     public init() {}
 
     /// Resolves the parsed flags plus externally-scanned `steps` to a full
-    /// ``LoadOptions``.
+    /// `LoadOptions`.
     public func resolveLoadOptions(steps: [ActionStep]) throws -> LoadOptions {
         try Self.resolve(
             size: size,

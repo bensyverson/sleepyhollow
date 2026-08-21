@@ -16,7 +16,7 @@ enum ActTarget {
     /// - Parameter example: the one-shot flag that does the same thing, e.g.
     ///   `--click '#go'`.
     /// - Returns: the session the verb should act on.
-    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when no
+    /// - Throws: `SleepyError` of kind `SleepyError.Kind.usage` when no
     ///   session was named, or a URL was given instead.
     static func session(from source: PageSourceOptions, verb: String, example: String) throws -> SessionName {
         guard source.url == nil else {
@@ -47,7 +47,7 @@ enum ActTarget {
 
     /// Runs an act operation against `session` and writes its outcome.
     ///
-    /// The outcome is the same ``ActionOutcome`` a one-shot step produces —
+    /// The outcome is the same `ActionOutcome` a one-shot step produces —
     /// what was acted on, and whether the page started navigating — as pretty,
     /// key-sorted JSON, the shape every other verb's JSON takes.
     @MainActor

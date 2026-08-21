@@ -21,7 +21,7 @@ enum SessionShutdown {
 
     /// Closes `name`, waits for it to be gone, and reaps whatever is left.
     ///
-    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment``
+    /// - Throws: `SleepyError` of kind `SleepyError.Kind.environment`
     ///   when nothing on disk ever claimed the name.
     static func close(_ name: SessionName, in registry: SessionRegistry) async throws {
         switch registry.liveness(of: name) {

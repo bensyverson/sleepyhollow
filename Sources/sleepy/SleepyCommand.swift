@@ -9,7 +9,7 @@ import SleepyHollow
 /// common invocations, where help lives — the `job` doctrine (see the
 /// vision doc, "The CLI itself"). Verb subcommands are wired in by the
 /// leaves that build them; this scaffold owns only the primer, the shared
-/// option groups (``SleepyCLIKit``), and error rendering.
+/// option groups (`SleepyCLIKit`), and error rendering.
 @main
 struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

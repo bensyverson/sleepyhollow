@@ -3,8 +3,8 @@ import SleepyHollow
 
 /// Turns an observe verb's result into the bytes `--format` asked for.
 ///
-/// Wiring only: the terse text belongs to the result type (``ConsoleLog`` and
-/// ``WireLog`` each render their own), and the JSON shape is the type's own
+/// Wiring only: the terse text belongs to the result type (`ConsoleLog` and
+/// `WireLog` each render their own), and the JSON shape is the type's own
 /// `Codable` form. This just picks one and adds the trailing newline a
 /// terminal expects.
 enum ObserveRendering {
@@ -17,7 +17,7 @@ enum ObserveRendering {
     }
 
     /// Encodes `value` as `format`, using `text` for
-    /// ``OutputFormat/text``.
+    /// `OutputFormat.text`.
     static func render(_ value: some Encodable, text: String, as format: OutputFormat) throws -> Data {
         switch format {
         case .json:

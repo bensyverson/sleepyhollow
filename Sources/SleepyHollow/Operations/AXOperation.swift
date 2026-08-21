@@ -4,7 +4,7 @@ import Foundation
 /// with presentation stripped away.
 ///
 /// The computation happens in the page, in the isolated world, from the
-/// library's own script (``AXScript``) — see `project/2026-08-20-ax-spike.md`
+/// library's own script (`AXScript`) — see `project/2026-08-20-ax-spike.md`
 /// for why the native macOS accessibility path is closed to a headless CLI.
 /// What comes back is the page's semantics *per WAI-ARIA and AccName*, which
 /// is the contract pages are written against.

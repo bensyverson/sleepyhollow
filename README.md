@@ -76,9 +76,11 @@ public contract (0 success, 1 clean negative, 2 usage error, 3 timeout, 4 load
 failure, 5 environment error) — see `Sources/SleepyHollow/Core/ExitStatus.swift`
 for the full table.
 
-Named, persistent sessions (`sleepy open`/`close`) are on the way; today every
-invocation loads a fresh, ephemeral page unless you attach a `--jar` for
-cookies that should outlive it.
+Need a page to outlive one invocation? `sleepy open <url> --name <n>` starts a
+named session; every verb then takes `--session <n>` to act on that same live
+page, `sleepy sessions list` shows what's open, and `sleepy close <n>` ends
+it. Without `--session`, every invocation loads a fresh, ephemeral page unless
+you attach a `--jar` for cookies that should outlive it.
 
 ## More
 

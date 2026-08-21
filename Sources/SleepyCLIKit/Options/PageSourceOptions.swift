@@ -18,9 +18,9 @@ public struct PageSourceOptions: ParsableArguments {
     /// Creates an empty option group for ArgumentParser to populate.
     public init() {}
 
-    /// Resolves the parsed arguments to Core's ``PageSource``.
+    /// Resolves the parsed arguments to Core's `PageSource`.
     ///
-    /// Throws a teaching ``SleepyError`` when neither or both were given,
+    /// Throws a teaching `SleepyError` when neither or both were given,
     /// the URL has no scheme, or the session name is invalid.
     public func resolve() throws -> PageSource {
         try Self.resolve(url: url, session: session)

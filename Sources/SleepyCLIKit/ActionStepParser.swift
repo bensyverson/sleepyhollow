@@ -3,7 +3,7 @@ import SleepyHollow
 
 /// Scans a raw argument vector for `--click`, `--fill`, and `--submit`
 /// (both `--flag value` and `--flag=value` forms) and returns the
-/// ``ActionStep``s they describe in the order they appeared.
+/// `ActionStep`s they describe in the order they appeared.
 ///
 /// ArgumentParser collects each flag into its own array, losing the
 /// interleave order across `--click`/`--fill`/`--submit` — ``LoadFlagOptions``
@@ -55,7 +55,7 @@ public enum ActionStepParser {
     /// - Parameter arguments: the raw argument vector.
     /// - Parameter valueTakingOptions: value-taking long options beyond
     ///   ``knownValueTakingOptions``, whose values must not be read as steps.
-    /// - Throws: a teaching ``SleepyError`` when a recognized flag has no
+    /// - Throws: a teaching `SleepyError` when a recognized flag has no
     ///   value, or when a `--fill` value is missing its `=`.
     public static func parse(
         _ arguments: [String],

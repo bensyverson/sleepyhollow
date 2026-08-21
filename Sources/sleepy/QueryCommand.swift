@@ -8,7 +8,7 @@ import SleepyHollow
 /// visibility. `--exists`/`--count` carry an assertion in the exit code.
 ///
 /// `--selector` is a flag rather than a bare positional deliberately: this
-/// codebase's shared page-source group (``PageSourceOptions``) already
+/// codebase's shared page-source group (`PageSourceOptions`) already
 /// contributes an *optional* positional (the URL, absent when `--session`
 /// is used), and `ArgumentParser` fills positionals left to right without
 /// knowing which named options will supply the alternative — verified with

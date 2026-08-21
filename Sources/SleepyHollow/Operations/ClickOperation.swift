@@ -2,7 +2,7 @@
 /// pointer/mouse/click sequence a page listens for.
 ///
 /// Honest about mechanism — these are synthesized DOM events, not OS-level
-/// hit-testing (see ``ActionScript``). A disabled control is refused rather
+/// hit-testing (see `ActionScript`). A disabled control is refused rather
 /// than pretended at, and the outcome reports whether the click set the page
 /// navigating.
 public struct ClickOperation: ExecutablePageOperation {
