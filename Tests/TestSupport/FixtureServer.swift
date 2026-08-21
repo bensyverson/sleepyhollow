@@ -123,8 +123,27 @@ public actor FixtureServer {
 
     /// Runs `body` against a started server, guaranteeing ``stop()`` after —
     /// the leak-proof shape for tests.
+    ///
+    /// Holds a ``WebKitGate`` slot for the duration, so the number of WebKit
+    /// instances the suite keeps live at once stays bounded — the fix for the
+    /// contention flakes a fully parallel run otherwise produces.
     public static func withRunning<T: Sendable>(
         fixturesDirectory: URL = TestSupport.fixturesDirectory,
+        _ body: @Sendable (FixtureServer, URL) async throws -> T,
+    ) async throws -> T {
+        await WebKitGate.shared.acquire()
+        do {
+            let result: T = try await withStartedServer(fixturesDirectory: fixturesDirectory, body)
+            await WebKitGate.shared.release()
+            return result
+        } catch {
+            await WebKitGate.shared.release()
+            throw error
+        }
+    }
+
+    private static func withStartedServer<T: Sendable>(
+        fixturesDirectory: URL,
         _ body: @Sendable (FixtureServer, URL) async throws -> T,
     ) async throws -> T {
         let server = FixtureServer(fixturesDirectory: fixturesDirectory)

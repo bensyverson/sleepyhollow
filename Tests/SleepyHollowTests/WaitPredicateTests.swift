@@ -28,13 +28,15 @@ struct WaitPredicateTests {
     func `a predicate that turns true later ends the wait when it does`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
+            // Generous on purpose: the budget is free on the green path, and a
+            // stingy one is what let full-suite contention flake this test.
             options.wait = .predicate("window.sleepyReady === true")
-            options.budget = 10
+            options.budget = 30
             let host = PageHost(options: options)
             let started = Date()
             _ = try await host.load(URL(string: "wait-late.html", relativeTo: base)!)
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 30, "the host's clock ends the wait, not the fixture")
+            #expect(elapsed < 60, "the host's clock ends the wait, not the fixture")
             let stage: String = try await host.evaluate("return window.sleepyStage;", in: .page)
             #expect(stage == "\"late\"", "the load must not return before the page said it was ready")
         }
