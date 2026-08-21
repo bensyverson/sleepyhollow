@@ -4,6 +4,30 @@ Work consciously decided against, so it doesn't vanish into silence. One
 dated H2 per item: what it is, why it's parked, and what would un-park it.
 Nothing here is scheduled or blocking; active work lives in `job`.
 
+## 2026-08-20 — Reproducible-builds-style PDF metadata
+
+`sleepy pdf`'s output differs between identical runs in exactly the
+trailer's `/CreationDate`, `/ModDate` and `/ID` (measured: 66 bytes of
+24,286 on `static.html`); content bytes, page count, text and media box
+are identical. The reproducible-builds convention (fixed epoch stamps)
+would make the whole file byte-stable, which lets agents diff PDFs
+byte-wise for change detection. Parked because the obvious fix — a
+PDFKit re-serialization pass — may regenerate `/ID` nondeterministically
+itself, so it needs a spike, and the golden suite already pins byte
+length, page count, page text and media box. Un-parked by: an agent flow
+that needs byte-wise PDF comparison, or a spike showing PDFKit (or a
+hand-patch of the trailer) holds the bytes still.
+
+## 2026-08-20 — A `.docc` catalog for the module landing page
+
+The DocC pass reached zero warnings, but the `SleepyHollow` module's own
+landing page is DocC's synthesized stub — a curated overview needs a
+`.docc` catalog (an articles bundle), which is new documentation surface
+rather than doc comments. Parked as a nicety: the README and the vision
+doc currently carry the overview role. Un-parked by: publishing the DocC
+archive anywhere public-facing (a hosted reference makes the landing page
+the front door).
+
 ## 2026-08-20 — Auto-wait for the session act verbs
 
 The one-shot step runner auto-waits for each step's selector before acting
