@@ -80,8 +80,47 @@ struct SessionHelperProcess {
     }
 
     /// Kills the helper if it is still up and deletes the registry root.
+    ///
+    /// Deliberately does not wait: a `defer` runs on whatever thread the test
+    /// ended on, and ``kill()``'s `waitUntilExit()` parks that thread. Cleanup
+    /// needs the signal sent, not the exit observed.
     func tearDown() {
-        kill()
+        if process.isRunning {
+            Foundation.kill(process.processIdentifier, SIGKILL)
+        }
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    /// Kills the helper and waits — without blocking a thread — until the
+    /// registry stops calling it live.
+    ///
+    /// `kill()` waits on `Process.waitUntilExit()`, which parks the calling
+    /// thread; from a cooperative-pool thread that has already hopped queues
+    /// (any test that awaited a subprocess first) it has been seen never to
+    /// return. Probing the registry asks the only question the test has —
+    /// "is this session still live?" — and suspends between tries.
+    func killAndAwaitDeath(_ name: SessionName, within seconds: Double = 20) async -> Bool {
+        guard process.isRunning else { return true }
+        Foundation.kill(process.processIdentifier, SIGKILL)
+        let registry = SessionRegistry(root: root)
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if !registry.liveness(of: name).isLive { return true }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return false
+    }
+
+    /// Kills every helper recorded under `root`, then deletes the root.
+    ///
+    /// A test that spawns helpers through `sleepy open` has no ``Process`` to
+    /// hold — the CLI detached them on purpose — so the records are the only
+    /// handle on them, and leaving one running would idle for its whole TTL.
+    static func reap(_ root: URL) {
+        let registry = SessionRegistry(root: root)
+        for entry in registry.entries() where entry.liveness.isLive {
+            Foundation.kill(entry.record.processID, SIGKILL)
+        }
         try? FileManager.default.removeItem(at: root)
     }
 }

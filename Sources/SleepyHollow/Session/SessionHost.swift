@@ -186,16 +186,7 @@ public final class SessionHost {
     }
 
     private func alreadyOpen() -> SleepyError {
-        var detail = ""
-        if let existing: SessionRecord = registry.record(for: name) {
-            let at: String = existing.url.map { ", at \($0.absoluteString)" } ?? ""
-            detail = " (\(Int(existing.age / 60))m\(at))"
-        }
-        return SleepyError(
-            kind: .environment,
-            message: "Session '\(name)' is already open\(detail).",
-            nextMove: "`sleepy load --session \(name) <url>` navigates it, `sleepy close \(name)` replaces it.",
-        )
+        registry.alreadyOpen(name)
     }
 
     private func makeListener(atPath path: String) throws -> NWListener {

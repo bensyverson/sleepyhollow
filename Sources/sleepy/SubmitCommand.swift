@@ -29,6 +29,8 @@ struct SubmitCommand: AsyncParsableCommand {
     @Option(name: .long, help: "CSS selector naming the form, or an element inside it.")
     var selector: String
 
+    @OptionGroup var out: OutOption
+
     @MainActor
     mutating func run() async throws {
         let session: SessionName = try ActTarget.session(
@@ -36,10 +38,6 @@ struct SubmitCommand: AsyncParsableCommand {
             verb: SubmitOperation.kind,
             example: Self.oneShotExample,
         )
-        throw ActTarget.pendingRouting(
-            verb: SubmitOperation.kind,
-            session: session,
-            example: "--submit '\(selector)'",
-        )
+        try await ActTarget.act(SubmitOperation(selector: selector), in: session, to: out.sink)
     }
 }

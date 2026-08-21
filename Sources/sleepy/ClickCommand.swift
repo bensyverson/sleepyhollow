@@ -29,6 +29,8 @@ struct ClickCommand: AsyncParsableCommand {
     @Option(name: .long, help: "CSS selector; the first match is clicked.")
     var selector: String
 
+    @OptionGroup var out: OutOption
+
     @MainActor
     mutating func run() async throws {
         let session: SessionName = try ActTarget.session(
@@ -36,10 +38,6 @@ struct ClickCommand: AsyncParsableCommand {
             verb: ClickOperation.kind,
             example: Self.oneShotExample,
         )
-        throw ActTarget.pendingRouting(
-            verb: ClickOperation.kind,
-            session: session,
-            example: "--click '\(selector)'",
-        )
+        try await ActTarget.act(ClickOperation(selector: selector), in: session, to: out.sink)
     }
 }

@@ -30,6 +30,10 @@ struct WireCommand: AsyncParsableCommand {
         After the page loads, wire keeps watching for up to 2s until the page
         stops fetching, so requests made from a load handler are included.
 
+        Against --session the inventory always works, but the fetch log needs the
+        recorder installed before the session's first load: open it with
+        `sleepy open <url> --name <n> --record-wire`.
+
         Formats: json (default), text — one line per entry under each layer.
 
         Examples:
@@ -51,21 +55,13 @@ struct WireCommand: AsyncParsableCommand {
             supporting: [.json, .text],
             verb: "wire",
         )
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps).recordingWire()
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let log: WireLog = try await host.execute(WireOperation())
-            let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
-            try out.sink.write(rendered)
-        }
+        let log: WireLog = try await PageExecution.run(
+            WireOperation(),
+            on: source.resolve(),
+            flags: flags,
+            preparing: { $0.recordingWire() },
+        )
+        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
+        try out.sink.write(rendered)
     }
 }

@@ -33,6 +33,8 @@ struct FillCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Value to set, interpreted by the field's kind.")
     var value: String
 
+    @OptionGroup var out: OutOption
+
     @MainActor
     mutating func run() async throws {
         let session: SessionName = try ActTarget.session(
@@ -40,10 +42,6 @@ struct FillCommand: AsyncParsableCommand {
             verb: FillOperation.kind,
             example: Self.oneShotExample,
         )
-        throw ActTarget.pendingRouting(
-            verb: FillOperation.kind,
-            session: session,
-            example: "--fill '\(selector)=\(value)'",
-        )
+        try await ActTarget.act(FillOperation(selector: selector, value: value), in: session, to: out.sink)
     }
 }

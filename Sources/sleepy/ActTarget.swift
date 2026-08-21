@@ -45,17 +45,21 @@ enum ActTarget {
         }
     }
 
-    /// The failure act verbs raise until session routing lands.
+    /// Runs an act operation against `session` and writes its outcome.
     ///
-    /// The operations themselves are ready and registered: what is missing is
-    /// the generic `--session` route, which leaf DLHu7 owns.
-    static func pendingRouting(verb: String, session: SessionName, example: String) -> SleepyError {
-        SleepyError(
-            kind: .environment,
-            message: "'\(verb)' can't reach session '\(session)' yet: the operation is ready, the routing is not.",
-            nextMove: "Session routing lands with leaf DLHu7; until then act in one shot: "
-                + "`sleepy load <url> \(example)`.",
-        )
+    /// The outcome is the same ``ActionOutcome`` a one-shot step produces —
+    /// what was acted on, and whether the page started navigating — as pretty,
+    /// key-sorted JSON, the shape every other verb's JSON takes.
+    @MainActor
+    static func act<Operation: ExecutablePageOperation>(
+        _ operation: Operation,
+        in session: SessionName,
+        to sink: OutputSink,
+    ) async throws where Operation.Output == ActionOutcome {
+        let outcome: ActionOutcome = try await PageExecution.run(operation, on: .session(session))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try sink.write(encoder.encode(outcome))
     }
 
     private static func oneShotAdvice(verb _: String, example: String) -> String {

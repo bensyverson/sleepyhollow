@@ -27,26 +27,17 @@ struct DomCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
         let resolvedFormat: OutputFormat = try format.resolve(
             default: .html,
             supporting: Self.supportedFormats,
             verb: "dom",
         )
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let result: DOMResult = try await host.execute(DOMOperation())
-            try write(result, as: resolvedFormat)
-        }
+        let result: DOMResult = try await PageExecution.run(
+            DOMOperation(),
+            on: source.resolve(),
+            flags: flags,
+        )
+        try write(result, as: resolvedFormat)
     }
 
     private func write(_ result: DOMResult, as format: OutputFormat) throws {

@@ -26,20 +26,7 @@ struct PdfCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let output = try await host.execute(PDFOperation())
-            try out.sink.write(output.pdf)
-        }
+        let output = try await PageExecution.run(PDFOperation(), on: source.resolve(), flags: flags)
+        try out.sink.write(output.pdf)
     }
 }

@@ -38,21 +38,8 @@ struct ConsoleCommand: AsyncParsableCommand {
             supporting: [.json, .text],
             verb: "console",
         )
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let log: ConsoleLog = try await host.execute(ConsoleOperation())
-            let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
-            try out.sink.write(rendered)
-        }
+        let log: ConsoleLog = try await PageExecution.run(ConsoleOperation(), on: source.resolve(), flags: flags)
+        let rendered: Data = try ObserveRendering.render(log, text: log.terseText, as: chosen)
+        try out.sink.write(rendered)
     }
 }

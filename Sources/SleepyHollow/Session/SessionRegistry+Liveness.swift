@@ -50,6 +50,25 @@ public extension SessionRegistry {
         return removed.sorted { $0.rawValue < $1.rawValue }
     }
 
+    /// The teaching failure for a name somebody already claimed.
+    ///
+    /// Naming a session is a claim: silently reusing another flow's cookies,
+    /// scripts and history is the ambient state the vision doc forbids, so
+    /// `open` fails loudly and the error separates the two intents — navigate
+    /// the session you have, or replace it.
+    func alreadyOpen(_ name: SessionName) -> SleepyError {
+        var detail = ""
+        if let existing: SessionRecord = record(for: name) {
+            let at: String = existing.url.map { ", at \($0.absoluteString)" } ?? ""
+            detail = " (\(Int(existing.age / 60))m\(at))"
+        }
+        return SleepyError(
+            kind: .environment,
+            message: "Session '\(name)' is already open\(detail).",
+            nextMove: "`sleepy load --session \(name) <url>` navigates it, `sleepy close \(name)` replaces it.",
+        )
+    }
+
     /// The valid session names that have a directory under the root.
     ///
     /// A directory whose name fails ``SessionName``'s rule was not written by

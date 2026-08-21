@@ -34,7 +34,7 @@ struct ScaffoldGoldenTests {
     Common invocations:
       sleepy load <url>                  load a page, report status and console errors
       sleepy shot <url> --out shot.png   screenshot a page
-      sleepy ax --session <name>         read a live session's accessibility tree
+      sleepy open <url> --name app       keep a page alive, then `sleepy ax --session app`
 
     Help: `sleepy <verb> --help` for a verb's flags and examples, `sleepy --help` to list every verb.
 

@@ -51,28 +51,19 @@ struct QueryCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
         let resolvedFormat: OutputFormat = try format.resolve(
             default: .json,
             supporting: Self.supportedFormats,
             verb: "query",
         )
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let elements: [ElementFact] = try await host.execute(QueryOperation(selector: selector))
-            try write(elements, as: resolvedFormat)
-            if isNegative(elements) {
-                Darwin.exit(ExitStatus.negative.rawValue)
-            }
+        let elements: [ElementFact] = try await PageExecution.run(
+            QueryOperation(selector: selector),
+            on: source.resolve(),
+            flags: flags,
+        )
+        try write(elements, as: resolvedFormat)
+        if isNegative(elements) {
+            Darwin.exit(ExitStatus.negative.rawValue)
         }
     }
 

@@ -94,7 +94,7 @@ struct EvalGoldenTests {
         }
     }
 
-    @Test func `--session teaches that sessions are pending`() async throws {
+    @Test func `--session with no such session is a teaching environment error`() async throws {
         let result = try await GoldenBinary.runOffPool(["eval", "--session", "nope", "--js", "return 1;"])
         #expect(result.exitCode == 5)
         #expect(result.standardError.contains("session"))

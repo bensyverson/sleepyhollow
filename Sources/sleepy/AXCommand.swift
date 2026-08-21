@@ -51,21 +51,8 @@ struct AXCommand: AsyncParsableCommand {
             supporting: [.outline, .json],
             verb: "ax",
         )
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let tree: AXNode = try await host.execute(AXOperation())
-            try out.sink.write(Self.encode(tree, as: chosen))
-        }
+        let tree: AXNode = try await PageExecution.run(AXOperation(), on: source.resolve(), flags: flags)
+        try out.sink.write(Self.encode(tree, as: chosen))
     }
 
     /// The outline as text, or the tree as pretty, key-sorted JSON — the same

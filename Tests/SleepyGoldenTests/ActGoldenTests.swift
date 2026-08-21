@@ -30,10 +30,11 @@ struct ActGoldenTests {
         #expect(result.standardError.contains("--session"))
     }
 
-    @Test func `an act verb with --session names the leaf that will route it`() async throws {
-        let result = try await GoldenBinary.runOffPool(["click", "--session", "login", "--selector", "#go"])
+    @Test func `an act verb routed at a session nobody opened teaches the next move`() async throws {
+        let result = try await GoldenBinary.runOffPool(["click", "--session", "no-such-session", "--selector", "#go"])
         #expect(result.exitCode == 5)
-        #expect(result.standardError.contains("DLHu7"))
+        #expect(result.standardError.contains("No session named 'no-such-session'"))
+        #expect(result.standardError.contains("sleepy sessions list"))
     }
 
     @Test func `a one-shot fill-click-read flow reaches the submitted page`() async throws {

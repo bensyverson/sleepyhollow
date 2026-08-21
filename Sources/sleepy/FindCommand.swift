@@ -37,28 +37,19 @@ struct FindCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
         let resolvedFormat: OutputFormat = try format.resolve(
             default: .text,
             supporting: Self.supportedFormats,
             verb: "find",
         )
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let matched: Bool = try await host.execute(FindOperation(text: text))
-            try write(matched, as: resolvedFormat)
-            if !matched {
-                Darwin.exit(ExitStatus.negative.rawValue)
-            }
+        let matched: Bool = try await PageExecution.run(
+            FindOperation(text: text),
+            on: source.resolve(),
+            flags: flags,
+        )
+        try write(matched, as: resolvedFormat)
+        if !matched {
+            Darwin.exit(ExitStatus.negative.rawValue)
         }
     }
 

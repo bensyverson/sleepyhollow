@@ -63,7 +63,7 @@ struct CaptureGoldenTests {
         }
     }
 
-    @Test func `shot --session teaches that sessions are pending`() async throws {
+    @Test func `shot --session with no such session is a teaching environment error`() async throws {
         let result = try await GoldenBinary.runOffPool(["shot", "--session", "nope"])
         #expect(result.exitCode == 5)
         #expect(result.standardError.contains("session"))

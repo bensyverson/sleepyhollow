@@ -16,7 +16,9 @@ private let cookiesFormats: Set<OutputFormat> = [.text, .json]
 ///   session by hand costs nothing and `get` is a plain inspection.
 /// - a URL loads the page and answers from `WKHTTPCookieStore`; add `--jar`
 ///   and the store is written back to the jar afterwards.
-/// - `--session <name>` is the live helper's store, once sessions land.
+/// - `--session <name>` is the live helper's store, read and written in place.
+///   A cookie written there needs an explicit `--domain`: the session's
+///   current page is not this invocation's to guess.
 struct CookiesCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "cookies",
@@ -67,14 +69,11 @@ struct CookiesCommand: AsyncParsableCommand {
                 try CookiesCommand.requireExists(jar, in: store)
                 return try store.cookies(in: jar).filter { name == nil || $0.name == name }
             }
-            switch try source.resolve() {
-            case .session:
-                throw CookiesCommand.sessionsPending
-            case let .url(url):
-                let host = PageHost(options: options)
-                _ = try await host.load(url)
-                return try await host.execute(CookiesOperation(name: name))
-            }
+            return try await PageExecution.run(
+                CookiesOperation(name: name),
+                on: source.resolve(),
+                flags: flags,
+            )
         }
     }
 
@@ -130,17 +129,37 @@ struct CookiesCommand: AsyncParsableCommand {
                 let jar: JarName = try CookiesCommand.requireJar(options, verb: "set")
                 return try writeToJar(jar, domain: requireDomain())
             }
-            switch try source.resolve() {
-            case .session:
-                throw CookiesCommand.sessionsPending
+            let resolved: PageSource = try source.resolve()
+            let cookie: CookieRecord = try record(domain: domain(for: resolved))
+            return try await PageExecution.perform(
+                on: resolved,
+                flags: flags,
+                onPage: { host in
+                    let written: [CookieRecord] = try await host.execute(CookiesOperation(set: cookie))
+                    // The load already saved the jar; this cookie arrived after it.
+                    try await host.saveJar()
+                    return written
+                },
+                onSession: { client in try await client.run(CookiesOperation(set: cookie)) },
+            )
+        }
+
+        /// The cookie's domain: what `--domain` said, or the URL's own host.
+        ///
+        /// A session has no URL on this side of the socket, so `--domain` is
+        /// required there — guessing a domain would write the cookie somewhere
+        /// the page never sends it.
+        private func domain(for source: PageSource) throws -> String {
+            if let domain, !domain.isEmpty { return domain }
+            switch source {
             case let .url(url):
-                let host = PageHost(options: options)
-                _ = try await host.load(url)
-                let record: CookieRecord = record(domain: domain ?? url.host ?? "")
-                let written: [CookieRecord] = try await host.execute(CookiesOperation(set: record))
-                // The load already saved the jar; this cookie arrived after it.
-                try await host.saveJar()
-                return written
+                return url.host ?? ""
+            case .session:
+                throw SleepyError(
+                    kind: .usage,
+                    message: "A cookie written into a session needs a --domain.",
+                    nextMove: "Add --domain <host>: the session's current page is not this invocation's to guess.",
+                )
             }
         }
 
@@ -181,16 +200,6 @@ struct CookiesCommand: AsyncParsableCommand {
     }
 
     // MARK: - Shared
-
-    /// The failure both subcommands raise for `--session`, until the session
-    /// leaves land.
-    static var sessionsPending: SleepyError {
-        SleepyError(
-            kind: .environment,
-            message: "Sessions are not available yet.",
-            nextMove: "Use --jar <name> for cookies that outlive an invocation; sessions arrive with the session leaves.",
-        )
-    }
 
     /// The jar named on the invocation, or the usage error that teaches the
     /// three shapes apart.

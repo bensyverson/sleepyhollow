@@ -37,5 +37,11 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **`git` also needs the sandbox disabled, not just SwiftPM.** Any git command that reads config (`commit`, `merge`, …) dies on `unable to access '~/.gitconfig': Operation not permitted` under the session sandbox. Same fix as `swift build`; put it in every implementation brief's environment facts.
 
+**`Process.waitUntilExit()` in a golden test hangs forever once the test has awaited a subprocess.** `SessionHelperProcess.kill()` used to SIGKILL the helper and then `waitUntilExit()`; in a test that had already `await`ed a `GoldenBinary.runOffPool` call, the wait never returned even though the helper was gone (`sample` showed 100% of samples parked in `-[NSConcreteTask waitUntilExit]`). NSTask's termination bookkeeping is not reliable across the queue hops a resumed continuation makes. Ask the question you actually have instead: `SessionHelperProcess.killAndAwaitDeath(_:)` signals, then polls `SessionRegistry.liveness(of:)` with `Task.sleep`. Never call `waitUntilExit` from a cooperative thread — that is also the rule `GoldenBinary.runOffPool` exists for.
+
+**An `@Option`/`@Flag` read on an unparsed `ParsableArguments` traps.** `LoadFlagOptions()` compiles fine and then crashes the moment anything reads `flags.theme`: ArgumentParser's property wrappers are only valid after parsing. So a default parameter of `LoadFlagOptions()` is a landmine (`PageExecution` takes `LoadFlagOptions?` instead), and a unit test that needs an option group builds it with `try LoadFlagOptions.parse(["--theme", "dark"])`, never with the initializer.
+
+**A helper spawned by `sleepy open` must ignore `SIGPIPE`.** `open` reads the helper's stdout for the readiness line and then exits, closing its end of the pipe; anything the helper wrote afterwards would kill it seconds after the session opened. `HostCommand.detachFromSpawner()` sets `signal(SIGPIPE, SIG_IGN)` right after announcing.
+
 **Every `job` write on a claimed task needs `--as <claimant>`, not just claim/release.** A bare `job note <id>` against a task claimed `--as jars` fails with "task is claimed by jars". Briefs that show `job note` without the identity are wrong.
 

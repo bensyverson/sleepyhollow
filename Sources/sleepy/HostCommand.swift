@@ -36,13 +36,19 @@ struct HostCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Registry root, overriding SLEEPYHOLLOW_HOME.")
     var home: String?
 
+    @Flag(name: .long, help: "Install the fetch recorder before the first load, for `sleepy wire --session`.")
+    var recordWire: Bool = false
+
     @OptionGroup var flags: LoadFlagOptions
 
     @MainActor
     mutating func run() async throws {
         let sessionName: SessionName = try resolveName()
         let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
+        var options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
+        if recordWire {
+            options = options.recordingWire()
+        }
         let host = try SessionHost(
             name: sessionName,
             url: resolveURL(),
@@ -53,7 +59,19 @@ struct HostCommand: AsyncParsableCommand {
         )
         try await host.start()
         announceReady(host.record)
+        detachFromSpawner()
         await host.waitUntilStopped()
+    }
+
+    /// Survives the process that spawned it.
+    ///
+    /// `sleepy open` reads this helper's standard output for the readiness
+    /// line and then exits, which closes its end of the pipe. Anything the
+    /// helper wrote afterwards — a Foundation warning is enough — would raise
+    /// `SIGPIPE`, whose default action is to kill the process: the session
+    /// would die moments after being opened, for no reason a user could see.
+    private func detachFromSpawner() {
+        signal(SIGPIPE, SIG_IGN)
     }
 
     private func resolveName() throws -> SessionName {

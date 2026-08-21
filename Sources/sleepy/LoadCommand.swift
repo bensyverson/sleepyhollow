@@ -15,10 +15,14 @@ struct LoadCommand: AsyncParsableCommand {
         commandName: "load",
         abstract: "Load a page and report the facts: final URL, HTTP status, console errors, dialogs.",
         discussion: """
+        `load` is the one verb that takes a URL *and* --session together: that pair
+        navigates the open session to the URL. With --session alone it reports the page
+        the session is already on.
+
         Examples:
           sleepy load http://localhost:3000/
           sleepy load http://localhost:3000/app --wait-for '#ready' --budget 5000
-          sleepy load http://localhost:3000/ --theme dark --out facts.json
+          sleepy load --session login http://localhost:3000/dashboard
         """,
     )
 
@@ -28,22 +32,14 @@ struct LoadCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            let facts = try await host.load(url)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let encoded: Data = try encoder.encode(facts)
-            try out.sink.write(encoded)
-        }
+        let target: PageSourceOptions.LoadTarget = try source.resolveLoadTarget()
+        let facts: PageFacts = try await PageExecution.run(
+            NavigateOperation(url: target.navigationURL),
+            on: target.pageSource,
+            flags: flags,
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try out.sink.write(encoder.encode(facts))
     }
 }

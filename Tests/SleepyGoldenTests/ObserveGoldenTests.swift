@@ -92,13 +92,13 @@ struct ObserveGoldenTests {
         }
     }
 
-    @Test func `console --session teaches that sessions are pending`() async throws {
+    @Test func `console --session with no such session is a teaching environment error`() async throws {
         let result = try await GoldenBinary.runOffPool(["console", "--session", "nope"])
         #expect(result.exitCode == 5)
         #expect(result.standardError.contains("session"))
     }
 
-    @Test func `wire --session teaches that sessions are pending`() async throws {
+    @Test func `wire --session with no such session is a teaching environment error`() async throws {
         let result = try await GoldenBinary.runOffPool(["wire", "--session", "nope"])
         #expect(result.exitCode == 5)
         #expect(result.standardError.contains("session"))

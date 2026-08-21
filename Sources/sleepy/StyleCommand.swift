@@ -49,28 +49,19 @@ struct StyleCommand: AsyncParsableCommand {
                 nextMove: "Add --property <name>, e.g. --property display.",
             )
         }
-        let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-        let options: LoadOptions = try flags.resolveLoadOptions(steps: steps)
         let resolvedFormat: OutputFormat = try format.resolve(
             default: .json,
             supporting: Self.supportedFormats,
             verb: "style",
         )
-        switch try source.resolve() {
-        case .session:
-            throw SleepyError(
-                kind: .environment,
-                message: "Sessions are not available yet.",
-                nextMove: "Give a URL to load ephemerally; sessions arrive with the session leaves.",
-            )
-        case let .url(url):
-            let host = PageHost(options: options)
-            _ = try await host.load(url)
-            let result: StyleResult = try await host.execute(StyleOperation(selector: selector, properties: property))
-            try write(result, as: resolvedFormat)
-            if !result.matched {
-                Darwin.exit(ExitStatus.negative.rawValue)
-            }
+        let result: StyleResult = try await PageExecution.run(
+            StyleOperation(selector: selector, properties: property),
+            on: source.resolve(),
+            flags: flags,
+        )
+        try write(result, as: resolvedFormat)
+        if !result.matched {
+            Darwin.exit(ExitStatus.negative.rawValue)
         }
     }
 

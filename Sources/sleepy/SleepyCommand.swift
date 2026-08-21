@@ -15,7 +15,7 @@ struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleepy",
         abstract: "A headless WebKit browser for agents.",
-        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ConsoleCommand.self, WireCommand.self, EvalCommand.self, ClickCommand.self, FillCommand.self, SubmitCommand.self, JarsCommand.self, CookiesCommand.self, HostCommand.self],
+        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ConsoleCommand.self, WireCommand.self, EvalCommand.self, ClickCommand.self, FillCommand.self, SubmitCommand.self, OpenCommand.self, CloseCommand.self, SessionsCommand.self, JarsCommand.self, CookiesCommand.self, HostCommand.self],
     )
 
     /// What the tool is, the three most common invocations, and where help
@@ -26,7 +26,7 @@ struct SleepyCommand: AsyncParsableCommand {
     Common invocations:
       sleepy load <url>                  load a page, report status and console errors
       sleepy shot <url> --out shot.png   screenshot a page
-      sleepy ax --session <name>         read a live session's accessibility tree
+      sleepy open <url> --name app       keep a page alive, then `sleepy ax --session app`
 
     Help: `sleepy <verb> --help` for a verb's flags and examples, `sleepy --help` to list every verb.
     """

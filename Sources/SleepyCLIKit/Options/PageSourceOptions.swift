@@ -49,6 +49,63 @@ public struct PageSourceOptions: ParsableArguments {
         }
     }
 
+    // MARK: - The load verb's target
+
+    /// What `sleepy load` was asked to do — the one verb that accepts a URL
+    /// *and* `--session` at once.
+    ///
+    /// The vision doc gives `load` that privilege twice: §1 ("with
+    /// `--session` it navigates an open session to a new URL") and §5's
+    /// already-open error, which teaches `sleepy load --session login <url>`.
+    /// Every other page verb keeps the two exclusive, because for a *read*
+    /// they are two different pages.
+    public enum LoadTarget: Friendly {
+        /// Load this URL in a page that dies with the invocation.
+        case ephemeral(URL)
+        /// Act on a live session: navigate it to `navigatingTo`, or, when
+        /// that is `nil`, report the page it is already on.
+        case session(SessionName, navigatingTo: URL?)
+
+        /// The page source this target executes against.
+        public var pageSource: PageSource {
+            switch self {
+            case let .ephemeral(url): .url(url)
+            case let .session(name, _): .session(name)
+            }
+        }
+
+        /// Where to navigate, when this target navigates at all.
+        public var navigationURL: URL? {
+            switch self {
+            case .ephemeral: nil
+            case let .session(_, url): url
+            }
+        }
+    }
+
+    /// Resolves the parsed arguments to a ``LoadTarget``.
+    public func resolveLoadTarget() throws -> LoadTarget {
+        try Self.resolveLoadTarget(url: url, session: session)
+    }
+
+    /// The pure resolution logic behind ``resolveLoadTarget()``.
+    public static func resolveLoadTarget(url: String?, session: String?) throws -> LoadTarget {
+        switch (url, session) {
+        case let (.some(rawURL), .none):
+            return try .ephemeral(resolveURL(rawURL))
+        case let (.none, .some(rawSession)):
+            return try .session(resolveSession(rawSession), navigatingTo: nil)
+        case let (.some(rawURL), .some(rawSession)):
+            return try .session(resolveSession(rawSession), navigatingTo: resolveURL(rawURL))
+        case (.none, .none):
+            throw SleepyError(
+                kind: .usage,
+                message: "A page source is required.",
+                nextMove: "Give a URL (e.g. http://example.com) or --session <name>.",
+            )
+        }
+    }
+
     private static func resolveURL(_ raw: String) throws -> URL {
         guard let url = URL(string: raw), let scheme = url.scheme, !scheme.isEmpty else {
             throw SleepyError(
