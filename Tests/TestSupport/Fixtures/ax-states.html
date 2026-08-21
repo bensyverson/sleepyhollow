@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AX states fixture</title>
+</head>
+<body>
+  <h1>States</h1>
+
+  <fieldset id="group" disabled>
+    <legend>Disabled group</legend>
+    <button id="in-disabled-group">Inherited disabled</button>
+  </fieldset>
+
+  <button id="native-disabled" disabled>Native disabled</button>
+  <a id="aria-disabled" href="#" role="button" aria-disabled="true">Aria disabled</a>
+
+  <p><input id="native-checked" type="checkbox" checked aria-label="Native checked"></p>
+  <p><input id="native-unchecked" type="checkbox" aria-label="Native unchecked"></p>
+  <p><span id="mixed" role="checkbox" aria-checked="mixed" tabindex="0">Mixed checkbox</span></p>
+  <p><span id="switched" role="switch" aria-checked="true">Switch</span></p>
+
+  <button id="collapsed" aria-expanded="false">Expandable</button>
+  <button id="pressed" aria-pressed="true">Pressed</button>
+
+  <p><input id="required" type="text" required aria-label="Required field"></p>
+  <p><input id="readonly" type="text" readonly value="Read only value" aria-label="Read only field"></p>
+  <p><input id="filled" type="text" value="Typed text" aria-label="Filled field"></p>
+
+  <a id="current" href="/here" aria-current="page">Current page</a>
+
+  <div id="progress" role="progressbar" aria-valuenow="42" aria-label="Progress"></div>
+  <p><input id="slider" type="range" min="0" max="10" value="7" aria-label="Slider"></p>
+
+  <p>
+    <select id="chooser" aria-label="Chooser">
+      <option value="a" selected>Alpha</option>
+      <option value="b">Beta</option>
+    </select>
+  </p>
+
+  <p>
+    <select id="picker" multiple aria-label="Picker">
+      <option value="x" selected>Ex</option>
+      <option value="y">Why</option>
+    </select>
+  </p>
+
+  <h3 id="deep-heading">A third-level heading</h3>
+</body>
+</html>

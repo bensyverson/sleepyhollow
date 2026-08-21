@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AX structure fixture</title>
+  <style>
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Structure</h1>
+  </header>
+
+  <nav aria-label="Primary">
+    <ul>
+      <li><a href="/alpha">Alpha</a></li>
+      <li><a href="/beta">Beta</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <!-- role=presentation must strip the whole table skeleton, not just the table. -->
+    <table role="presentation" id="layout">
+      <tbody>
+        <tr>
+          <td><button id="in-layout-table">Inside layout table</button></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- A real table keeps its skeleton. -->
+    <table id="data">
+      <caption>Data table</caption>
+      <tbody>
+        <tr><th>Header cell</th></tr>
+        <tr><td>Body cell</td></tr>
+      </tbody>
+    </table>
+
+    <div aria-hidden="true"><button id="aria-hidden-button">Hidden by aria</button></div>
+    <div style="display: none"><button id="display-none-button">Hidden by display</button></div>
+    <div style="visibility: hidden"><button id="visibility-hidden-button">Hidden by visibility</button></div>
+
+    <!-- role=none on a plain wrapper drops only the wrapper. -->
+    <div role="none"><button id="through-none">Kept through none</button></div>
+
+    <!-- Unnamed wrappers collapse in the outline. -->
+    <div><div><div><button id="deeply-wrapped">Deeply wrapped</button></div></div></div>
+
+    <span class="visually-hidden">Screen reader note</span>
+
+    <section aria-label="Named region"><p>In a region</p></section>
+    <section><p>In an unnamed section</p></section>
+  </main>
+
+  <footer>Colophon</footer>
+</body>
+</html>

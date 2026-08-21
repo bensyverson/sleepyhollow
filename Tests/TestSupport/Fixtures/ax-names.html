@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AccName fixture</title>
+  <style>
+    #pseudo::before { content: "Go "; }
+  </style>
+</head>
+<body>
+  <h1>Naming</h1>
+
+  <!-- Precedence: aria-labelledby beats aria-label beats name from content. -->
+  <span id="lb-first">Delete</span>
+  <span id="lb-second">file</span>
+  <button id="all-three" aria-labelledby="lb-first lb-second" aria-label="Label attribute">Content text</button>
+  <button id="label-and-content" aria-label="Label attribute">Content text</button>
+  <button id="content-only">Content text</button>
+
+  <!-- Host-language label mechanisms. -->
+  <p>
+    <label for="explicit">Explicit label</label>
+    <input id="explicit" type="text">
+  </p>
+  <p>
+    <label>Wrapping label <input id="wrapped" type="text"></label>
+  </p>
+  <p><input id="placeheld" type="text" placeholder="Placeholder only"></p>
+  <p><input id="titled" type="text" title="Title only"></p>
+  <p><input id="both" type="text" placeholder="Ignored placeholder" aria-label="Wins over placeholder"></p>
+
+  <img id="pic" src="pixel.png" alt="A single pixel">
+  <img id="decorative" src="pixel.png" alt="">
+
+  <fieldset id="fs">
+    <legend>Legend name</legend>
+    <input id="in-fieldset" type="text" aria-label="Inside the fieldset">
+  </fieldset>
+
+  <figure id="fig">
+    <img src="pixel.png" alt="">
+    <figcaption>Figure caption</figcaption>
+  </figure>
+
+  <table id="captioned">
+    <caption>Table caption</caption>
+    <tbody><tr><td>Only cell</td></tr></tbody>
+  </table>
+
+  <a id="link" href="/somewhere">A link</a>
+
+  <!-- Name from content: heading yes, paragraph and listitem no. -->
+  <h2 id="head">Heading text</h2>
+  <p id="para">Paragraph text</p>
+  <ul><li id="item">List item text</li></ul>
+
+  <!-- Generated content participates in the name. -->
+  <button id="pseudo">home</button>
+</body>
+</html>

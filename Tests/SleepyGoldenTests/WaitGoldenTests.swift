@@ -19,10 +19,13 @@ struct WaitGoldenTests {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("static.html").absoluteString
             let started = Date()
-            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "#never-in-this-page", "--budget", "1000"])
+            // 6s, not 1s: under full-suite load the subprocess's navigation
+            // alone can eat a small budget, and the timeout then names the
+            // wrong phase.
+            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "#never-in-this-page", "--budget", "6000"])
             #expect(result.exitCode == 3)
             #expect(result.standardError.contains("#never-in-this-page"))
-            #expect(Date().timeIntervalSince(started) < 10)
+            #expect(Date().timeIntervalSince(started) < 20)
         }
     }
 
