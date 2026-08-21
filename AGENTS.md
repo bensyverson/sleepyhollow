@@ -14,7 +14,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - [project/2026-08-20-wait-engine.md](project/2026-08-20-wait-engine.md) — findings: the settle phase, the exact `--wait-for idle` contract, and what a headless page's timers really do
 - [project/gotchas.md](project/gotchas.md) — project quirks and rule corrections
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
-- README.md — not yet written (see Documentation practice below)
+- [README.md](README.md) — the project's front door: what it is, install, quick start
 
 <!-- agents:begin core@f0c45b -->
 ## Working rules
