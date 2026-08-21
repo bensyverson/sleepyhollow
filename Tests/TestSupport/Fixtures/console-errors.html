@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Console errors fixture</title>
+</head>
+<body>
+  <h1>Console errors fixture</h1>
+  <script>
+    console.log('a log, which is not an error');
+    console.error('first error');
+    console.error('second error');
+    // An uncaught error: thrown from a separate script element so parsing continues.
+  </script>
+  <script>
+    null.property;
+  </script>
+  <p id="after">parsed</p>
+</body>
+</html>

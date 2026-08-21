@@ -1,6 +1,11 @@
 /// One dialog the page raised and how the policy answered it.
 public struct DialogRecord: Friendly {
     /// The dialog's kind.
+    ///
+    /// `beforeunload` deliberately has no case: `WKUIDelegate` exposes no
+    /// public hook for it, so WebKit always leaves the page (the policy's
+    /// answer) and a record could never be produced — an unreachable case
+    /// would be a lie in the API surface.
     public enum Kind: String, Friendly {
         /// `alert()` — always acknowledged.
         case alert
@@ -8,15 +13,13 @@ public struct DialogRecord: Friendly {
         case confirm
         /// `prompt()` — answered per ``DialogPolicy/promptResponse``.
         case prompt
-        /// `beforeunload` — always allowed to leave.
-        case beforeUnload
     }
 
     /// The answer the policy gave.
     public enum Response: Friendly {
         /// An alert was acknowledged.
         case acknowledged
-        /// A confirm (or beforeunload) was accepted.
+        /// A confirm was accepted.
         case accepted
         /// A confirm or prompt was cancelled.
         case dismissed

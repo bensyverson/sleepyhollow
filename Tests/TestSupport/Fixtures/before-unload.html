@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>beforeunload fixture</title>
+</head>
+<body>
+  <h1>beforeunload fixture</h1>
+  <script>
+    window.addEventListener('beforeunload', function (event) {
+      event.preventDefault();
+      event.returnValue = 'stay on this page?';
+      return 'stay on this page?';
+    });
+  </script>
+</body>
+</html>

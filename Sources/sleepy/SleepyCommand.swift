@@ -11,10 +11,11 @@ import SleepyHollow
 /// leaves that build them; this scaffold owns only the primer, the shared
 /// option groups (``SleepyCLIKit``), and error rendering.
 @main
-struct SleepyCommand: ParsableCommand {
+struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleepy",
         abstract: "A headless WebKit browser for agents.",
+        subcommands: [LoadCommand.self],
     )
 
     /// What the tool is, the three most common invocations, and where help
@@ -36,11 +37,17 @@ struct SleepyCommand: ParsableCommand {
 
     /// Overrides ArgumentParser's default entry point so every failure —
     /// ours or ArgumentParser's own — goes through one rendering path with
-    /// Core's exit-code contract, never a stack trace.
-    static func main() {
+    /// Core's exit-code contract, never a stack trace. Async so verb
+    /// subcommands can await the page host on the main actor.
+    @MainActor
+    static func main() async {
         do {
             var command = try parseAsRoot()
-            try command.run()
+            if var asyncCommand = command as? any AsyncParsableCommand {
+                try await asyncCommand.run()
+            } else {
+                try command.run()
+            }
         } catch let error as SleepyError {
             emit(ErrorRendering.render(sleepyError: error))
         } catch {

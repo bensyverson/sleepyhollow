@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Injection order fixture</title>
+  <script>
+    // The earliest possible page script: whatever a document-start user script
+    // left on `window` is already here if injection really preceded the document.
+    window.__pageSawMarker = String(window.__injectedMarker);
+  </script>
+</head>
+<body>
+  <h1>Injection order fixture</h1>
+  <p id="marker"></p>
+  <script>
+    document.getElementById('marker').textContent = window.__pageSawMarker;
+  </script>
+</body>
+</html>

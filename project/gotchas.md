@@ -19,3 +19,7 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 **`swiftformat . --lint` silently lints nothing inside an agent worktree.** The repo `.swiftformat` excludes `.claude`, and worktrees live under `.claude/worktrees/`, so a bare lint there reports success while checking zero files. Inside a worktree, pass the config explicitly: `swiftformat . --lint --config .swiftformat`. Put this in every implementation brief.
 
 **rule: the delegation guide's "push before dispatching" doesn't apply to this harness.** `project/agents/delegation.md` says worktrees branch from the last pushed commit on origin/main; Claude Code's worktree isolation actually branches from the *local HEAD* at dispatch time (verified: with no remote configured at all, agents received exactly the commit that was HEAD when dispatched). Commit before dispatching; pushing is backup, not a spawn requirement.
+
+**`swiftformat` (writing, not linting) also needs the sandbox disabled in a worktree.** `--lint` reads and works; the fixing pass reports `error: Failed to write file …` for every file, because the session sandbox denies writes under `.claude/`. Same fix as `swift build`: run it with the sandbox off.
+
+**Answer WebKit's delegate protocols with the exact SDK signature or you get no callbacks.** `WKUIDelegate`'s completion handlers are typed `@escaping @MainActor @Sendable`; a plain `@escaping (Bool) -> Void` compiles, produces only a "nearly matches optional requirement" *warning*, and then the dialog panels silently never fire. Treat that warning as an error.
