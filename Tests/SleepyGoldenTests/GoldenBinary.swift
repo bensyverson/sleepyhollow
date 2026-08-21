@@ -72,6 +72,26 @@ enum GoldenBinary {
         }
     }
 
+    /// Runs `sleepy` with `arguments` off the cooperative thread pool.
+    ///
+    /// ``run(_:)`` waits on the subprocess synchronously, which blocks the
+    /// thread it was called on. That is fine on its own — but a golden test
+    /// serving the page from an in-process ``FixtureServer`` needs that same
+    /// process to keep answering HTTP while it waits, and the server's actor
+    /// runs on the cooperative pool. Enough golden tests in parallel and every
+    /// cooperative thread is parked in `waitUntilExit()`, the fixture server
+    /// never answers, and the subprocess times out loading its page.
+    ///
+    /// Hopping to a GCD queue moves the blocking wait to a thread pool that
+    /// can grow, leaving the cooperative pool free to serve the page.
+    static func runOffPool(_ arguments: [String]) async throws -> CliInvocation {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(with: Result { try run(arguments) })
+            }
+        }
+    }
+
     /// Runs `sleepy` with `arguments` and captures its exit code and output.
     static func run(_ arguments: [String]) throws -> CliInvocation {
         let process = Process()

@@ -7,6 +7,10 @@
 public struct SleepyError: Error, Friendly, CustomStringConvertible {
     /// The failure's category, mapping onto ``ExitStatus``.
     public enum Kind: String, Friendly {
+        /// The asserted condition cleanly does not hold — a selector matched
+        /// nothing, a text was not found. Not a malfunction: exit 1 is an
+        /// answer, and the message explains what was absent.
+        case negative
         /// The invocation itself was malformed.
         case usage
         /// The budget ran out before the condition was met.
@@ -37,6 +41,7 @@ public struct SleepyError: Error, Friendly, CustomStringConvertible {
     /// The exit status this failure maps to.
     public var exitStatus: ExitStatus {
         switch kind {
+        case .negative: .negative
         case .usage: .usage
         case .timeout: .timeout
         case .loadFailure: .loadFailure

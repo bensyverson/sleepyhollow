@@ -8,7 +8,7 @@ struct WaitGoldenTests {
     @Test func `--wait-for a late selector holds the load until it appears, exit 0`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("wait-late.html").absoluteString
-            let result = try GoldenBinary.run(["load", url, "--wait-for", "#late"])
+            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "#late"])
             #expect(result.exitCode == 0)
             #expect(result.standardOutput.contains("200"))
             #expect(result.standardError.isEmpty)
@@ -19,7 +19,7 @@ struct WaitGoldenTests {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("static.html").absoluteString
             let started = Date()
-            let result = try GoldenBinary.run(["load", url, "--wait-for", "#never-in-this-page", "--budget", "1000"])
+            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "#never-in-this-page", "--budget", "1000"])
             #expect(result.exitCode == 3)
             #expect(result.standardError.contains("#never-in-this-page"))
             #expect(Date().timeIntervalSince(started) < 10)
@@ -29,7 +29,7 @@ struct WaitGoldenTests {
     @Test func `--wait-for a js predicate reads the page's own world`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("wait-late.html").absoluteString
-            let result = try GoldenBinary.run(["load", url, "--wait-for", "js:window.sleepyReady === true"])
+            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "js:window.sleepyReady === true"])
             #expect(result.exitCode == 0)
             #expect(result.standardError.isEmpty)
         }
@@ -38,7 +38,7 @@ struct WaitGoldenTests {
     @Test func `--wait-for idle settles a quiet page, exit 0`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("static.html").absoluteString
-            let result = try GoldenBinary.run(["load", url, "--wait-for", "idle"])
+            let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "idle"])
             #expect(result.exitCode == 0)
             #expect(result.standardOutput.contains("200"))
         }

@@ -7,14 +7,14 @@ import TestSupport
 /// operation, a killed helper detected as dead, a short TTL reaping itself.
 @Suite("Session protocol, end to end")
 struct SessionProtocolGoldenTests {
-    @Test func `the helper subcommand stays out of the help listing`() throws {
-        let result = try GoldenBinary.run(["--help"])
+    @Test func `the helper subcommand stays out of the help listing`() async throws {
+        let result = try await GoldenBinary.runOffPool(["--help"])
         #expect(result.exitCode == 0)
         #expect(!result.standardOutput.contains("_host"))
     }
 
-    @Test func `a helper that could never reap itself is refused`() throws {
-        let result = try GoldenBinary.run(["_host", "--name", "immortal", "--idle-timeout", "0"])
+    @Test func `a helper that could never reap itself is refused`() async throws {
+        let result = try await GoldenBinary.runOffPool(["_host", "--name", "immortal", "--idle-timeout", "0"])
         #expect(result.exitCode == 2)
         #expect(result.standardError.contains("idle-timeout"))
     }

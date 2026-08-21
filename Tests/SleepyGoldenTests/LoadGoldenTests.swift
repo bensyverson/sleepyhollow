@@ -7,7 +7,7 @@ struct LoadGoldenTests {
     @Test func `load reports facts as JSON and exits 0`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("static.html").absoluteString
-            let result = try GoldenBinary.run(["load", url])
+            let result = try await GoldenBinary.runOffPool(["load", url])
             #expect(result.exitCode == 0)
             #expect(result.standardOutput.contains("\"httpStatus\""))
             #expect(result.standardOutput.contains("200"))
@@ -19,21 +19,21 @@ struct LoadGoldenTests {
     @Test func `a 404 still loads — status in the facts, exit 0`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent("missing.html").absoluteString
-            let result = try GoldenBinary.run(["load", url])
+            let result = try await GoldenBinary.runOffPool(["load", url])
             #expect(result.exitCode == 0)
             #expect(result.standardOutput.contains("404"))
         }
     }
 
-    @Test func `an unreachable host exits 4 with teaching text`() throws {
-        let result = try GoldenBinary.run(["load", "http://127.0.0.1:9/"])
+    @Test func `an unreachable host exits 4 with teaching text`() async throws {
+        let result = try await GoldenBinary.runOffPool(["load", "http://127.0.0.1:9/"])
         #expect(result.exitCode == 4)
         #expect(!result.standardError.isEmpty)
         #expect(result.standardOutput.isEmpty)
     }
 
-    @Test func `--session teaches that sessions are pending`() throws {
-        let result = try GoldenBinary.run(["load", "--session", "nope"])
+    @Test func `--session teaches that sessions are pending`() async throws {
+        let result = try await GoldenBinary.runOffPool(["load", "--session", "nope"])
         #expect(result.exitCode == 5)
         #expect(result.standardError.contains("session"))
     }

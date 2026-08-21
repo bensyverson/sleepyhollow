@@ -5,6 +5,7 @@ import Testing
 /// exit status agents branch on.
 struct SleepyErrorTests {
     @Test func `kinds map to the documented exit statuses`() {
+        #expect(SleepyError(kind: .negative, message: "m").exitStatus == .negative)
         #expect(SleepyError(kind: .usage, message: "m").exitStatus == .usage)
         #expect(SleepyError(kind: .timeout, message: "m").exitStatus == .timeout)
         #expect(SleepyError(kind: .loadFailure, message: "m").exitStatus == .loadFailure)
