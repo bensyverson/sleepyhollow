@@ -73,10 +73,36 @@ public struct SessionLauncher: Sendable {
     ///
     /// A session helper *is* `sleepy` — the vision's one-binary claim — so the
     /// only honest thing to spawn is the file currently running.
+    ///
+    /// Which file that is has to come from the *running image*, not from the
+    /// argument vector. `CommandLine.arguments[0]` is only ever what the
+    /// caller's shell typed, so an installed `sleepy` found on `$PATH` arrives
+    /// as the bare word `sleepy`; resolving that against the current directory
+    /// invented `<cwd>/sleepy` and `open` failed with "Couldn't start a session
+    /// helper from …" from every directory but the one holding the binary.
+    ///
+    /// `Bundle.main.executableURL` answers the question actually being asked:
+    /// for an unbundled tool its `executableURL` is dyld's record of the image
+    /// this process was launched from — the same source `_NSGetExecutablePath`
+    /// reads, without the C buffer dance, and Foundation rather than a
+    /// platform import. argv[0] stays as the fallback for the case where there
+    /// is no main bundle to ask.
     public static func currentExecutable() -> URL {
-        let argument0: String = CommandLine.arguments.first ?? "sleepy"
-        let url = URL(fileURLWithPath: argument0)
-        return url.standardizedFileURL.absoluteURL
+        resolveExecutable(bundleExecutable: Bundle.main.executableURL, argument0: CommandLine.arguments.first)
+    }
+
+    /// The rule behind ``currentExecutable()``, over its two inputs.
+    ///
+    /// Split out so the resolution can be tested without a subprocess: the
+    /// interesting case is a bare `argument0`, which a test process never has.
+    ///
+    /// Symlinks are resolved because a `$PATH` entry is so often a link — a
+    /// SwiftPM `~/.swiftpm/bin` install, a Homebrew shim — and spawning the
+    /// real file keeps a session's helper tied to the binary it was opened
+    /// with even if the link is re-pointed underneath it.
+    static func resolveExecutable(bundleExecutable: URL?, argument0: String?) -> URL {
+        let candidate: URL = bundleExecutable ?? URL(fileURLWithPath: argument0 ?? "sleepy")
+        return candidate.resolvingSymlinksInPath().absoluteURL
     }
 
     /// Spawns `sleepy` with `arguments` and waits for its readiness line.
