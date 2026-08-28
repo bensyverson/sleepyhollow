@@ -8,19 +8,25 @@ struct WaitSelectorTests {
     @Test
     @MainActor
     func `a selector already present when the load event fires settles at once`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .selector("#early")
             options.budget = 5
             let host = PageHost(options: options)
-            // A generous flip: settling at once must beat it even on a machine
-            // busy building five agent worktrees.
-            let facts: PageFacts = try await host.load(URL(string: "wait-late.html?flip=3000", relativeTo: base)!)
+            let facts: PageFacts = try await host.load(URL(string: "wait-late.html?flip=gate", relativeTo: base)!)
             #expect(facts.httpStatus == 200)
-            // The page's own late element is the clock here: a condition
-            // already true at didFinish must settle before that arrives.
+            // The page's late element waits on a gate this test has not
+            // opened, so its absence is program order rather than a race the
+            // host loses when the machine is busy: a condition already true at
+            // didFinish settled without waiting for the page's later work.
             let late: String = try await host.evaluate("return document.querySelector('#late') !== null;")
-            #expect(late == "false", "a condition true at the load event must not wait a poll cycle")
+            #expect(late == "false", "a condition true at the load event must not wait for the page's later work")
+            // Not vacuous: the page really did have that work outstanding.
+            // Generously bounded — a liveness check, never a discriminator.
+            #expect(await gate.awaitRequest(), "the page never reached the gate, so the assertion above proved nothing")
+            await gate.open()
         }
     }
 
