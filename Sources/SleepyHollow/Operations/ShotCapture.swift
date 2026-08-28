@@ -29,10 +29,10 @@ public struct ShotCapture: Sendable {
     ///
     /// This is the density WebKit rasterized at, not the density the image
     /// ended up with: ``ShotFit`` thins the pixels afterwards and deliberately
-    /// leaves this alone, because it says which page was drawn (and, once
-    /// `--scale` lands, at which device pixel ratio) rather than how many
-    /// pixels survived. For "how much detail does this image actually hold",
-    /// read ``pixelsPerCSSPixel``.
+    /// leaves this alone, because it says which page was drawn and at which
+    /// device pixel ratio (``ShotScale``) rather than how many pixels
+    /// survived. For "how much detail does this image actually hold", read
+    /// ``pixelsPerCSSPixel``.
     public let scale: Int
 
     /// Creates a capture.
@@ -40,6 +40,26 @@ public struct ShotCapture: Sendable {
         self.image = image
         self.rect = rect
         self.scale = scale
+    }
+
+    /// Decodes an encoded capture back into the pipeline's currency.
+    ///
+    /// The inverse of ``encoded()``, for a stage that runs *after* the wire
+    /// shape exists — a contact sheet composes captures a page host already
+    /// handed back as PNGs, and re-decoding costs one lossless pass rather
+    /// than a second render.
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment``
+    ///   when the bytes are not a readable image.
+    public init(decoding image: ShotImage) throws {
+        guard let bitmap = NSBitmapImageRep(data: image.png), let pixels = bitmap.cgImage else {
+            throw SleepyError(
+                kind: .environment,
+                message: "Could not read a capture back from its PNG.",
+                nextMove: "Retry; if this persists, it is a seam bug against NSBitmapImageRep.",
+            )
+        }
+        self.init(image: pixels, rect: image.rect, scale: image.scale)
     }
 
     /// The image's own pixel size.
@@ -65,6 +85,14 @@ public struct ShotCapture: Sendable {
     ///   when PNG encoding fails — a seam bug, never a page fact.
     public func encoded() throws -> ShotImage {
         let bitmap = NSBitmapImageRep(cgImage: image)
+        // `size` is the rep's *logical* size, and the PNG writer turns the
+        // ratio between it and the pixel count into the file's pHYs
+        // resolution: 72 dpi at scale 1, 144 at scale 2. Without it a
+        // `--scale 2` capture opens at twice its CSS size everywhere.
+        bitmap.size = CGSize(
+            width: CGFloat(image.width) / CGFloat(scale),
+            height: CGFloat(image.height) / CGFloat(scale),
+        )
         guard let png = bitmap.representation(using: .png, properties: [:]) else {
             throw SleepyError(
                 kind: .environment,
@@ -86,6 +114,19 @@ public struct ShotCapture: Sendable {
     /// makes the output depend only on the requested rect and scale, never on
     /// which Mac ran the command — determinism by construction (vision doc
     /// §5).
+    /// How many device pixels `image` actually holds per point — the *host's*
+    /// density, since that is what `WKWebView.takeSnapshot` rasterizes at.
+    ///
+    /// This is the ceiling `--scale` is checked against: a requested density
+    /// above it could only be reached by upscaling, which would hand back a
+    /// soft image with a convincing pixel count. Read from the backing
+    /// representation rather than from `NSScreen`, because it is the raster in
+    /// hand that decides, not the machine's headline configuration.
+    static func density(of image: NSImage) -> CGFloat {
+        guard let representation = image.representations.first, image.size.width > 0 else { return 1 }
+        return CGFloat(representation.pixelsWide) / image.size.width
+    }
+
     static func rasterize(_ image: NSImage, atPixelSize pixelSize: CGSize) -> CGImage? {
         let width = max(1, Int(pixelSize.width.rounded()))
         let height = max(1, Int(pixelSize.height.rounded()))

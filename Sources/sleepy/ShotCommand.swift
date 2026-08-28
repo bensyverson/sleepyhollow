@@ -10,6 +10,16 @@ import SleepyHollow
 /// rect — the thing under test is rarely the whole page — and `--full-page`
 /// captures the entire scroll height instead of the viewport.
 ///
+/// `--scale` is the density half: 2 or 3 device pixels per CSS px, for a
+/// screenshot that has to stay sharp beside a document's own text, with the
+/// viewport — and so the breakpoint — untouched.
+///
+/// `--size`, `--scale` and `--theme` repeat, and repeating one sweeps it:
+/// every combination renders once, into a file named for only the axes that
+/// vary (``ShotPlan``), with a ``ShotVariantIndex`` on stdout. `--sheet` lays
+/// that sweep out as one labeled mosaic (``ShotSheet``) beside the full-size
+/// files.
+///
 /// `--max-size` and `--tile` are the readout half: an image an agent can
 /// actually read. The first caps the output's longest side (the page is
 /// unchanged — only the pixels thin), the second cuts the capture into
@@ -30,6 +40,9 @@ struct ShotCommand: AsyncParsableCommand {
           sleepy shot http://localhost:3000/ --selector '#save-button' --out button.png
           sleepy shot http://localhost:3000/ --full-page --theme dark --out page.png
           sleepy shot http://localhost:3000/ --rect 0,850,1280,600 --out band.png
+          sleepy shot http://localhost:3000/ --scale 2 --out retina.png
+          sleepy shot http://localhost:3000/ --size 480 --size 1280 --theme dark --out header.png
+          sleepy shot http://localhost:3000/ --size 390 --size 1280 --sheet --out sheet.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --out overview.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --tile --out strips.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --grid lines --out map.png
@@ -37,7 +50,13 @@ struct ShotCommand: AsyncParsableCommand {
 
         --tile writes strips-01.png, strips-02.png … next to --out and prints a JSON index on stdout: each entry's x, y, width and height are CSS document px, so a strip worth a closer look is --rect x,y,width,height with no arithmetic. Adjacent strips share 40 CSS px, and 'scale' is how many pixels of the file stand for one CSS px.
 
-        Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
+        --scale is density, not size: --size still sets the viewport in CSS px, so media queries and layout are the ones a reader of that size sees, and only the raster gets denser. The source snapshot is rendered at this Mac's own screen backing scale, so a --scale above it is refused rather than upsampled.
+
+        --size, --scale and --theme each repeat, and a repeat sweeps: every combination renders, needs --out, and lands in a file suffixed with only the axes that actually vary, in the order size, scale, theme — header-480@2x-dark.png. A JSON index on stdout maps each file to its size, scale and theme, so nothing has to parse a name. --size also takes a width alone: --size 480 means 480x800. A sweep needs a URL: --session names one page a helper has already loaded.
+
+        --sheet adds a contact sheet of that sweep at --out itself — every render in one mosaic, each cell labeled with its parameters and fitted inside --max-size — while the full-size files keep their suffixes. It answers where something changed; the full-size file is where the detail is. Not combinable with --tile.
+
+        Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session or a --scale denser than this host renders.
         """,
     )
 
@@ -71,6 +90,13 @@ struct ShotCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
+        parsing: .singleValue,
+        help: "Device pixels per CSS px in the PNG: 1 (default), 2 or 3. Layout, breakpoints and --size are unchanged; only the raster is denser. Exit 5 if this host cannot render that densely. Repeatable.",
+    )
+    var scale: [Int] = []
+
+    @Option(
+        name: .long,
         help: "Cap the longest side of the output PNG at this many pixels. The page renders unchanged; only the image is downsampled.",
     )
     var maxSize: Int?
@@ -92,6 +118,12 @@ struct ShotCommand: AsyncParsableCommand {
         ),
     )
     var tile: ShotTile.Height?
+
+    @Flag(
+        name: .long,
+        help: "Lay every render of a sweep into one labeled mosaic at --out, alongside the full-size files. Needs a repeated --size/--scale/--theme; refused with --tile.",
+    )
+    var sheet: Bool = false
 
     @Option(
         name: .long,
@@ -131,18 +163,41 @@ struct ShotCommand: AsyncParsableCommand {
     /// One value for two facts that are only ever true together — asking for
     /// strips means asking for files — so no later step has to handle a
     /// "tiling, but nowhere to write" state that parsing already ruled out.
-    private struct StripRequest {
+    struct StripRequest {
         let height: ShotTile.Height
         let base: String
     }
 
+    /// The render axes this invocation asked for, crossed.
+    ///
+    /// A plain `shot` is a plan of exactly one variant, so the sweep and the
+    /// single capture are the same shape and only the *output* differs.
+    func renderPlan() throws -> ShotPlan {
+        try ShotPlan(
+            sizes: flags.size.map { try LoadFlagOptions.viewportSize(parsing: $0) },
+            scales: scale.map { try ShotScale(factor: $0) },
+            themes: flags.theme,
+        )
+    }
+
     @MainActor
     mutating func run() async throws {
+        let plan: ShotPlan = try renderPlan()
+        guard !plan.isSweep, !sheet else {
+            try await runSweep(plan)
+            return
+        }
         let region: ShotRegion = try region()
         let fit: ShotFit? = try maxSize.map { try ShotFit(maxSize: $0) }
         let strips: StripRequest? = try stripRequest()
         let output = try await PageExecution.run(
-            ShotOperation(region: region, fit: fit, tile: strips?.height, grid: gridOptions()),
+            ShotOperation(
+                region: region,
+                scale: plan.variants[0].scale,
+                fit: fit,
+                tile: strips?.height,
+                grid: gridOptions(),
+            ),
             on: source.resolve(),
             flags: flags,
         )
@@ -175,7 +230,7 @@ struct ShotCommand: AsyncParsableCommand {
     /// would swallow, and the missing `--out` — N strips have no single
     /// stdout to be written to, and discovering that after a render wastes
     /// the render.
-    private func stripRequest() throws -> StripRequest? {
+    func stripRequest() throws -> StripRequest? {
         guard let tile else { return nil }
         guard let base = out.out else {
             throw SleepyError(
@@ -208,8 +263,6 @@ struct ShotCommand: AsyncParsableCommand {
     /// `strips.png` and strip 2 make `strips-02.png`; a path with no
     /// extension keeps none.
     private static func numbered(_ base: String, strip: Int) -> String {
-        let url = URL(fileURLWithPath: base)
-        let stem: String = url.deletingPathExtension().path + String(format: "-%02d", strip)
-        return url.pathExtension.isEmpty ? stem : stem + "." + url.pathExtension
+        ShotPlan.suffixed(base, with: String(format: "-%02d", strip))
     }
 }

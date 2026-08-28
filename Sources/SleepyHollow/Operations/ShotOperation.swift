@@ -15,11 +15,13 @@ import WebKit
 /// fix for the exact bug the vision doc names: a control 2,400px down a page
 /// invisible to a viewport-shaped shot.
 ///
-/// Execution is a pipeline: **render** the region to a ``ShotCapture`` (the
-/// crop *is* the region), then **tile** it into strips, **fit** each strip to
-/// a pixel budget, and finally **encode** every capture to a ``ShotImage``.
+/// Execution is a pipeline: **render** the region to a ``ShotCapture`` at
+/// ``scale`` device pixels per CSS px (the crop *is* the region), then
+/// **tile** it into strips, **fit** each strip to a pixel budget, and finally
+/// **encode** every capture to a ``ShotImage``.
 /// Each stage is a pure function over captures, and none changes what
-/// another means: `--tile` measures in CSS px of the page, `--max-size`
+/// another means: `--scale` measures in device px per CSS px, `--tile`
+/// measures in CSS px of the page, `--max-size`
 /// measures in pixels of the file. The output is a list even for a plain
 /// shot, because tiles and contact sheets are many images from one operation
 /// and the wire shape should not change when they arrive.
@@ -42,6 +44,10 @@ public struct ShotOperation: ExecutablePageOperation {
     /// What to capture.
     public let region: ShotRegion
 
+    /// Device pixels per CSS px in the rendered raster (`--scale`). The page
+    /// is laid out identically at every density; only the pixels differ.
+    public let scale: ShotScale
+
     /// The pixel budget each output image is fitted to, when one was asked
     /// for (`--max-size`).
     public let fit: ShotFit?
@@ -58,12 +64,14 @@ public struct ShotOperation: ExecutablePageOperation {
     /// Creates a shot operation.
     public init(
         region: ShotRegion = .viewport,
+        scale: ShotScale = .one,
         fit: ShotFit? = nil,
         tile: ShotTile.Height? = nil,
         grid: ShotGrid.Options? = nil,
     ) {
         self.grid = grid
         self.region = region
+        self.scale = scale
         self.fit = fit
         self.tile = tile
     }
@@ -76,7 +84,8 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   inline) — the clean-negative shape `query --exists` and `find`
     ///   share, and the reason no blank PNG is written;
     ///   ``SleepyError/Kind/environment`` when the page's geometry or the
-    ///   snapshot itself can't be read; ``SleepyError/Kind/usage`` when the
+    ///   snapshot itself can't be read, or when ``scale`` is denser than the
+    ///   host's own raster; ``SleepyError/Kind/usage`` when the
     ///   resolved tile height is no taller than the overlap.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
@@ -121,14 +130,40 @@ public struct ShotOperation: ExecutablePageOperation {
         let configuration = WKSnapshotConfiguration()
         configuration.rect = rect
         let image = try await webView.takeSnapshot(configuration: configuration)
-        guard let rasterized = ShotCapture.rasterize(image, atPixelSize: rect.size) else {
+        try requireDensity(of: image)
+        let pixels = CGSize(width: rect.width * CGFloat(scale.factor), height: rect.height * CGFloat(scale.factor))
+        guard let rasterized = ShotCapture.rasterize(image, atPixelSize: pixels) else {
             throw SleepyError(
                 kind: .environment,
                 message: "Could not rasterize the snapshot.",
                 nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
             )
         }
-        return ShotCapture(image: rasterized, rect: rect, scale: 1)
+        return ShotCapture(image: rasterized, rect: rect, scale: scale.factor)
+    }
+
+    /// Refuses a `--scale` denser than the snapshot WebKit actually produced.
+    ///
+    /// The source raster's density is the *host's* screen backing scale, and
+    /// nothing in a headless view moves it (measured:
+    /// `project/2026-08-28-offscreen-window-host.md` § Density). Above it the
+    /// only way to fill the requested pixels is to upscale, which would hand
+    /// back a soft image that looks like a dense one — the plausible wrong
+    /// answer this tool refuses to produce.
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment``
+    ///   naming the host's density and the flag that exceeded it.
+    private func requireDensity(of image: NSImage) throws {
+        let available: CGFloat = ShotCapture.density(of: image)
+        // A hair of tolerance: the density is a ratio of measured numbers.
+        guard CGFloat(scale.factor) > available + 0.01 else { return }
+        throw SleepyError(
+            kind: .environment,
+            message: "This host renders at \(Self.measurement(available))×; "
+                + "--scale \(scale.factor) would upsample.",
+            nextMove: "Capture at --scale \(Int(available.rounded(.down))) or less on this Mac, "
+                + "or run it on a display whose backing scale is \(scale.factor)×.",
+        )
     }
 
     /// Puts the page back at its origin, so that the view's coordinate

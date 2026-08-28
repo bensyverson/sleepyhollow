@@ -21,6 +21,13 @@ So on every Retina host the 2× pixels already exist and are thrown away on purp
 
 ## Recommendation
 
+> **Built, 2026-08-28 (leaf 5BKGq). Two things below are wrong; read this first.**
+>
+> - **Option 1, "force the source density", does not work and was not built.** `wantsLayer` + `layer.contentsScale` moves neither the page's `devicePixelRatio` nor the raw `takeSnapshot` raster (measured: `project/2026-08-28-offscreen-window-host.md` § (c)). The shipped flag is **option 2 only** — refuse rather than fake it.
+> - **The exit code is 5, not 4.** A host that cannot render at the requested density is an environment fact (`SleepyError.Kind.environment`), the same bucket as a dead helper; exit 4 means the *page* failed to load, which it did not.
+>
+> What shipped, otherwise as written: `--scale 1|2|3`, default 1, viewport and breakpoints untouched; `ShotCapture.rasterize` re-renders at `rect × scale`; the source density is read back from the snapshot's own bitmap representation (`pixelsWide ÷ size.width`) and a request above it throws *"This host renders at 2×; --scale 3 would upsample."*; the PNG carries 72 × scale dpi. `--scale` also became a repeatable sweep axis alongside `--size` and `--theme` (leaf yrhxs), which the original note did not anticipate.
+
 Add `--scale <n>` to `shot` (default `1`; accept `1`, `2`, and probably `3`), meaning **device pixels per CSS point of the output PNG**. Layout, viewport, media queries and `--full-page`/`--element` geometry are unchanged; only the raster gets denser. `--size 1280x800 --scale 2` → a 2560×1600 PNG of exactly the page a 1280-point Retina laptop shows.
 
 Implementation, in the terms of the existing code:
