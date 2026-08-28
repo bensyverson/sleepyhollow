@@ -136,15 +136,56 @@ enum GoldenBinary {
             inputPipe.fileHandleForWriting.write(standardInput)
             try inputPipe.fileHandleForWriting.close()
         }
+        // Drain both pipes *before* waiting: a pipe holds 64 KB, and a child
+        // that writes more — a full-page PNG to stdout — blocks on write while
+        // a parent parked in `waitUntilExit()` never reads. That deadlock hung
+        // the suite for over an hour on 2026-08-28.
+        let output = PipeDrain(standardOutput)
+        let errors = PipeDrain(standardError)
+        output.start()
+        errors.start()
+        output.join()
+        errors.join()
         process.waitUntilExit()
-
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        let errorData = standardError.fileHandleForReading.readDataToEndOfFile()
+        let outputData: Data = output.data
+        let errorData: Data = errors.data
 
         return CliInvocation(
             exitCode: process.terminationStatus,
             standardOutput: String(decoding: outputData, as: UTF8.self),
             standardError: String(decoding: errorData, as: UTF8.self),
         )
+    }
+}
+
+/// Reads one pipe to its end on a dedicated thread, so a subprocess that
+/// writes more than the pipe buffer never blocks against a parent that is
+/// waiting for it to exit.
+///
+/// A real `Thread`, not the dispatch pool: `runOffPool` already parks one
+/// pool thread per in-flight golden, and Swift Testing runs goldens in
+/// parallel — drains queued behind those waiters starved the pool and hung
+/// the suite (2026-08-28). Written once, read once after `join()`, which is
+/// what makes the unchecked conformance honest.
+private final class PipeDrain: @unchecked Sendable {
+    private let handle: FileHandle
+    private let finished = DispatchSemaphore(value: 0)
+    private(set) var data = Data()
+
+    init(_ pipe: Pipe) {
+        handle = pipe.fileHandleForReading
+    }
+
+    func start() {
+        let thread = Thread { [self] in
+            data = handle.readDataToEndOfFile()
+            finished.signal()
+        }
+        thread.name = "GoldenBinary.PipeDrain"
+        thread.start()
+    }
+
+    func join() {
+        finished.wait()
     }
 }

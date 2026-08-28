@@ -28,10 +28,17 @@ struct SubmitCommand: AsyncParsableCommand {
 
     @OptionGroup var source: PageSourceOptions
 
-    @Option(name: .long, help: "CSS selector naming the form, or an element inside it.")
+    /// `--element` is the same flag: `shot` shipped with that spelling, so
+    /// both names reach the one concept from either verb.
+    @Option(
+        name: [.long, .customLong("element")],
+        help: "CSS selector naming the form, or an element inside it (--element is the same flag).",
+    )
     var selector: String
 
     @OptionGroup var out: OutOption
+
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

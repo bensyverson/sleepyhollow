@@ -29,13 +29,20 @@ struct FillCommand: AsyncParsableCommand {
 
     @OptionGroup var source: PageSourceOptions
 
-    @Option(name: .long, help: "CSS selector; the first match is filled.")
+    /// `--element` is the same flag: `shot` shipped with that spelling, so
+    /// both names reach the one concept from either verb.
+    @Option(
+        name: [.long, .customLong("element")],
+        help: "CSS selector; the first match is filled (--element is the same flag).",
+    )
     var selector: String
 
     @Option(name: .long, help: "Value to set, interpreted by the field's kind.")
     var value: String
 
     @OptionGroup var out: OutOption
+
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

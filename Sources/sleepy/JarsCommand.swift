@@ -52,6 +52,7 @@ struct JarsCommand: ParsableCommand {
 
         @OptionGroup var format: FormatOption
         @OptionGroup var out: OutOption
+        @OptionGroup var quiet: QuietOption
 
         func run() throws {
             let summaries: [JarSummary] = JarStore().summaries()
@@ -91,6 +92,8 @@ struct JarsCommand: ParsableCommand {
         @Argument(help: "The jar to empty.")
         var name: JarName
 
+        @OptionGroup var quiet: QuietOption
+
         func run() throws {
             try JarStore().clear(name)
         }
@@ -113,6 +116,8 @@ struct JarsCommand: ParsableCommand {
 
         @Argument(help: "The jar to delete.")
         var name: JarName
+
+        @OptionGroup var quiet: QuietOption
 
         func run() throws {
             try JarStore().remove(name)

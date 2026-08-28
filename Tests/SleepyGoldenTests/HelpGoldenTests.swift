@@ -95,6 +95,13 @@ struct HelpGoldenTests {
         #expect(primer.contains("--session"))
     }
 
+    /// The primer is where an agent learns the sibling tool exists at all;
+    /// without it, `peep compare` is a name nobody in this CLI ever says.
+    @Test func `the primer names peep compare for baselines`() async throws {
+        let result = try await GoldenBinary.runOffPool([])
+        #expect(result.standardOutput.contains("peep compare"))
+    }
+
     @Test func `the primer says where help lives`() async throws {
         let result = try await GoldenBinary.runOffPool([])
         #expect(result.standardOutput.contains("sleepy <verb> --help"))

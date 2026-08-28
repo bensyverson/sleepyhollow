@@ -36,6 +36,8 @@ struct CloseCommand: AsyncParsableCommand {
     @Option(name: .long, help: "The session to close, spelled the way page verbs spell it.")
     var session: String?
 
+    @OptionGroup var quiet: QuietOption
+
     mutating func run() async throws {
         let target: SessionName = try CloseCommand.resolve(name: name, session: session)
         try await SessionShutdown.close(target, in: SessionRegistry())

@@ -19,7 +19,7 @@ import Foundation
 /// capture's ``ShotCapture/rect`` origin plus the pixel offset divided by
 /// the density, so a `--rect 0,850,…` crop's first horizontal ruler reads
 /// `900`, not `50`. That number pastes straight back into `--rect`,
-/// `--element`'s neighbours, or a click.
+/// `--selector`'s neighbours, or a click.
 ///
 /// **Density is an argument, not a field.** The stage takes
 /// `pixelsPerCSSPixel` explicitly rather than reading ``ShotCapture/scale``,

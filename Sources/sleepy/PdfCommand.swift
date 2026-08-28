@@ -29,6 +29,7 @@ struct PdfCommand: AsyncParsableCommand {
     @OptionGroup var source: PageSourceOptions
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @Option(name: .long, help: "Sheet size: letter (8.5×11in) or a4 (210×297mm).")
     var paper: PaperSize = .letter

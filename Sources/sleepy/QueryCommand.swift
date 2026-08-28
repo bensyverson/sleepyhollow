@@ -15,8 +15,8 @@ import SleepyHollow
 /// a throwaway probe package: `sleepy query --session foo display` silently
 /// consumed `"display"` into the URL slot and left the selector missing,
 /// even though the URL slot is optional and the selector is required. The
-/// vision doc's own `--element <selector>` flag on `shot` sidesteps the
-/// exact same trap; `--selector` here follows that precedent.
+/// `--selector` flag on `shot` sidesteps the exact same trap; this follows
+/// that precedent, and both verbs now spell it the same way.
 struct QueryCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "query",
@@ -57,6 +57,7 @@ struct QueryCommand: AsyncParsableCommand {
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var format: FormatOption
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {
