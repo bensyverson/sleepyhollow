@@ -53,6 +53,12 @@ Get a value out of the page → `eval`
 sleepy eval http://localhost:3000/ --js 'return document.title;'
 ```
 
+Something failed and you don't know why → `doctor`
+
+```sh
+sleepy doctor
+```
+
 **Sandbox note.** WebKit cannot start under a restrictive sandbox — a load
 that "never finishes" and times out is usually this, not a slow page. In
 Claude Code, run the `sleepy` call with the Bash sandbox disabled.
