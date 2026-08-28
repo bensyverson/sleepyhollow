@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Overflow fixture (real spill)</title>
+  <style>
+    /* The usual "fix" for a spill: it clips the root scroller, so
+       documentElement.scrollWidth equals clientWidth and the naive check
+       reports a clean page. On body alone WebKit still reports the true
+       scrollWidth — it takes html for the root scroller to be clipped. */
+    html { overflow-x: hidden; }
+    body { margin: 0; overflow-x: hidden; }
+    #token { font-family: monospace; font-size: 20px; }
+  </style>
+</head>
+<body>
+  <h1>A paragraph that spills</h1>
+  <p id="token">aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</p>
+  <p id="fine">This paragraph fits.</p>
+</body>
+</html>

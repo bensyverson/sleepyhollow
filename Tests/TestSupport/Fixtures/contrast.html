@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contrast fixture (failing)</title>
+  <style>
+    body { margin: 0; background: #ffffff; color: #1a1a1a; font-family: system-ui, sans-serif; }
+    /* Same colour, three sizes: 3.36:1 passes the large-text bar, fails the normal one. */
+    .large { font-size: 24px; color: #8c8c8c; }
+    .large-bold { font-size: 19px; font-weight: 700; color: #8c8c8c; }
+    .small { font-size: 14px; color: #8c8c8c; }
+    #banner { background-image: linear-gradient(90deg, #ffffff, #101010); }
+    #banner p { color: #767676; }
+  </style>
+</head>
+<body>
+  <h1 id="title">Contrast fixture</h1>
+  <p id="body-text">Body text that clears AA comfortably.</p>
+
+  <h2 class="large" id="large-heading">Large heading at 3.36 to 1</h2>
+  <p class="large-bold" id="large-bold">Bold nineteen pixels at 3.36 to 1</p>
+  <p class="small" id="small-gray">Small grey text at 3.36 to 1</p>
+
+  <div id="banner"><p id="over-image">Text over a gradient</p></div>
+
+  <p id="display-none" style="display: none;">Hidden by display none.</p>
+  <p id="visibility-hidden" style="visibility: hidden;">Hidden by visibility.</p>
+  <p id="opacity-zero" style="opacity: 0;">Hidden by opacity.</p>
+
+  <svg id="panel" width="320" height="120" viewBox="0 0 320 120">
+    <rect x="0" y="0" width="320" height="120" fill="#262626"></rect>
+    <text x="16" y="44" font-size="18" fill="#ffffff">Panel title</text>
+    <text id="sub-label" x="16" y="84" font-size="13" fill="#6c6c6c">Updated 3 minutes ago</text>
+  </svg>
+</body>
+</html>

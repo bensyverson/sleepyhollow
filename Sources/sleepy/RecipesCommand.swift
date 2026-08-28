@@ -41,6 +41,12 @@ struct RecipesCommand: ParsableCommand {
       sleepy query http://localhost:3000/ --selector '.error' --exists
       sleepy find http://localhost:3000/ --text 'Welcome back'
 
+    Check that every label is legible against what it sits on → contrast
+      sleepy contrast http://localhost:3000/report --min wcag-aa
+
+    Check that nothing spills the viewport sideways → overflow
+      sleepy overflow http://localhost:3000/report --size 390x800
+
     Drive an interaction and see the result → open, then click/fill/submit,
     then shot --session
       sleepy open http://localhost:3000/login --name login

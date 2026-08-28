@@ -15,7 +15,7 @@ struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleepy",
         abstract: "A headless WebKit browser for agents.",
-        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ConsoleCommand.self, WireCommand.self, EvalCommand.self, ClickCommand.self, FillCommand.self, SubmitCommand.self, OpenCommand.self, CloseCommand.self, SessionsCommand.self, JarsCommand.self, CookiesCommand.self, RecipesCommand.self, HostCommand.self],
+        subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ContrastCommand.self, OverflowCommand.self, ConsoleCommand.self, WireCommand.self, EvalCommand.self, ClickCommand.self, FillCommand.self, SubmitCommand.self, OpenCommand.self, CloseCommand.self, SessionsCommand.self, JarsCommand.self, CookiesCommand.self, RecipesCommand.self, HostCommand.self],
     )
 
     /// The prefix ArgumentParser puts in front of its own diagnoses.
