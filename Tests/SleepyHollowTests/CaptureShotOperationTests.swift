@@ -105,6 +105,65 @@ struct CaptureShotOperationTests {
         }
     }
 
+    @Test
+    @MainActor
+    func `a display-none element is a clean negative naming its rect`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-zero-area.html", relativeTo: base)!)
+            do {
+                _ = try await host.execute(ShotOperation(element: "#hidden"))
+                Issue.record("expected a clean-negative SleepyError")
+            } catch let error as SleepyError {
+                #expect(error.kind == .negative)
+                #expect(error.exitStatus == ExitStatus.negative)
+                #expect(error.message.contains("#hidden"))
+                #expect(error.message.contains("0×0"))
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func `an empty inline element with zero width is a clean negative`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-zero-area.html", relativeTo: base)!)
+            do {
+                _ = try await host.execute(ShotOperation(element: "#empty-inline"))
+                Issue.record("expected a clean-negative SleepyError")
+            } catch let error as SleepyError {
+                #expect(error.kind == .negative)
+                #expect(error.message.contains("#empty-inline"))
+                #expect(error.message.contains("0×"))
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a zero-area element restores the host's original viewport`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-zero-area.html", relativeTo: base)!)
+            _ = try? await host.execute(ShotOperation(element: "#hidden"))
+            #expect(host.webView.frame.height == CGFloat(LoadOptions().size.height))
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a laid-out element on the same page still captures`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-zero-area.html", relativeTo: base)!)
+            let output = try await host.execute(ShotOperation(element: "#visible"))
+            let dimensions = try #require(pixelDimensions(ofPNG: output.png))
+            #expect(abs(dimensions.width - 200) <= 2)
+            #expect(abs(dimensions.height - 150) <= 2)
+        }
+    }
+
     @Test func `the operation is Friendly and round-trips through its envelope`() throws {
         #expect(ShotOperation.kind == "shot")
         let envelope = try OperationEnvelope(ShotOperation(element: "#target", fullPage: true))
