@@ -19,7 +19,7 @@ struct ClickCommand: AsyncParsableCommand {
         discussion: """
         Synthesized events, not OS-level hit-testing: pointerdown, mousedown, pointerup, mouseup, click.
 
-        --at x,y is in document CSS px: the page's top-left corner is 0,0, unscrolled — the space `shot --rect` crops in, so a rect measured off a full-page capture pastes straight across. (`query` reports geometry relative to the viewport: the same numbers on an unscrolled page, off by the scroll offset otherwise — add window.scrollX/scrollY.) The point is scrolled into view, hit-tested with elementFromPoint, and followed down through every open shadow root, so the button a component renders is what gets clicked.
+        --at x,y is in document CSS px: the page's top-left corner is 0,0, unscrolled — the same space `query` reports geometry in and `shot --rect` crops in, so a rect measured off a full-page capture, a tile index, or a query pastes straight across, at any scroll position. The point is scrolled into view, hit-tested with elementFromPoint, and followed down through every open shadow root, so the button a component renders is what gets clicked.
 
         A --selector click cannot reach that button: CSS does not cross a shadow boundary, and an event dispatched at the host travels up to the document, never down into what the host renders. A closed shadow root exposes nothing to anyone, this tool included, so a point over one clicks its host.
 

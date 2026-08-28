@@ -8,8 +8,10 @@ import Foundation
 /// element's box, or of a rect the caller already measured — never two at
 /// once. Every rect here is in CSS px of the *document* (full-page space,
 /// origin at the top-left of the page, unscrolled), the coordinate system
-/// every other verb reports in, so a rect read from `query`, from a tile
-/// index, or from a gridded capture pastes straight back.
+/// every other verb reports in — ``ElementFact/Geometry``, ``DocumentRect``,
+/// ``HitElement/point``, a tile index — so a rect read from `query`, from a
+/// tile index, or from a gridded capture pastes straight back, and keeps
+/// pasting back after a click or a scroll has moved the page.
 public enum ShotRegion: Friendly {
     /// The viewport the host was built with (``LoadOptions/size``).
     case viewport

@@ -3,12 +3,24 @@
 /// control on this page?" answered without an agent holding a DOM parser in
 /// its head.
 public struct ElementFact: Friendly {
-    /// One element's border-box rect in CSS pixels, from
-    /// `getBoundingClientRect()`.
+    /// One element's border-box rect in CSS pixels of the **document**:
+    /// `getBoundingClientRect()` with `window.scrollX`/`scrollY` added in.
+    ///
+    /// Document space, not viewport space, because these numbers are meant
+    /// to be pasted into the next command: it is the space ``ShotRegion``
+    /// crops in, that `click --at` hit-tests in, and that ``DocumentRect``
+    /// and a tile index report. A viewport-relative rect agrees with all of
+    /// them only while the page sits at scroll zero, and the loop an agent
+    /// actually runs — query a box, click its centre, query again — scrolls
+    /// the page on step two.
+    ///
+    /// To go back the other way, subtract the scroll offset the page reports
+    /// (`sleepy eval <page> 'return [window.scrollX, window.scrollY]'`);
+    /// `width` and `height` need no correction either way.
     public struct Geometry: Friendly {
-        /// Left edge, relative to the viewport.
+        /// Left edge, from the document's left edge.
         public var x: Double
-        /// Top edge, relative to the viewport.
+        /// Top edge, from the document's top edge.
         public var y: Double
         /// Border-box width.
         public var width: Double
@@ -37,7 +49,7 @@ public struct ElementFact: Friendly {
     /// attributes like `disabled` carry an empty string).
     public var attributes: [String: String]
 
-    /// The element's border-box rect.
+    /// The element's border-box rect, in document CSS px.
     public var geometry: Geometry
 
     /// Whether the element renders at all.
