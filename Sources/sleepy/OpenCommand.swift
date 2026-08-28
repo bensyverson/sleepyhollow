@@ -61,6 +61,9 @@ struct OpenCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
+        // A session holds one page, so the sweep axes `shot` repeats have no
+        // meaning here; refusing at `open` beats a helper that fails to start.
+        try flags.requireSingleRenderAxes()
         let sessionName: SessionName = try resolveName()
         let target: URL = try resolveURL()
         let registry = SessionRegistry()
@@ -120,10 +123,10 @@ struct OpenCommand: AsyncParsableCommand {
         if recordWire {
             arguments.append("--record-wire")
         }
-        if let size: String = flags.size {
+        if let size: String = flags.size.first {
             arguments += ["--size", size]
         }
-        if let theme: ColorTheme = flags.theme {
+        if let theme: ColorTheme = flags.theme.first {
             arguments += ["--theme", theme.rawValue]
         }
         if let jar: JarName = flags.jar {

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Capture fixture: a 1000px breakpoint</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    /* Wide layout: the probe is pure blue. */
+    #probe { width: 300px; height: 300px; background: rgb(0, 0, 255); }
+    /* Narrow layout: the same probe is pure red. The 1000 CSS px boundary is
+       the one --scale must not move: a CSS `zoom` hack at a doubled viewport
+       renders the wrong side of it. */
+    @media (max-width: 999px) {
+      #probe { background: rgb(255, 0, 0); }
+    }
+    #caption { font: 16px/1.4 -apple-system, sans-serif; color: #202024; }
+  </style>
+</head>
+<body>
+  <div id="probe"></div>
+  <p id="caption">Breakpoint probe: blue at 1000 CSS px and wider, red below.</p>
+</body>
+</html>

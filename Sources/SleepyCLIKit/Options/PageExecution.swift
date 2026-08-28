@@ -45,8 +45,8 @@ public enum PageExecution {
     public static func loadShapingFlags(_ flags: LoadFlagOptions?) -> [String] {
         guard let flags else { return [] }
         let given: [Bool] = [
-            flags.size != nil,
-            flags.theme != nil,
+            !flags.size.isEmpty,
+            !flags.theme.isEmpty,
             flags.jar != nil,
             !flags.inject.isEmpty,
             flags.injectWorld != nil,
@@ -99,6 +99,29 @@ public enum PageExecution {
         )
     }
 
+    /// The ordered one-shot action steps this invocation carried.
+    ///
+    /// Read from the raw argument vector rather than from the parsed option
+    /// group, because ArgumentParser loses the interleave order across
+    /// separate array options. A verb that assembles its own `LoadOptions` —
+    /// `shot`'s size/scale/theme sweep — needs the same steps this seam would
+    /// have resolved for it.
+    public static func actionSteps() throws -> [ActionStep] {
+        try ActionStepParser.parse(CommandLine.arguments)
+    }
+
+    /// The `LoadOptions` the ephemeral path uses when the caller did not
+    /// supply its own: `flags` resolved, or the deterministic defaults for the
+    /// act verbs, which declare no loading flags at all.
+    public static func defaultLoadOptions(_ flags: LoadFlagOptions?) throws -> LoadOptions {
+        let steps: [ActionStep] = try actionSteps()
+        return try flags?.resolveLoadOptions(steps: steps)
+            ?? LoadFlagOptions.resolve(
+                size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
+                budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: steps,
+            )
+    }
+
     /// Runs `operation` against `source` and returns its output.
     ///
     /// - Parameters:
@@ -109,6 +132,10 @@ public enum PageExecution {
     ///   - preparing: a last chance to shape the ephemeral load's options —
     ///     `sleepy wire` installs its recorder here.
     ///   - registry: where a named session is looked up.
+    ///
+    /// - Note: the ordered action steps come from the raw argument vector,
+    ///   because ArgumentParser loses the interleave order across separate
+    ///   array options — see ``LoadFlagOptions``.
     @MainActor
     public static func run<Operation: ExecutablePageOperation>(
         _ operation: Operation,
@@ -137,6 +164,7 @@ public enum PageExecution {
     public static func perform<Value>(
         on source: PageSource,
         flags: LoadFlagOptions? = nil,
+        loadOptions: LoadOptions? = nil,
         preparing: (LoadOptions) -> LoadOptions = { $0 },
         registry: SessionRegistry = SessionRegistry(),
         onPage: (PageHost) async throws -> Value,
@@ -144,12 +172,7 @@ public enum PageExecution {
     ) async throws -> Value {
         switch source {
         case let .url(url):
-            let steps: [ActionStep] = try ActionStepParser.parse(CommandLine.arguments)
-            let resolved: LoadOptions = try flags?.resolveLoadOptions(steps: steps)
-                ?? LoadFlagOptions.resolve(
-                    size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: nil,
-                    budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: steps,
-                )
+            let resolved: LoadOptions = try loadOptions ?? defaultLoadOptions(flags)
             let options: LoadOptions = preparing(resolved)
             let host = PageHost(options: options)
             _ = try await host.load(url)

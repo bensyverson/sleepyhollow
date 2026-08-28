@@ -187,7 +187,11 @@ extension ShotGrid {
     }
 
     /// One label, its baseline at `point`.
-    private static func draw(_ text: String, at point: CGPoint, font: CTFont, in context: CGContext) {
+    ///
+    /// Internal rather than private because ``ShotSheet`` burns its cell
+    /// labels with the same machinery — one text renderer for every label the
+    /// readout pipeline draws, so they cannot drift apart in font or colour.
+    static func draw(_ text: String, at point: CGPoint, font: CTFont, in context: CGContext) {
         context.textPosition = point
         CTLineDraw(CTLineCreateWithAttributedString(attributed(text, font: font)), context)
     }
@@ -196,12 +200,15 @@ extension ShotGrid {
 
     /// The ruler's typeface: a small monospaced system font, so digits line
     /// up column-wise and a label's width is predictable.
-    private static func labelFont() -> CTFont {
-        NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular) as CTFont
+    ///
+    /// - Parameter size: the point size; a contact sheet's cell labels are
+    ///   read at arm's length rather than counted, so they ask for more.
+    static func labelFont(ofSize size: CGFloat = fontSize) -> CTFont {
+        NSFont.monospacedSystemFont(ofSize: size, weight: .regular) as CTFont
     }
 
     /// A label as Core Text wants it.
-    private static func attributed(_ text: String, font: CTFont) -> NSAttributedString {
+    static func attributed(_ text: String, font: CTFont) -> NSAttributedString {
         NSAttributedString(string: text, attributes: [
             NSAttributedString.Key(kCTFontAttributeName as String): font,
             NSAttributedString.Key(kCTForegroundColorAttributeName as String): ink,
@@ -209,8 +216,8 @@ extension ShotGrid {
     }
 
     /// How wide a label prints, in pixels — what sizes the left gutter.
-    static func labelWidth(_ text: String) -> CGFloat {
-        let line = CTLineCreateWithAttributedString(attributed(text, font: labelFont()))
+    static func labelWidth(_ text: String, font: CTFont? = nil) -> CGFloat {
+        let line = CTLineCreateWithAttributedString(attributed(text, font: font ?? labelFont()))
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
@@ -228,11 +235,11 @@ extension ShotGrid {
 
     /// The gutter's fill: near-white, so dark numbers read on it whatever
     /// the page's own theme is.
-    private static let background: CGColor = .init(srgbRed: 0.97, green: 0.97, blue: 0.97, alpha: 1)
+    static let background: CGColor = .init(srgbRed: 0.97, green: 0.97, blue: 0.97, alpha: 1)
     /// The label colour.
-    private static let ink: CGColor = .init(srgbRed: 0.12, green: 0.12, blue: 0.14, alpha: 1)
+    static let ink: CGColor = .init(srgbRed: 0.12, green: 0.12, blue: 0.14, alpha: 1)
     /// The tick mark colour.
-    private static let tick: CGColor = .init(srgbRed: 0.45, green: 0.45, blue: 0.48, alpha: 1)
+    static let tick: CGColor = .init(srgbRed: 0.45, green: 0.45, blue: 0.48, alpha: 1)
     /// The in-page line colour: mid-gray at low alpha, legible over a white
     /// page and a dark one alike.
     private static let line: CGColor = .init(srgbRed: 0.5, green: 0.5, blue: 0.55, alpha: 0.35)
