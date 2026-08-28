@@ -1,4 +1,4 @@
-<!-- agents:begin delegation@486ea0 -->
+<!-- agents:begin delegation@149825 -->
 # Delegating to subagents
 
 Read this before dispatching agents. Every rule here was paid for. `project/agents/jobs.md` covers the tracker the work is filed in; `project/agents/harness.md` covers the tool the agents run inside.
@@ -9,7 +9,7 @@ Read this before dispatching agents. Every rule here was paid for. `project/agen
 - **Keep on the main thread** anything that is a design decision, a question for the user, a single tool call, or a chain of sequential dependencies.
 - **Read across every open tree before dispatching**, not just the one `job orient` pointed at — sibling trees that aren't blocked are parallel work that doesn't announce itself.
 - **Check a leaf's premise before you delegate it.** A leaf can dissolve on contact — the problem is already solved, or the plan moved past it — and an agent will build what it is told regardless.
-- **Match the model to the failure-mode stakes, not to how mechanical the task looks.** Fail-closed wiring reads like plumbing and isn't.
+- **Match the model to the failure-mode stakes, not to how mechanical the task looks.** Fail-closed wiring reads like plumbing and isn't. Which tiers exist and which one the main thread keeps is a harness fact — `project/agents/harness.md`, Models.
 
 ## Carving the work
 
