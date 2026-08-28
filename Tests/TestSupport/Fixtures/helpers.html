@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>window.sleepy helpers fixture</title>
+  <style>
+    body { margin: 0; background: #ffffff; }
+    h1 { margin: 0; height: 60px; font-size: 32px; line-height: 60px; }
+    #opaque { background: rgb(0, 0, 0); }
+    #translucent { background: rgba(255, 255, 255, 0.5); }
+    #imaged { background-image: linear-gradient(#ffffff, #000000); }
+    .tall { height: 2400px; }
+  </style>
+</head>
+<body>
+  <h1>Helpers fixture</h1>
+  <div id="opaque">
+    <div id="translucent">
+      <p id="over-half">Half white over black.</p>
+    </div>
+  </div>
+  <div id="imaged">
+    <p id="over-image">Over a gradient.</p>
+  </div>
+  <div class="tall"></div>
+</body>
+</html>

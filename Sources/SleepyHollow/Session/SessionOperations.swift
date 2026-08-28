@@ -22,6 +22,8 @@ public enum SessionOperations {
         registry.register(StyleOperation.self)
         registry.register(FindOperation.self)
         registry.register(AXOperation.self)
+        registry.register(ContrastOperation.self)
+        registry.register(OverflowOperation.self)
         registry.register(ConsoleOperation.self)
         registry.register(WireOperation.self)
         registry.register(CookiesOperation.self)

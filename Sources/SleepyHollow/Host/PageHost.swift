@@ -166,6 +166,7 @@ public final class PageHost {
         delegate.host = self
         register(messageName: Self.consoleMessageName, in: .page)
         install(ConsoleCapture.script(messageName: Self.consoleMessageName))
+        install(SleepyHelpers.script)
         if let waiter {
             register(messageName: WaitEngine.messageName, in: .isolated)
             for script in waiter.scripts {

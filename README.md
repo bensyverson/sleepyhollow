@@ -67,8 +67,16 @@ Take a screenshot:
 sleepy shot https://example.com/ --out shot.png
 ```
 
+Assert the page reads and fits — each exits 1 when it finds something, so it
+drops straight into a script:
+
+```sh
+sleepy contrast https://example.com/ --min wcag-aa
+sleepy overflow https://example.com/ --size 390x800
+```
+
 Every loading verb (`load`, `shot`, `pdf`, `archive`, `dom`, `query`, `style`,
-`find`, `ax`, `console`, `wire`, `eval`) takes the same shape — a URL, then
+`find`, `ax`, `contrast`, `overflow`, `console`, `wire`, `eval`) takes the same shape — a URL, then
 flags for viewport size, theme, waiting, and one-shot actions like
 `--click`/`--fill`/`--submit`. Run `sleepy` with no arguments for a primer, or
 `sleepy <verb> --help` for that verb's flags and examples. Exit codes are a
