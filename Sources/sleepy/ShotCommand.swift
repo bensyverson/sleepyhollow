@@ -10,9 +10,10 @@ import SleepyHollow
 /// rect — the thing under test is rarely the whole page — and `--full-page`
 /// captures the entire scroll height instead of the viewport.
 ///
-/// Exit 1 is `--element`'s clean negative: the selector matched nothing.
-/// Every other failure follows the shared scheme (2 usage, 4 load failure,
-/// 5 environment).
+/// Exit 1 is `--element`'s clean negative: the selector matched nothing, or
+/// matched something with no rendered area — either way there is no crop to
+/// take, so no PNG is written. Every other failure follows the shared scheme
+/// (2 usage, 4 load failure, 5 environment).
 struct ShotCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "shot",
@@ -22,9 +23,9 @@ struct ShotCommand: AsyncParsableCommand {
           sleepy shot http://localhost:3000/ --out shot.png
           sleepy shot http://localhost:3000/ --element '#save-button' --out button.png
           sleepy shot http://localhost:3000/ --full-page --theme dark --out page.png
-          sleepy shot --session app --element '.toast' --out toast.png
+          sleepy shot --session app --element '.toast' -o toast.png
 
-        Exit codes: 0 success, 1 --element matched nothing (no PNG written; the reason is on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
+        Exit codes: 0 success, 1 --element matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 
@@ -35,7 +36,13 @@ struct ShotCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Crop the screenshot to this CSS selector's rect. Exits 1 if nothing matches.")
     var element: String?
 
-    @Flag(name: .long, help: "Capture the full scrollable page instead of the viewport.")
+    /// `--full` is the same flag: it is what a typist reaches for first, and
+    /// without it the parser's nearest match is `--fill` — a real `shot`
+    /// flag that does something else entirely.
+    @Flag(
+        name: [.long, .customLong("full")],
+        help: "Capture the full scrollable page instead of the viewport (--full is the same flag).",
+    )
     var fullPage: Bool = false
 
     @MainActor

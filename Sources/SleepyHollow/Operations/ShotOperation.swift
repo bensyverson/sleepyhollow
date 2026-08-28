@@ -25,8 +25,6 @@ public struct ShotOperation: ExecutablePageOperation {
         }
     }
 
-    /// Thrown when ``element`` matches nothing in the page.
-    ///
     /// The wire identifier.
     public static let kind: String = "shot"
 
@@ -46,8 +44,10 @@ public struct ShotOperation: ExecutablePageOperation {
     /// Captures the page as configured and returns PNG bytes.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/negative`` when
-    ///   ``element`` is set and matches nothing — the clean-negative shape
-    ///   `query --exists` and `find` share; ``SleepyError/Kind/environment``
+    ///   ``element`` is set and either matches nothing or matches something
+    ///   with no rendered area (a `display: none` box, an empty inline) —
+    ///   the clean-negative shape `query --exists` and `find` share, and the
+    ///   reason no blank PNG is written; ``SleepyError/Kind/environment``
     ///   when the page's geometry or the snapshot itself can't be read.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
@@ -70,6 +70,17 @@ public struct ShotOperation: ExecutablePageOperation {
                     nextMove: "Check the selector against the page: "
                         + "`sleepy query <page> --selector '\(element)'`; "
                         + "if it arrives late, wait for it with --wait-for '\(element)'.",
+                )
+            }
+            guard measured.width.rounded() >= 1, measured.height.rounded() >= 1 else {
+                throw SleepyError(
+                    kind: .negative,
+                    message: "'\(element)' matched, but it has no rendered area: "
+                        + "its rect is \(Self.describe(measured)).",
+                    nextMove: "An element that is display:none, or an empty inline, has no box to crop to. "
+                        + "Check what the cascade resolved to: "
+                        + "`sleepy style <page> --selector '\(element)' --property display`; "
+                        + "if it is sized late, wait for that with --wait-for.",
                 )
             }
             rect = measured
@@ -107,6 +118,19 @@ public struct ShotOperation: ExecutablePageOperation {
         guard text != "null", let data = text.data(using: .utf8) else { return nil }
         guard let decoded = try? JSONDecoder().decode(BoundingRect.self, from: data) else { return nil }
         return CGRect(x: decoded.x, y: decoded.y, width: decoded.width, height: decoded.height)
+    }
+
+    /// A rect as an agent should read it back: `200×150 at (100, 2400)`, in
+    /// CSS pixels, trailing zeroes trimmed.
+    private static func describe(_ rect: CGRect) -> String {
+        "\(measurement(rect.width))×\(measurement(rect.height))"
+            + " at (\(measurement(rect.origin.x)), \(measurement(rect.origin.y)))"
+    }
+
+    /// One coordinate, rendered without a pointless `.0` and without the
+    /// current locale's decimal separator.
+    private static func measurement(_ value: CGFloat) -> String {
+        String(format: "%g", Double(value))
     }
 
     /// The JSON shape ``boundingRect(of:on:)`` decodes from the page.
