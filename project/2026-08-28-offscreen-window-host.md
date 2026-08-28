@@ -62,6 +62,8 @@ Ordering moves `isVisible` and nothing else. Also measured and equally ineffecti
 
 `OffscreenWindow` therefore defaults to `Ordering.back` — the least intrusive ordering that still puts the window in the window list, so `NSWindow.isVisible` is `true` for the AppKit printing paths `pdf` pagination will go through. The enum is kept because that claim about printing is *not yet measured*; leaf 25Mev should confirm which ordering `NSPrintOperation` needs.
 
+> **Corrected 2026-08-28 by leaf 25Mev.** Printing does not need `isVisible`, or any particular ordering: all six `(Ordering, Rendering)` pairs print byte-identical PDFs, and so does a web view in no window at all. See the printing addendum at the end of this document; `PDFOperation` asks for `Ordering.unordered`. `OffscreenWindow`'s default stays `.back`, now justified only as "in the list, out of the way".
+
 ## The one piece of SPI
 
 `-[WKWebView _setWindowOcclusionDetectionEnabled:]` — sent `NO` once, right after the view is put in the window — is what makes the hosted page render. `WKWebView` derives page visibility from its window's `occlusionState`, and the window server will never call a window parked off every display "visible", so there is no public way out of it. This is the same lever WebKit's own test runner pulls to host a web view off-screen.
@@ -82,10 +84,60 @@ Byte-identical also says the useful thing: for a static page, hosting changes no
 
 ## What this means for the callers
 
-- **`pdf` pagination (25Mev).** Call `ensureOffscreenWindow()`; a window is the requirement. Confirm whether `NSPrintOperation` needs `Ordering.back` or tolerates `.unordered`, and whether it wants `Rendering.hidden` (a print pass has no reason to animate).
+- **`pdf` pagination (25Mev).** Done, and the answer is in the printing addendum below: a window to be modal *for* is the only requirement, ordering and rendering make no difference, and `PDFOperation` takes `ensureOffscreenWindow(ordering: .unordered, rendering: .hidden)`.
 - **`shot --scale`.** The window does not help. `contentsScale` is a dead end (measured); `_setOverrideDeviceScaleFactor:` moves the page's `devicePixelRatio` but not the snapshot raster on this host. Design `--scale` on the existing normalization plus, if the density must be forced, a second SPI decision — and keep the "refuse rather than fake it" fallback.
 - **The time-series spike.** Now possible: a hosted, live page animates on the wall clock at ~60Hz. Note the consequence — an infinite rAF chain is genuine activity, so `--wait-for idle` over a live hosted page will not settle. Hosting stays opt-in per operation for exactly this reason.
 
 ## Nothing visible, proved
 
 `OffscreenWindowTests` asserts during a real load and snapshot: `window.screen == nil`; the window's frame intersects no `NSScreen.screens` frame; every *visible* `NSApp` window is off every screen; `NSApp.isActive == false`; `NSApp.activationPolicy() == .prohibited`, set before the first window exists. The policy is set once per process in `OffscreenWindow`, and no code path calls `makeKeyAndOrderFront` or `NSApp.activate`.
+
+## Addendum, 2026-08-28: what printing actually needs
+
+Measured by the `pdf` agent (leaf 25Mev) while rebuilding `PDFOperation` on `NSPrintOperation`. Same host as above. Reproduce the ordering matrix with the throwaway probe recipe below; the surviving assertions are in `CapturePDFOperationTests` (`swift test --filter PDFOperation`, without `--quiet`, lines prefixed `[pdf]`).
+
+### The window matters less than the section above expected
+
+The fixture is `print-paginated.html` (19 sized blocks plus two `.no-print` banners), printed at Letter through `WKWebView.printOperation(with:)` driven by `runModal(for:delegate:didRun:contextInfo:)`:
+
+| rendering | ordering | `NSWindow.isVisible` | result |
+| --- | --- | --- | --- |
+| `hidden` | `unordered` | false | 15,207 bytes, 5 pages, body text present, `.no-print` absent |
+| `hidden` | `back` | true | 15,207 bytes, 5 pages, identical |
+| `hidden` | `frontRegardless` | true | 15,207 bytes, 5 pages, identical |
+| `live` | `unordered` | false | 15,207 bytes, 5 pages, identical |
+| `live` | `back` | true | 15,207 bytes, 5 pages, identical |
+| `live` | `frontRegardless` | true | 15,207 bytes, 5 pages, identical |
+
+**All six are byte-identical.** Ordering does not matter to printing, and neither does `Rendering` — the SPI is not on `pdf`'s path at all. One more configuration, measured because it is the honest control: a web view in **no window at all**, printed modally for an *unrelated* off-screen window hosting a plain `NSView`, produced the same 15,207 bytes and 5 pages.
+
+> **Correction to "(d) Ordering", above.** That section says `Ordering.back` is the default so that "`NSWindow.isVisible` is `true` for the AppKit printing paths `pdf` pagination will go through", and flags the claim as unmeasured. It is now measured and it was wrong: printing needs no visible window, and `Ordering.unordered` prints the same bytes. The same over-claim is in `OffscreenWindow`'s own DocC — "`NSPrintOperation` … refuses a view that has none". What actually needs a window is `runModal(for:…)`, whose parameter is a window; the *view* need not be in it, because `printOperation(with:)` paginates in the web content process rather than through AppKit's drawing of the view.
+
+`PDFOperation` therefore asks for `ensureOffscreenWindow(ordering: .unordered, rendering: .hidden)`: the least intrusive pair, a window that never enters the window list, and no private API on the `pdf` path. `OffscreenWindow`'s own defaults are unchanged (`.back`, `.live`), which is what a rendering caller wants.
+
+### `NSPrintOperation(view:)` is the wrong constructor
+
+Building the operation as `NSPrintOperation(view: webView, printInfo:)` — the shape the field report used — paginates **the right number of entirely blank sheets**: 5 Letter pages whose `PDFDocument.string` is the empty string. The page lives in another process, so AppKit's own drawing pass has nothing to draw. `WKWebView.printOperation(with:)` (public, macOS 11+) asks the web content process to lay itself out for paper and is the only path that produces text.
+
+### `didRun:` arrives on a background thread
+
+`runModal(for:delegate:didRun:contextInfo:)` finishes on a secondary `NSThread` (`-[NSConcretePrintOperation _continueModalOperationToTheEnd:]`), so an `@objc` callback that inherits `@MainActor` isolation from its class traps in `swift_task_checkIsolated` — `EXC_BREAKPOINT`, no message, exit 133, and no `Fatal error:` line anywhere in the test output. The crash report is the only thing that names it. The callback in `PrintRunner` is `nonisolated` and hops back to the main actor; its selector is pinned with `@objc(printOperationDidRun:success:contextInfo:)`.
+
+### Margins: the page wins, and `NSPrintInfo` is only the fallback
+
+Content inset measured as the first page's text bounding box relative to its media box (`PDFPage.selection(for:)` over the media box, then `PDFSelection.bounds(for:)`):
+
+| fixture | `NSPrintInfo` margins | pages | content inset (left, top) |
+| --- | --- | --- | --- |
+| no `@page` rule | 0pt | 5 | 0.0, 3.7 |
+| no `@page` rule | 72pt | 6 | 72.0, 75.7 |
+| `@page { margin: 1.25in }` | 0pt | 3 | 90.0, 93.7 |
+| `@page { margin: 1.25in }` | 72pt | 3 | 90.0, 93.7 |
+
+So a `@page` rule **replaces** the `NSPrintInfo` margin rather than adding to it, and a document with no rule takes whatever `NSPrintInfo` says. The only thing our number decides is what an unstyled page gets.
+
+**Ruling: `PDFOperation` sets all four `NSPrintInfo` margins to zero and says so in `--help`.** The rule a caller has to learn is then one sentence — *the page decides the margins* — with no inset a stylesheet author cannot see or cancel. The cost is that a page with no `@page` rule prints edge to edge; the fix is one line of CSS (`@page { margin: 0.5in }`), and it is visible in the document rather than hidden in the tool. `--margin <pt>` was therefore **not** built: it would be a second way to say something CSS already says, and it can only ever affect pages that said nothing. Un-park it if real pages turn up that must be printed with margins and cannot be edited.
+
+### Probe recipe
+
+A throwaway `@Suite` (deleted after measuring) that, for each `(Rendering, Ordering)` pair, builds a `PageHost`, calls `ensureOffscreenWindow(ordering:rendering:)`, loads `print-paginated.html`, runs `PDFOperation()`, and prints `PDFDocument`'s page count and `string`. The margin table came from the same suite building `NSPrintInfo` by hand at each margin value and driving `host.webView.printOperation(with:)` through a copy of `PrintRunner`.

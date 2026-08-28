@@ -31,7 +31,9 @@ import TestSupport
 /// - **`pdf`** emits `/CreationDate`, `/ModDate` and a content-plus-date
 ///   `/ID` into the trailer. Two runs of `pdf static.html` differed in 66
 ///   bytes of 24286, all inside those three values; the byte *length*, the
-///   page count and the page's text and media box were identical.
+///   page count and the page's text and media box were identical. (Measured
+///   against the old `WKWebView.createPDF` path; the print path replacing it
+///   stamps the same trailer, and this test states the same claim.)
 ///
 /// The two timing ones are **intermittent**: on an idle machine consecutive
 /// runs often quantize to the same millisecond, so a plain byte-equality
@@ -172,8 +174,8 @@ struct ArtifactDeterminismGoldenTests {
 
     // MARK: - pdf
 
-    /// `pdf` cannot claim byte-identity: `WKWebView.createPDF` stamps the
-    /// trailer with the wall clock. What *is* stable is asserted instead.
+    /// `pdf` cannot claim byte-identity: the print job stamps the trailer
+    /// with the wall clock. What *is* stable is asserted instead.
     @Test func `pdf repeats its pages and its byte length, not its bytes`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url: String = baseURL.appendingPathComponent("static.html").absoluteString
