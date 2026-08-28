@@ -25,3 +25,12 @@ if [ -n "$STAGED_FILES" ]; then
 fi
 
 swift test --quiet
+
+# Shared agent rules: refuse a commit that leaves AGENTS.md or a generated
+# project/agents/ file stale or hand-edited. `agents` is built from ~/git/agents.
+echo "==> agents check"
+if command -v agents > /dev/null; then
+  agents check || exit 1
+else
+  echo "agents is not installed (go install from ~/git/agents); skipping"
+fi
