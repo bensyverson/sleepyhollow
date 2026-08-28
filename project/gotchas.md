@@ -16,7 +16,7 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **`swiftformat` (writing, not linting) also needs the sandbox disabled in a worktree.** `--lint` reads and works; the fixing pass reports `error: Failed to write file …` for every file, because the sandbox denies writes under `.claude/`.
 
-**`requestAnimationFrame` never fires in a headless `WKWebView`** — no window, no rendering update, no callback (measured; `setTimeout` is unaffected and fires on time). A fixture that schedules anything through a rAF chain will hang until the budget. Use `setTimeout` or a fetch completion.
+**`requestAnimationFrame` never fires in a *windowless* `WKWebView`** — no window, no rendering update, no callback (measured; `setTimeout` is unaffected and fires on time). That is every verb's default, so a fixture that schedules anything through a rAF chain will hang until the budget: use `setTimeout` or a fetch completion. A view hosted by `PageHost.ensureOffscreenWindow()` is the exception — rAF fires at ~60Hz there and CSS transitions advance on the wall clock, but only because `OffscreenWindow` also turns off window-occlusion detection; the window alone changes nothing (measured 2026-08-28, `project/2026-08-28-offscreen-window-host.md`).
 
 **Answer WebKit's delegate protocols with the exact SDK signature or you get no callbacks.** `WKUIDelegate`'s completion handlers are typed `@escaping @MainActor @Sendable`; a plain `@escaping (Bool) -> Void` compiles, produces only a "nearly matches optional requirement" *warning*, and then the dialog panels silently never fire. Treat that warning as an error.
 
@@ -34,3 +34,6 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **A helper spawned by `sleepy open` must ignore `SIGPIPE`.** `open` reads the helper's stdout for the readiness line and then exits, closing its end of the pipe; anything the helper wrote afterwards would kill it seconds after the session opened. `HostCommand.detachFromSpawner()` sets `signal(SIGPIPE, SIG_IGN)` right after announcing.
 
+## 2026-08-28
+
+**`#expect(aDouble == aCGFloat)` fails even when both are 2.0.** Swift's implicit `Double`/`CGFloat` conversion works in plain code (`ratio == window.backingScaleFactor` is `true` in a `print`) but not inside Swift Testing's macro: the same comparison in an `#expect` records `Expectation failed: (ratio → 2.0) == (window.backingScaleFactor → 2.0)`, in either operand order. Isolated and reproduced 2026-08-28 while measuring the off-screen window host. Convert explicitly — `#expect(Double(window.backingScaleFactor) == ratio)` passes — and treat any AppKit/CoreGraphics geometry value crossing into an `#expect` the same way.

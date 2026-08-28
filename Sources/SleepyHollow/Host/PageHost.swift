@@ -103,6 +103,10 @@ public final class PageHost {
     /// Whether this host has already pulled the jar into its cookie store.
     var hasImportedJar = false
 
+    /// The window ``PageHost/ensureOffscreenWindow()`` parked ``webView`` in;
+    /// `nil` until an operation asks for one.
+    var offscreenWindow: OffscreenWindow?
+
     private var isLoading = false
     private var pendingNavigation: CheckedContinuation<NavigationOutcome, Never>?
     private var navigationFailure: (any Error)?
