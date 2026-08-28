@@ -41,3 +41,33 @@ a live session has no load in flight to borrow one from), which is real
 API surface for a need nobody has demonstrated yet. Un-parked by: an agent
 flow that genuinely needs to act on a late element in a live session and
 can't express it with `sleepy eval` polling first.
+
+## 2026-08-28 — Time-series capture (`shot --every <ms> --for <ms>`)
+
+A filmstrip of loading states, skeletons and transitions, delivered as
+frames plus a `--sheet` mosaic. Parked because `requestAnimationFrame`
+never fires in a windowless `WKWebView` (`gotchas.md`), so a headless
+filmstrip may photograph frozen motion and report a state that never
+existed. Sessions already let an agent loop shots at ~55 ms each.
+Un-parked by: the off-screen window host landing and its spike showing
+rAF and CSS transitions advance in the hosted view
+(`2026-08-28-agent-feedback-synthesis.md`).
+
+## 2026-08-28 — Layout-shift assertion
+
+`query` geometry diffed between two moments, as an exit-code verdict.
+Parked because two `query` calls answer it today. Un-parked by: a page
+whose shift an agent could not catch that way.
+
+## 2026-08-28 — Further assertion verbs
+
+Tap-target size, truncated text, webfont fallback, unlabeled controls,
+overlapping elements. Each is a plausible `window.sleepy` helper plus a
+thin verb. Parked one at a time; un-parked individually by a field report
+of an agent hand-rolling that check and getting it wrong.
+
+## 2026-08-28 — Element-relative `--rect`
+
+"200 px below this element" without arithmetic. Parked: document-space
+`--rect` plus `query` geometry covers it. Un-parked by an agent flow that
+needs it more than once.
