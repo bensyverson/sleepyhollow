@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import PDFKit
 import Testing
 import TestSupport
 
@@ -79,6 +80,26 @@ struct CaptureGoldenTests {
             let data = try Data(contentsOf: out)
             #expect(data.count > 512)
             #expect(data.prefix(5) == Data("%PDF-".utf8))
+        }
+    }
+
+    @Test func `pdf paginates print media onto the sheet --paper names`() async throws {
+        try await FixtureServer.withRunning { _, baseURL in
+            let url = baseURL.appendingPathComponent("print-paginated.html").absoluteString
+            let out = Self.temporaryFile(extension: "pdf")
+            defer { try? FileManager.default.removeItem(at: out) }
+            let result = try await GoldenBinary.runOffPool(
+                ["pdf", url, "--paper", "a4", "--budget", "60000", "--out", out.path],
+            )
+            #expect(result.exitCode == 0, "\(result.standardError)")
+            let document = try #require(try PDFDocument(data: Data(contentsOf: out)))
+            #expect(document.pageCount >= 3)
+            let text = try #require(document.string)
+            #expect(text.contains("Paginated body paragraph"))
+            #expect(!text.contains("SCREENONLYBANNER"))
+            let box = try #require(document.page(at: 0)).bounds(for: .mediaBox)
+            #expect(abs(Double(box.width) - 595.28) < 2)
+            #expect(abs(Double(box.height) - 841.89) < 2)
         }
     }
 

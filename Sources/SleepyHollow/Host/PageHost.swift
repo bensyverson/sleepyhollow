@@ -63,7 +63,7 @@ public final class PageHost {
     /// The live web view.
     ///
     /// Exposed deliberately: the capture, find and cookie families need
-    /// `WKWebView`'s own APIs (`takeSnapshot`, `createPDF`, `find`,
+    /// `WKWebView`'s own APIs (`takeSnapshot`, `printOperation(with:)`, `find`,
     /// `WKHTTPCookieStore`), and a wrapper that only forwarded them would be
     /// an adapter holding no decision. Navigation belongs to ``load(_:)`` —
     /// loading through this property bypasses the budget and the facts.

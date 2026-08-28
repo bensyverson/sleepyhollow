@@ -6,8 +6,9 @@ import Foundation
 ///
 /// Two different needs bring a web view here, and they are not the same need:
 ///
-/// - **A window at all.** `NSPrintOperation`, which `pdf` pagination needs,
-///   refuses a view that has none.
+/// - **A window at all.** `NSPrintOperation.runModal(for:…)`, which `pdf`
+///   pagination drives, needs a window to run *for* — measured: the printed
+///   view itself need not be in one, but the modal session does.
 /// - **A page WebKit considers visible.** A windowless web view sits in
 ///   WebKit's hidden-page state: it still renders on demand for
 ///   `takeSnapshot`, but never runs a rendering update, so
