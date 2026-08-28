@@ -86,6 +86,8 @@ you attach a `--jar` for cookies that should outlive it.
 
 - [project/2026-08-20-vision.md](project/2026-08-20-vision.md) — why this
   tool exists and the philosophy behind it
+- [project/recipes.md](project/recipes.md) — goal-to-verb routing (same
+  content as `sleepy recipes` / `sleepy help recipes`)
 - [project/](project/) — dated findings and design decisions as the project
   developed
 - API reference: build the DocC archive with

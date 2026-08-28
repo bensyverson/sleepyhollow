@@ -143,4 +143,17 @@ struct HelpGoldenTests {
         let result = try await GoldenBinary.runOffPool(["--help"])
         #expect(!result.standardOutput.contains("_host"))
     }
+
+    // MARK: - Recipes
+
+    /// The goal-to-verb routing table, reachable both as its own verb and
+    /// through ArgumentParser's built-in `help` subcommand.
+    @Test func `sleepy help recipes lists goal to verb pairs and names peep`() async throws {
+        let result = try await GoldenBinary.runOffPool(["help", "recipes"])
+        #expect(result.exitCode == 0)
+        #expect(result.standardOutput.contains("wire"))
+        #expect(result.standardOutput.contains("ax"))
+        #expect(result.standardOutput.contains("eval"))
+        #expect(result.standardOutput.contains("peep"))
+    }
 }
