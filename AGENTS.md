@@ -114,15 +114,15 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - **The head of `AGENTS.md` lists where the docs live; keep that list current.**
 <!-- agents:end docs -->
 
-<!-- agents:begin delegation-brief@4fe3f0 -->
+<!-- agents:begin delegation-brief@7bb732 -->
 ## Delegating to subagents
 
-Design on the main thread; dispatch execution to agents for anything larger than a small change. **Read `project/agents/delegation.md` before dispatching** — it carries what to delegate, the worktree workflow, the traps, and the briefing template.
+Design on the main thread; dispatch execution to agents for anything larger than a small change. **Read `project/agents/delegation.md` before dispatching** — it carries what to delegate, how to carve the work, the worktree workflow, the traps, and the briefing template.
 
-- Commit **and push** before dispatching: worktrees branch from `origin/main`, so anything unpushed is invisible to the agent.
-- Assign work by files, not strictly by task, and read across every open tree — there is usually more parallel work than `job orient` showed.
-- Agents `claim` and `note` (unique `--as` each), never `done`, and never commit; the main thread integrates, runs the full suite once, commits, then closes leaves.
-- Choose the model deliberately, end every brief with **"what in this brief is wrong?"**, and verify what comes back — the pushback, not the typing, is usually the value.
+- Fanning out is a decision, not a default: map each leaf's file surface first, parallelize only the disjoint set, pre-carve or reserve a contended file to one writer, and serialize the rest.
+- Commit before dispatching — a worktree branches from local HEAD, so uncommitted work is invisible to the agent; pushing is backup.
+- Agents never commit: the integrator wip-commits the agent's branch with hooks off, merges it `--no-ff --no-commit`, reads the diff (that is the code review), runs the full suite once, then commits and closes the leaves.
+- Choose the model deliberately, require **deviations from the brief** and **"what in this brief is wrong?"** in every report, and verify what comes back — the pushback, not the typing, is usually the value.
 <!-- agents:end delegation-brief -->
 
 <!-- agents:begin jobs-brief@42b137 -->
