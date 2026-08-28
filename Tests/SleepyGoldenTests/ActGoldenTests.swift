@@ -76,6 +76,37 @@ struct ActGoldenTests {
         }
     }
 
+    @Test func `naming both --selector and --at is a usage error that says to pick one`() async throws {
+        let result = try await GoldenBinary.runOffPool([
+            "click", "--session", "whatever", "--selector", "#go", "--at", "620,180",
+        ])
+        #expect(result.exitCode == 2)
+        #expect(result.standardError.contains("--selector"))
+        #expect(result.standardError.contains("--at"))
+        #expect(result.standardOutput.isEmpty)
+    }
+
+    @Test func `naming neither --selector nor --at is a usage error that teaches both`() async throws {
+        let result = try await GoldenBinary.runOffPool(["click", "--session", "whatever"])
+        #expect(result.exitCode == 2)
+        #expect(result.standardError.contains("--selector"))
+        #expect(result.standardError.contains("--at"))
+    }
+
+    @Test func `an --at value that is not a point is a usage error naming the shape`() async throws {
+        let result = try await GoldenBinary.runOffPool(["click", "--session", "whatever", "--at", "middle"])
+        #expect(result.exitCode == 2)
+        #expect(result.standardError.contains("x,y"))
+    }
+
+    @Test func `click --help states the coordinate space --at is measured in`() async throws {
+        let result = try await GoldenBinary.runOffPool(["click", "--help"])
+        #expect(result.exitCode == 0)
+        #expect(result.standardOutput.contains("--at"))
+        #expect(result.standardOutput.lowercased().contains("document"))
+        #expect(result.standardOutput.lowercased().contains("shadow"))
+    }
+
     @Test func `another option's value that spells --click is not an action step`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let page = baseURL.appendingPathComponent("static.html").absoluteString

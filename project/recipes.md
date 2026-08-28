@@ -31,6 +31,14 @@ sleepy click --session login --selector '#sign-in'
 sleepy shot --session login --out after.png
 ```
 
+Click something a component renders inside an open shadow root, which no
+selector can address → `query` for the host's box, then `click --at`
+
+```sh
+sleepy query --session app --selector 'my-widget'
+sleepy click --session app --at 620,180
+```
+
 Compare a screenshot against a baseline → `peep compare` (PixelPeeper, a
 sibling tool: it works on any PNG in pixel space; Sleepy owns the page and
 its CSS-px coordinates)

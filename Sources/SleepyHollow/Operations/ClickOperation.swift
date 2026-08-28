@@ -1,10 +1,17 @@
-/// `sleepy click`: press the first element a selector matches, with the
-/// pointer/mouse/click sequence a page listens for.
+/// `sleepy click`: press what a selector matches, or what renders at a
+/// point, with the pointer/mouse/click sequence a page listens for.
 ///
 /// Honest about mechanism — these are synthesized DOM events, not OS-level
 /// hit-testing (see `ActionScript`). A disabled control is refused rather
 /// than pretended at, and the outcome reports whether the click set the page
 /// navigating.
+///
+/// **A point is hit-tested for real.** ``ActionTarget/point(_:)`` resolves
+/// through `document.elementFromPoint` and then descends every open
+/// `shadowRoot` at the same coordinates, so the button a component renders is
+/// what gets clicked — the one thing a selector cannot reach, because CSS
+/// does not cross a shadow boundary and an event dispatched at the host never
+/// travels down into it.
 public struct ClickOperation: ExecutablePageOperation {
     /// This operation's typed result.
     public typealias Output = ActionOutcome
@@ -12,26 +19,48 @@ public struct ClickOperation: ExecutablePageOperation {
     /// The wire identifier.
     public static let kind: String = "click"
 
-    /// The CSS selector whose first match is clicked.
-    public var selector: String
+    /// What gets clicked: a selector's first match, or whatever renders at a
+    /// point in document CSS px.
+    public var target: ActionTarget
 
     /// Creates the operation.
-    public init(selector: String) {
-        self.selector = selector
+    public init(target: ActionTarget) {
+        self.target = target
     }
 
-    /// Clicks the first element matching ``selector``.
+    /// Creates a click on the first element a CSS selector matches.
+    public init(selector: String) {
+        self.init(target: .selector(selector))
+    }
+
+    /// Creates a click on whatever renders at a point in document CSS px.
+    ///
+    /// The point is scrolled into view before the hit test, so a coordinate
+    /// read off a full-page capture works without the caller scrolling first.
+    public init(point: DocumentPoint) {
+        self.init(target: .point(point))
+    }
+
+    /// Clicks the target.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/negative`` when
-    ///   nothing matches or the control is disabled, and
-    ///   ``SleepyError/Kind/usage`` when the selector cannot be parsed.
+    ///   nothing matches, the control is disabled, or nothing but the page
+    ///   background is at the point, and ``SleepyError/Kind/usage`` when the
+    ///   selector cannot be parsed.
     @MainActor
     public func execute(on host: PageHost) async throws -> ActionOutcome {
         try await ActionScript.outcome(
             for: .click,
-            selector: selector,
-            body: ActionScript.clickBody,
+            target: target,
+            body: Self.body(for: target),
             on: host,
         )
+    }
+
+    private static func body(for target: ActionTarget) -> String {
+        switch target {
+        case .selector: ActionScript.clickBody
+        case .point: ActionScript.pointClickBody
+        }
     }
 }

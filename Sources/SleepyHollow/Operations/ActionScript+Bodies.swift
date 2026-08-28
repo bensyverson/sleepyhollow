@@ -46,6 +46,33 @@ extension ActionScript {
       return !href.toLowerCase().startsWith('javascript:');
     }
 
+    function sleepyDispatchClick(element, x, y) {
+      const stopWatching = sleepyWatchSubmits();
+      let allowed = true;
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+        const pressing = type === 'pointerdown' || type === 'mousedown';
+        const init = {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          view: window,
+          button: 0,
+          buttons: pressing ? 1 : 0,
+          detail: type === 'click' ? 1 : 0,
+          clientX: x,
+          clientY: y,
+        };
+        const pointer = type.startsWith('pointer') && typeof PointerEvent === 'function';
+        const event = pointer
+          ? new PointerEvent(type, Object.assign({ pointerId: 1, pointerType: 'mouse', isPrimary: true }, init))
+          : new MouseEvent(type, init);
+        const proceeded = element.dispatchEvent(event);
+        if (type === 'click') allowed = proceeded;
+      }
+      const submitted = stopWatching();
+      return submitted || (allowed && sleepyFollowsLink(element));
+    }
+
     function sleepyNativeSetter(element, property) {
       const prototype = Object.getPrototypeOf(element);
       const descriptor = Object.getOwnPropertyDescriptor(prototype, property);
@@ -65,35 +92,8 @@ extension ActionScript {
     }
     if (typeof element.focus === 'function') element.focus();
     const rect = element.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    const stopWatching = sleepyWatchSubmits();
-    let allowed = true;
-    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-      const pressing = type === 'pointerdown' || type === 'mousedown';
-      const init = {
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-        view: window,
-        button: 0,
-        buttons: pressing ? 1 : 0,
-        detail: type === 'click' ? 1 : 0,
-        clientX: x,
-        clientY: y,
-      };
-      const pointer = type.startsWith('pointer') && typeof PointerEvent === 'function';
-      const event = pointer
-        ? new PointerEvent(type, Object.assign({ pointerId: 1, pointerType: 'mouse', isPrimary: true }, init))
-        : new MouseEvent(type, init);
-      const proceeded = element.dispatchEvent(event);
-      if (type === 'click') allowed = proceeded;
-    }
-    const submitted = stopWatching();
-    return {
-      tagName: sleepyTag(element),
-      navigating: submitted || (allowed && sleepyFollowsLink(element)),
-    };
+    const navigating = sleepyDispatchClick(element, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return { tagName: sleepyTag(element), navigating };
     """
 
     /// A fill: the value set through the native setter, then `input` and

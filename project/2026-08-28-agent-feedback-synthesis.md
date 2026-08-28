@@ -52,6 +52,8 @@ Added beside "everything terminates": when the tool cannot give the true answer 
 
 **JS-only use.** Already exists — `eval --js` returns JSON and was the workhorse (10 of 27 calls). The feedback shows it is painful, not missing: fix the world default, the bare-expression `null`, add `--file`/stdin for multi-line scripts, and document `about:blank` as "no page". No JavaScriptCore path: `jsc` and `node` exist, and a page-less eval has no WebKit reason to be here.
 
+> **Settled while building, 2026-08-28 (leaf BXNVm).** This note left `click --at` as "viewport or document CSS px". It is **document CSS px** — one space, no flag, matching `--rect` and the `--grid` labels this note already promised agents would click straight off. The verb scrolls the point into view itself and hit-tests at the viewport-relative position, so the caller never converts; a point past the end of the document is a clean negative rather than a click at the clamped scroll offset. Caveat found in passing and *not* fixed here: `query` reports element geometry relative to the **viewport**, so its numbers only equal document space on an unscrolled page — the two documented conventions disagree, and something should reconcile them.
+
 ## Parked, with un-park conditions
 
 Recorded in `backlog.md` as well:

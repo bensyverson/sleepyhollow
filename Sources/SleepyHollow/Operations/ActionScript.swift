@@ -30,12 +30,15 @@ enum ActionScript {
         var value: String?
         /// Whether the page started navigating as a result.
         var navigating: Bool?
+        /// What a coordinate click's hit test found.
+        var hit: HitElement?
     }
 
     /// Runs one action body and shapes the page's report into an outcome.
     ///
     /// - Parameter action: which primitive is running, for the messages.
-    /// - Parameter selector: the element chooser, always passed to the body.
+    /// - Parameter target: what to act on; put in the body's scope as
+    ///   `selector` or as `point`, whichever the target is.
     /// - Parameter body: the action's JavaScript, appended to ``helpers``.
     /// - Parameter arguments: extra named values the body needs.
     /// - Throws: ``SleepyError`` — ``SleepyError/Kind/negative`` when the page
@@ -45,13 +48,18 @@ enum ActionScript {
     @MainActor
     static func outcome(
         for action: ActionOutcome.Action,
-        selector: String,
+        target: ActionTarget,
         body: String,
         arguments: [String: Any] = [:],
         on host: PageHost,
     ) async throws -> ActionOutcome {
         var named: [String: Any] = arguments
-        named["selector"] = selector
+        switch target {
+        case let .selector(selector):
+            named["selector"] = selector
+        case let .point(point):
+            named["point"] = ["x": point.x, "y": point.y]
+        }
         let text: String
         do {
             text = try await host.evaluate(helpers + "\n" + body, arguments: named, in: .isolated)
@@ -66,14 +74,15 @@ enum ActionScript {
         }
         let report: Report = try decode(text, action: action)
         if let code = report.error {
-            throw failure(code, action: action, selector: selector, report: report, arguments: named)
+            throw failure(code, action: action, target: target, report: report, arguments: named)
         }
         return ActionOutcome(
             action: action,
-            selector: selector,
+            selector: target.selector,
             tagName: report.tagName ?? "",
             value: report.value,
             startedNavigation: report.navigating ?? false,
+            hit: report.hit,
         )
     }
 
@@ -86,77 +95,5 @@ enum ActionScript {
             )
         }
         return report
-    }
-
-    /// Maps a page-side refusal code onto the taxonomy in ``SleepyError``.
-    private static func failure(
-        _ code: String,
-        action: ActionOutcome.Action,
-        selector: String,
-        report: Report,
-        arguments: [String: Any],
-    ) -> SleepyError {
-        let tag: String = report.tagName.map { "<\($0)>" } ?? "element"
-        switch code {
-        case "no-match":
-            return SleepyError(
-                kind: .negative,
-                message: "Nothing matches '\(selector)', so there was no \(action.rawValue) to make.",
-                nextMove: "Check the page first: `sleepy query <page> --selector '\(selector)'`.",
-            )
-        case "invalid-selector":
-            return SleepyError(
-                kind: .usage,
-                message: "'\(selector)' is not a CSS selector this page can match: \(report.detail ?? "")",
-                nextMove: "Check the selector syntax.",
-            )
-        case "disabled":
-            return SleepyError(
-                kind: .negative,
-                message: "'\(selector)' is a disabled \(tag); a real \(action.rawValue) can't reach it.",
-                nextMove: "Wait for it to enable with --wait-for 'js:!document.querySelector(\"\(selector)\").disabled', "
-                    + "or act on whatever enables it first.",
-            )
-        case "read-only":
-            return SleepyError(
-                kind: .negative,
-                message: "'\(selector)' is read-only, so its value can't be filled.",
-                nextMove: "Fill the control that unlocks it, or read the value you have with `sleepy query`.",
-            )
-        case "not-fillable":
-            return SleepyError(
-                kind: .usage,
-                message: "'\(selector)' is a \(tag), which holds no value to fill.",
-                nextMove: "--fill needs an <input>, <textarea>, <select>, or contenteditable element.",
-            )
-        case "no-option":
-            let wanted: String = (arguments["value"] as? String) ?? ""
-            return SleepyError(
-                kind: .negative,
-                message: "The <select> at '\(selector)' has no option matching '\(wanted)'.",
-                nextMove: "Pass an option's value or its visible label; `sleepy query --selector '\(selector) option'` "
-                    + "lists them.",
-            )
-        case "no-form":
-            return SleepyError(
-                kind: .usage,
-                message: "'\(selector)' is a \(tag): not a form, and not inside one.",
-                nextMove: "Give the form's own selector, or a control inside it.",
-            )
-        case "invalid-form":
-            let field: String = report.detail.map { "'\($0)' " } ?? ""
-            return SleepyError(
-                kind: .negative,
-                message: "The form for '\(selector)' is invalid — \(field)fails its constraints, "
-                    + "so the browser refused to submit it.",
-                nextMove: "Fill the field first with --fill, or submit a form that validates.",
-            )
-        default:
-            return SleepyError(
-                kind: .environment,
-                message: "The page refused the \(action.rawValue) at '\(selector)': \(code).",
-                nextMove: "Report this: the act family emitted a code the CLI does not know.",
-            )
-        }
     }
 }
