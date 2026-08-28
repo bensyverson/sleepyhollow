@@ -6,3 +6,8 @@ modules:
   - docs
   - delegation-brief
   - delegation
+  - jobs-brief
+  - jobs
+  - harness-brief
+  - harness
+  - background

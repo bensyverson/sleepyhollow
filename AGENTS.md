@@ -19,7 +19,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - [README.md](README.md) — the project's front door: what it is, install, quick start
 
-<!-- agents:begin core@3184e3 -->
+<!-- agents:begin core@3a7a5e -->
 ## Working rules
 
 **Understand the why.** If the goal behind a request isn't clear, ask before solving — beware the XY problem.
@@ -32,7 +32,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 
 **TDD, strictly red/green.** Write tests for every case and every new method first, watch them *all* fail, then implement. A test that is green during red tests nothing — remove or rewrite it. If an existing test must change to pass because the behavior or expectation has changed, explain why clearly. Every bug fix starts with a regression test.
 
-**Plans and tasks live in `job`.** Open every session with `job orient` (no arguments), then read `project/gotchas.md`. Don't use Plan Mode or ad-hoc todo lists.
+**Plans and tasks live in `job`.** Open every session with `job orient` (no arguments), then read `project/gotchas.md` — while reading, prune it: delete any entry that's now fixed, obvious, or a general rule, marking it `rule:` first if it's general. Don't use Plan Mode or ad-hoc todo lists.
 
 **Don't tour the codebase.** Start from the README and the docs (an Explore agent is fine); dig only where the task leads — once you have a specific need, read as much as that need requires.
 
@@ -48,6 +48,8 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 
 **Where these rules come from.** The marked regions are generated and shared across repos via a CLI tool named `agents`; don't edit inside them. If a rule here is wrong or cost you time, say so in `project/gotchas.md` prefixed `rule:`; that is how shared rules get reviewed.
 
+**Local rulings.** A repo-local ruling, or an override of a shared rule, lives in the project-owned head of `AGENTS.md`, above the generated regions — say plainly that it overrides, and link a dated project doc for the why.
+
 ## Git
 
 - Offer to commit when a unit of work is complete and accepted. Rebase onto upstream; ask on real conflicts, explaining the conflict in plain terms first.
@@ -55,9 +57,10 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - The subject completes "This commit…": present-tense verb first — "Adds…", "Fixes…", "Retires…". Detail goes in the body.
 - Pass the message with `-F <file>`, not inline `-m`; the shell interprets `-m` first. Same for `job`: `note`, `done`, `add` and `edit` all take `-F <file>` (`-F -` reads stdin).
 - Pre-commit hooks run the formatter and tests. Run them yourself first (see the stack rules).
+- Never pipe a gating command (`git commit … | tail`) — the pipe swallows its exit status, so a following `&&` runs even after a failure.
 <!-- agents:end core -->
 
-<!-- agents:begin principles@7bc78e -->
+<!-- agents:begin principles@7a5b19 -->
 ## Principles
 
 Defaults, not laws. When we break one, we do it consciously and say so in the report and the docs.
@@ -70,7 +73,7 @@ Defaults, not laws. When we break one, we do it consciously and say so in the re
 - **Just enough abstraction.** One layer around an LLM provider is prudent; a `TextGenerationProvider` above it is not.
 - **Readable file sizes.** Aim for files a reader can hold in their head (a few hundred lines; ~400 is the comfortable ceiling). Past ~2k lines, navigation degrades and errors accumulate; splitting also makes functionality discoverable by filename.
 - **Comments say why, not what.** Doc comments state *what* concisely; other comments only explain the non-obvious. No change history in comments. Most code needs none.
-- **Strongly typed.** Prefer enums, named constants and config over magic strings and numbers; prefer typed structs over dictionaries, even for wire types.
+- **Strongly typed.** Prefer enums, named constants and config over magic strings and numbers; prefer typed structs over dictionaries, even for wire types. Two packages exchanging data across a serialization seam share **one** struct that both import, never a hand-written twin on each side — the type checker cannot see across encode/decode, and two definitions drift. Given a bool and a typed constant, take the typed constant: a bool named for one consequence gets reused to gate the others until it means several things, so name the underlying *fact* as a type and let the behaviors follow.
 - **Previews.** Give each UI component a way to render in its various states — a SwiftUI `#Preview`, a demo page, a story — the foundation for tests and for human review.
 - **Async by default.** Keep the app interactive during heavy work; surface loading and error states. On the web, prefer progressive enhancement over full reloads.
 - **Event streams where they fit.** Append-only logs are auditable, undoable, and time-travelable.
@@ -82,7 +85,7 @@ Defaults, not laws. When we break one, we do it consciously and say so in the re
 Pre-launch, zero users, no existing data. Never spend effort on backward compatibility — assume every use is green-field — but flag breaking changes and update the affected tests. Be ambitious: if a feature is important, build it fully now rather than an MVP; balance that against over-engineering and future-proofing.
 <!-- agents:end stage-build -->
 
-<!-- agents:begin swift@41f5e6 -->
+<!-- agents:begin swift@8f5faf -->
 ## Swift
 
 - Keep DocC coverage at 100% for any code you add or change.
@@ -92,7 +95,7 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - New types conform to `Friendly` (`Codable & Hashable & Equatable & Sendable`) even without current plans to serialize or compare.
 - **Library packages are cross-platform by default**: stay in Foundation so they build on Linux; wrap Apple-only APIs in `@available` and cover at least macOS and iOS. App targets state their platforms in the head.
 - Modern Swift Regex, not the legacy APIs.
-- Help the type checker: no `.init()` shorthand; annotate the type when an initializer's expression is generic, chained, or overloaded (`let output: String = …`).
+- Help the type checker: annotate the type when an initializer's expression is generic, chained, or overloaded (`let output: String = …`) — but where swiftformat's `redundantType` rule disagrees, the formatter's output is the rule.
 - **One type per file.** Nest small enums/structs inside their owner. Extensions go in `BaseType+Purpose.swift` (third-party types too). A file over ~200–300 lines wants splitting (tighter than the general guidance, on purpose).
 - Sources and Tests organized in folders, at most one level deep. New test suites (new struct) get their own file.
 - **A new combined library + CLI package** `FooBar` = library target `FooBarCore` + CLI target `FooBarCommand`.
@@ -121,3 +124,25 @@ Design on the main thread; dispatch execution to agents for anything larger than
 - Agents `claim` and `note` (unique `--as` each), never `done`, and never commit; the main thread integrates, runs the full suite once, commits, then closes leaves.
 - Choose the model deliberately, end every brief with **"what in this brief is wrong?"**, and verify what comes back — the pushback, not the typing, is usually the value.
 <!-- agents:end delegation-brief -->
+
+<!-- agents:begin jobs-brief@42b137 -->
+## Jobs
+
+`job` is the tracker for plans and tasks. **Read `project/agents/jobs.md` before filing or claiming work** — it carries the shape of the tree, criteria and blockers, the identity rules for agents, and how big a leaf should be.
+
+- Subagents pass a unique `--as <name>` and an absolute `--db` on every call; they `claim`, `note` and `release`, never `done`.
+<!-- agents:end jobs-brief -->
+
+<!-- agents:begin harness-brief@a03f30 -->
+## Harness
+
+The harness an agent runs inside has facts of its own — the Bash sandbox, `$TMPDIR`, no TTY, worktree isolation, background processes. **`project/agents/harness.md` carries them.** Read it the first time a tool call fails with a permission error or a "too complex to verify" refusal, and before writing a brief for a subagent.
+<!-- agents:end harness-brief -->
+
+<!-- agents:begin background@882e19 -->
+## Background
+
+**Weigh decisions against `project/background.md` where it exists** — who the work is for, the people involved, the constraints that come with them, what they want, and what they call things. It is context for judging a decision rather than for writing code: read it when a choice turns on who is on the other end, and use its vocabulary in what you write.
+
+**It holds *current* state, so it is rewritten, not appended.** Every number, date and name appears there once and links the dated `project/` document it came from; when a fact changes, edit the sentence that holds it and let the dated record keep the history.
+<!-- agents:end background -->
