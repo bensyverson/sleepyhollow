@@ -31,7 +31,7 @@ public struct SubmitOperation: ExecutablePageOperation {
     public func execute(on host: PageHost) async throws -> ActionOutcome {
         try await ActionScript.outcome(
             for: .submit,
-            selector: selector,
+            target: .selector(selector),
             body: ActionScript.submitBody,
             on: host,
         )

@@ -18,8 +18,9 @@ public struct ActionOutcome: Friendly {
     /// The primitive that ran.
     public var action: Action
 
-    /// The selector that chose the element.
-    public var selector: String
+    /// The selector that chose the element, when one did — `nil` for a
+    /// coordinate click, whose target ``hit`` names instead.
+    public var selector: String?
 
     /// The acted-on element's tag name, lowercased — the form's tag for
     /// ``Action/submit``.
@@ -33,12 +34,25 @@ public struct ActionOutcome: Friendly {
     /// form submission the page did not cancel.
     public var startedNavigation: Bool
 
+    /// What a coordinate click's hit test found, for a click addressed by
+    /// ``ActionTarget/point(_:)`` — `nil` for every selector-addressed
+    /// action, which did no hit test and so has nothing to report.
+    public var hit: HitElement?
+
     /// Creates an outcome.
-    public init(action: Action, selector: String, tagName: String, value: String? = nil, startedNavigation: Bool) {
+    public init(
+        action: Action,
+        selector: String?,
+        tagName: String,
+        value: String? = nil,
+        startedNavigation: Bool,
+        hit: HitElement? = nil,
+    ) {
         self.action = action
         self.selector = selector
         self.tagName = tagName
         self.value = value
         self.startedNavigation = startedNavigation
+        self.hit = hit
     }
 }

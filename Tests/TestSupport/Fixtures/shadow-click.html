@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>idle</title>
+  <style>
+    body { margin: 0; font: 16px system-ui, sans-serif; }
+    /* Narrow on purpose: the right-hand side of the page is bare <body>,
+       which is the "nothing is here" case a hit-tested click must refuse. */
+    #gap { width: 600px; height: 1200px; background: #f4f4f4; }
+    shadow-panel { display: block; }
+  </style>
+</head>
+<body>
+  <h1>Shadow click</h1>
+
+  <shadow-panel id="panel" data-activated="no"></shadow-panel>
+
+  <div id="gap"></div>
+
+  <shadow-panel id="deep" data-activated="no"></shadow-panel>
+
+  <script>
+    class ShadowPanel extends HTMLElement {
+      connectedCallback() {
+        const root = this.attachShadow({ mode: 'open' });
+        root.innerHTML =
+          '<style>button { display: block; width: 240px; height: 48px; font: inherit; }</style>' +
+          '<button id="inner" class="go primary">Activate ' + this.id + '</button>';
+        root.querySelector('button').addEventListener('click', () => {
+          this.dataset.activated = 'yes';
+          document.title = 'activated:' + this.id;
+        });
+      }
+    }
+    customElements.define('shadow-panel', ShadowPanel);
+  </script>
+</body>
+</html>

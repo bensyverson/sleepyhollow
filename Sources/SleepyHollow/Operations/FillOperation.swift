@@ -35,7 +35,7 @@ public struct FillOperation: ExecutablePageOperation {
     public func execute(on host: PageHost) async throws -> ActionOutcome {
         try await ActionScript.outcome(
             for: .fill,
-            selector: selector,
+            target: .selector(selector),
             body: ActionScript.fillBody,
             arguments: ["value": value],
             on: host,
