@@ -84,6 +84,13 @@ you attach a `--jar` for cookies that should outlive it.
 
 ## More
 
+- **PixelPeeper** is a sibling command-line tool (same author, separate
+  binary) for image-space work on PNGs from anywhere, not only SleepyHollow's
+  own renders — cropping, resizing, contact sheets, and `peep compare` as the
+  baseline-comparison path for a visual regression. The rule that decides
+  which tool owns a feature: anything that needs the page or page
+  coordinates is SleepyHollow's; anything that works on an arbitrary PNG is
+  PixelPeeper's.
 - [project/2026-08-20-vision.md](project/2026-08-20-vision.md) — why this
   tool exists and the philosophy behind it
 - [project/recipes.md](project/recipes.md) — goal-to-verb routing (same
