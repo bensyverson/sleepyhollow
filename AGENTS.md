@@ -17,6 +17,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - [project/2026-08-28-agent-readout-and-checks.md](project/2026-08-28-agent-readout-and-checks.md) — recommendation: `shot --max-size/--tile/--rect` composed with `--scale`, plus `contrast` and `overflow` assertion verbs and three small fixes, from two agents' field use on 2026-08-28
 - [project/2026-08-28-agent-feedback-synthesis.md](project/2026-08-28-agent-feedback-synthesis.md) — agreed direction: the needs beneath the three field reports, rulings (Sleepy vs PixelPeeper, `eval` page-world default, never a plausible wrong answer), settled designs, and the `job import` block
 - [project/gotchas.md](project/gotchas.md) — project quirks and rule corrections
+- [project/recipes.md](project/recipes.md) — goal-to-verb routing for an agent that knows what it wants but not which verb does it; same content as `sleepy recipes` / `sleepy help recipes`
 - [project/backlog.md](project/backlog.md) — work decided against: what it is, why it's parked, what would un-park it
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - [README.md](README.md) — the project's front door: what it is, install, quick start
