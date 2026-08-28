@@ -75,6 +75,13 @@ sleepy contrast https://example.com/ --min wcag-aa
 sleepy overflow https://example.com/ --size 390x800
 ```
 
+If a call fails and you don't know why — a load that never finishes under a
+sandbox, a session that won't open — ask the tool itself:
+
+```sh
+sleepy doctor
+```
+
 Every loading verb (`load`, `shot`, `pdf`, `archive`, `dom`, `query`, `style`,
 `find`, `ax`, `contrast`, `overflow`, `console`, `wire`, `eval`) takes the same shape — a URL, then
 flags for viewport size, theme, waiting, and one-shot actions like
