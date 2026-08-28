@@ -85,24 +85,37 @@ enum GoldenBinary {
     /// Hopping to a GCD queue moves the blocking wait to a thread pool that
     /// can grow, leaving the cooperative pool free to serve the page.
     ///
-    /// - Parameter environment: variables overlaid on the parent environment —
-    ///   how a golden test points the subprocess at a throwaway
-    ///   `SLEEPYHOLLOW_HOME` instead of the real one.
+    /// - Parameters:
+    ///   - environment: variables overlaid on the parent environment — how a
+    ///     golden test points the subprocess at a throwaway
+    ///     `SLEEPYHOLLOW_HOME` instead of the real one.
+    ///   - standardInput: bytes to feed the subprocess's standard input, for
+    ///     the verbs that read a script or a payload from a pipe.
     static func runOffPool(
         _ arguments: [String],
         environment: [String: String] = [:],
+        standardInput: Data? = nil,
     ) async throws -> CliInvocation {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
-                continuation.resume(with: Result { try run(arguments, environment: environment) })
+                continuation.resume(with: Result {
+                    try run(arguments, environment: environment, standardInput: standardInput)
+                })
             }
         }
     }
 
     /// Runs `sleepy` with `arguments` and captures its exit code and output.
     ///
-    /// - Parameter environment: variables overlaid on the parent environment.
-    static func run(_ arguments: [String], environment: [String: String] = [:]) throws -> CliInvocation {
+    /// - Parameters:
+    ///   - environment: variables overlaid on the parent environment.
+    ///   - standardInput: bytes to feed the subprocess's standard input;
+    ///     `nil` leaves it inherited.
+    static func run(
+        _ arguments: [String],
+        environment: [String: String] = [:],
+        standardInput: Data? = nil,
+    ) throws -> CliInvocation {
         let process = Process()
         process.executableURL = productsDirectory().appendingPathComponent("sleepy")
         process.arguments = arguments
@@ -115,7 +128,14 @@ enum GoldenBinary {
         process.standardOutput = standardOutput
         process.standardError = standardError
 
+        let inputPipe: Pipe? = standardInput.map { _ in Pipe() }
+        if let inputPipe { process.standardInput = inputPipe }
+
         try process.run()
+        if let inputPipe, let standardInput {
+            inputPipe.fileHandleForWriting.write(standardInput)
+            try inputPipe.fileHandleForWriting.close()
+        }
         process.waitUntilExit()
 
         let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
