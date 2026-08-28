@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Capture fixture: page that scrolls both ways</title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { width: 2400px; height: 3000px; background: #ffffff; }
+    #target {
+      position: absolute;
+      top: 2400px;
+      left: 900px;
+      width: 300px;
+      height: 200px;
+      background: #3366ff;
+    }
+  </style>
+</head>
+<body>
+  <p id="above-fold">Visible without scrolling.</p>
+  <div id="target"></div>
+</body>
+</html>

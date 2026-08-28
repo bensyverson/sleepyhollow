@@ -10,8 +10,10 @@ import WebKit
 /// backing store may never have rasterized — a headless `WKWebView` only
 /// reliably paints what's within its current `frame` — so they temporarily
 /// grow the frame to the document's full scroll height before capturing and
-/// restore it after. This is the fix for the exact bug the vision doc names:
-/// a control 2,400px down a page invisible to a viewport-shaped shot.
+/// restore it after, scrolling the page to its origin so that the crop is
+/// read in document CSS px whatever the session had scrolled to. This is the
+/// fix for the exact bug the vision doc names: a control 2,400px down a page
+/// invisible to a viewport-shaped shot.
 ///
 /// Execution is a pipeline: **render** the region to a ``ShotCapture`` (the
 /// crop *is* the region), then **tile** it into strips, **fit** each strip to
@@ -112,6 +114,7 @@ public struct ShotOperation: ExecutablePageOperation {
         if needsFullHeight {
             let height = try await Self.documentHeight(on: host)
             webView.frame = CGRect(x: 0, y: 0, width: originalFrame.width, height: max(originalFrame.height, height))
+            try await Self.resetScroll(on: host)
         }
 
         let rect: CGRect = try await resolvedRect(on: host, frame: webView.frame)
@@ -128,8 +131,25 @@ public struct ShotOperation: ExecutablePageOperation {
         return ShotCapture(image: rasterized, rect: rect, scale: 1)
     }
 
+    /// Puts the page back at its origin, so that the view's coordinate
+    /// space — which is what `WKSnapshotConfiguration.rect` is read in — is
+    /// document space.
+    ///
+    /// Growing the frame to the full scroll height already collapses the
+    /// vertical scroll range to nothing, which clamps `scrollY` to zero
+    /// (measured 2026-08-28); `scrollX` survives it, and a horizontally
+    /// scrolled page would then crop `--rect` off by the offset. Resetting
+    /// both says so once instead of relying on the clamp.
+    ///
+    /// The page is left at the origin afterwards. That costs nothing an
+    /// agent can observe now that every reported rect is document-space:
+    /// no coordinate this tool hands back depends on where the page sits.
+    private static func resetScroll(on host: PageHost) async throws {
+        _ = try await host.evaluate("window.scrollTo(0, 0); return window.scrollY;")
+    }
+
     /// The document rect the region names, given the (possibly grown) view
-    /// frame. The view is unscrolled, so view coordinates are document
+    /// frame. ``resetScroll(on:)`` has run, so view coordinates are document
     /// coordinates.
     @MainActor
     private func resolvedRect(on host: PageHost, frame: CGRect) async throws -> CGRect {
@@ -178,6 +198,10 @@ public struct ShotOperation: ExecutablePageOperation {
     }
 
     /// `selector`'s `getBoundingClientRect()`, or `nil` when nothing matches.
+    ///
+    /// No scroll offset is added, and none is needed: this only runs after
+    /// ``resetScroll(on:)``, so the client rect *is* the document rect — and
+    /// it is also, by the same fact, the view rect the snapshot crops in.
     private static func boundingRect(of selector: String, on host: PageHost) async throws -> CGRect? {
         let text = try await host.evaluate(
             """

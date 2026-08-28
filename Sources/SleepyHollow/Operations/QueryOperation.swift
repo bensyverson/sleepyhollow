@@ -48,6 +48,12 @@ public struct QueryOperation: ExecutablePageOperation {
     }
 
     /// Builds one fact object per match, page-side.
+    ///
+    /// The rect is `getBoundingClientRect()` *plus the scroll offset*: the
+    /// same document space ``ShotRegion`` and `click --at` take, so a rect
+    /// read here pastes back unchanged however the page has been scrolled
+    /// since. Only the origin moves — a border box's width and height are
+    /// scroll-invariant.
     private static let script: String = """
     const nodes = Array.from(document.querySelectorAll(selector));
     function factFor(el) {
@@ -67,7 +73,12 @@ public struct QueryOperation: ExecutablePageOperation {
         tagName: el.tagName.toLowerCase(),
         text: (el.innerText || '').trim(),
         attributes,
-        geometry: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        geometry: {
+          x: rect.x + window.scrollX,
+          y: rect.y + window.scrollY,
+          width: rect.width,
+          height: rect.height,
+        },
         visible,
       };
     }

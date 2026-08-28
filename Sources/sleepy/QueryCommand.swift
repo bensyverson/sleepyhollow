@@ -26,6 +26,8 @@ struct QueryCommand: AsyncParsableCommand {
 
         Formats: json (default), text — one line per element: tag, text, visibility, geometry.
 
+        Geometry is in document CSS px — the page's top-left is 0,0, unscrolled — so a rect reported here pastes straight into `shot --rect x,y,w,h` and its centre into `click --at x,y`, at any scroll position.
+
         Examples:
           sleepy query http://localhost:3000/ --selector '#publish'
           sleepy query http://localhost:3000/ --selector '.error' --exists

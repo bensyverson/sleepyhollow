@@ -54,6 +54,8 @@ Added beside "everything terminates": when the tool cannot give the true answer 
 
 > **Settled while building, 2026-08-28 (leaf BXNVm).** This note left `click --at` as "viewport or document CSS px". It is **document CSS px** — one space, no flag, matching `--rect` and the `--grid` labels this note already promised agents would click straight off. The verb scrolls the point into view itself and hit-tests at the viewport-relative position, so the caller never converts; a point past the end of the document is a clean negative rather than a click at the clamped scroll offset. Caveat found in passing and *not* fixed here: `query` reports element geometry relative to the **viewport**, so its numbers only equal document space on an unscrolled page — the two documented conventions disagree, and something should reconcile them.
 
+> **Reconciled, 2026-08-28 (leaf Az3RQ).** That caveat is closed: `query` now reports `getBoundingClientRect()` **plus `window.scrollX`/`scrollY`**, so `ElementFact.Geometry` is document CSS px like everything else, and a rect from `query` pastes into `shot --rect` and its centre into `click --at` at any scroll position. `shot` also scrolls the page to its origin before measuring a non-viewport region, which it previously only got by accident: growing the frame to the document height clamps `scrollY` to 0 but leaves `scrollX` alone, so `--rect` on a horizontally scrolled page cropped the wrong columns. To recover viewport coordinates, subtract the offset `sleepy eval <page> 'return [window.scrollX, window.scrollY]'` reports.
+
 ## Parked, with un-park conditions
 
 Recorded in `backlog.md` as well:
