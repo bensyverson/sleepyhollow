@@ -37,7 +37,12 @@ struct ClickCommand: AsyncParsableCommand {
 
     @OptionGroup var source: PageSourceOptions
 
-    @Option(name: .long, help: "CSS selector; the first match is clicked.")
+    /// `--element` is the same flag: `shot` shipped with that spelling, so
+    /// both names reach the one concept from either verb.
+    @Option(
+        name: [.long, .customLong("element")],
+        help: "CSS selector; the first match is clicked (--element is the same flag).",
+    )
     var selector: String?
 
     @Option(
@@ -47,6 +52,8 @@ struct ClickCommand: AsyncParsableCommand {
     var at: String?
 
     @OptionGroup var out: OutOption
+
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

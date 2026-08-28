@@ -47,6 +47,7 @@ struct AXCommand: AsyncParsableCommand {
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var format: FormatOption
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

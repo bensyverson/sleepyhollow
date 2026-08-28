@@ -37,6 +37,7 @@ struct DoctorCommand: AsyncParsableCommand {
 
     @OptionGroup var format: FormatOption
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @Option(name: .long, help: "Ceiling in milliseconds for the WebKit launch check. Default 10000.")
     var budget: Int?

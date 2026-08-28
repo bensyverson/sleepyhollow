@@ -58,6 +58,7 @@ struct OpenCommand: AsyncParsableCommand {
 
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

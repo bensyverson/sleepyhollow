@@ -55,6 +55,7 @@ struct SessionsCommand: AsyncParsableCommand {
 
         @OptionGroup var format: FormatOption
         @OptionGroup var out: OutOption
+        @OptionGroup var quiet: QuietOption
 
         func run() throws {
             let registry = SessionRegistry()
@@ -96,6 +97,8 @@ struct SessionsCommand: AsyncParsableCommand {
 
         @OptionGroup var out: OutOption
 
+        @OptionGroup var quiet: QuietOption
+
         func run() throws {
             let removed: [SessionName] = SessionRegistry().prune()
             let lines: [String] = removed.map(\.rawValue)
@@ -120,6 +123,8 @@ struct SessionsCommand: AsyncParsableCommand {
 
         @Argument(help: "The session to close.")
         var name: String
+
+        @OptionGroup var quiet: QuietOption
 
         func run() async throws {
             let target: SessionName = try CloseCommand.resolve(name: name, session: nil)

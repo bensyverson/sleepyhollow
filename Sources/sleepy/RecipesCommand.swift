@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SleepyCLIKit
 
 /// `sleepy recipes` — goal-to-verb routing for an agent that knows what it
 /// wants to do but not which verb does it.
@@ -78,6 +79,8 @@ struct RecipesCommand: ParsableCommand {
     that "never finishes" and times out is usually this, not a slow page. In
     Claude Code, run the sleepy call with the Bash sandbox disabled.
     """
+
+    @OptionGroup var quiet: QuietOption
 
     func run() throws {
         print(Self.recipesText)

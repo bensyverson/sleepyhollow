@@ -24,6 +24,7 @@ struct PdfCommand: AsyncParsableCommand {
     @OptionGroup var source: PageSourceOptions
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
     @MainActor
     mutating func run() async throws {

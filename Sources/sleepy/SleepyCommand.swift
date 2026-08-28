@@ -37,7 +37,7 @@ struct SleepyCommand: AsyncParsableCommand {
       sleepy open <url> --name app            keep one page alive, then act on it: `sleepy click --session app --selector '#save'`
 
     Every page verb takes a URL (a fresh page that exits with the command) or --session <name> (a live one).
-    Help: `sleepy <verb> --help` for a verb's flags, examples and exit codes; `sleepy --help` to list every verb; `sleepy help recipes` to find a verb by goal instead of by name; `sleepy doctor` when a call failed and you don't know why.
+    Help: `sleepy <verb> --help` for a verb's flags, examples and exit codes; `sleepy --help` to list every verb; `sleepy help recipes` to find a verb by goal instead of by name; `sleepy doctor` when a call failed and you don't know why. Comparing a render against a saved baseline is image work, not page work: `peep compare` (PixelPeeper) does it.
     """
 
     func run() throws {

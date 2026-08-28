@@ -6,7 +6,7 @@ import SleepyHollow
 
 /// `sleepy shot` — render at a given `--size`, write a PNG.
 ///
-/// *Need:* the baseline act of seeing. `--element` crops to one element's
+/// *Need:* the baseline act of seeing. `--selector` crops to one element's
 /// rect — the thing under test is rarely the whole page — and `--full-page`
 /// captures the entire scroll height instead of the viewport.
 ///
@@ -16,7 +16,7 @@ import SleepyHollow
 /// overlapping strips written as `<out>-01.png`, `<out>-02.png` … with a
 /// ``ShotIndex`` on stdout saying which document rows each file holds.
 ///
-/// Exit 1 is `--element`'s clean negative: the selector matched nothing, or
+/// Exit 1 is `--selector`'s clean negative: the selector matched nothing, or
 /// matched something with no rendered area — either way there is no crop to
 /// take, so no PNG is written. Every other failure follows the shared scheme
 /// (2 usage, 4 load failure, 5 environment).
@@ -27,26 +27,35 @@ struct ShotCommand: AsyncParsableCommand {
         discussion: """
         Examples:
           sleepy shot http://localhost:3000/ --out shot.png
-          sleepy shot http://localhost:3000/ --element '#save-button' --out button.png
+          sleepy shot http://localhost:3000/ --selector '#save-button' --out button.png
           sleepy shot http://localhost:3000/ --full-page --theme dark --out page.png
           sleepy shot http://localhost:3000/ --rect 0,850,1280,600 --out band.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --out overview.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --tile --out strips.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --grid lines --out map.png
-          sleepy shot --session app --element '.toast' -o toast.png
+          sleepy shot --session app --selector '.toast' -o toast.png
 
         --tile writes strips-01.png, strips-02.png … next to --out and prints a JSON index on stdout: each entry's x, y, width and height are CSS document px, so a strip worth a closer look is --rect x,y,width,height with no arithmetic. Adjacent strips share 40 CSS px, and 'scale' is how many pixels of the file stand for one CSS px.
 
-        Exit codes: 0 success, 1 --element matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
+        Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session.
         """,
     )
 
     @OptionGroup var source: PageSourceOptions
     @OptionGroup var flags: LoadFlagOptions
     @OptionGroup var out: OutOption
+    @OptionGroup var quiet: QuietOption
 
-    @Option(name: .long, help: "Crop the screenshot to this CSS selector's rect. Exits 1 if nothing matches.")
-    var element: String?
+    /// `--element` is the same flag: `shot` shipped with that spelling while
+    /// `click`, `fill` and `submit` said `--selector`, and an agent that
+    /// learned one guessed wrong on the next
+    /// (2026-08-24-first-agent-user-feedback.md). `--selector` is now the one
+    /// name; the old spelling keeps working.
+    @Option(
+        name: [.long, .customLong("element")],
+        help: "Crop the screenshot to this CSS selector's rect (--element is the same flag). Exits 1 if nothing matches.",
+    )
+    var selector: String?
 
     @Option(name: .long, help: "Crop to x,y,width,height in CSS document px — the values query or a tile index report.")
     var rect: String?
@@ -103,13 +112,13 @@ struct ShotCommand: AsyncParsableCommand {
     /// than a silent precedence rule.
     func region() throws -> ShotRegion {
         var regions: [ShotRegion] = []
-        if let element { regions.append(.element(element)) }
+        if let selector { regions.append(.element(selector)) }
         if let rect { try regions.append(ShotRegion.rect(parsing: rect)) }
         if fullPage { regions.append(.fullPage) }
         guard regions.count <= 1 else {
             throw SleepyError(
                 kind: .usage,
-                message: "--element, --rect and --full-page name different regions; pick one.",
+                message: "--selector, --rect and --full-page name different regions; pick one.",
                 nextMove: "Drop all but one of them. To crop a full-page capture, use --rect with document coordinates.",
             )
         }
@@ -149,6 +158,15 @@ struct ShotCommand: AsyncParsableCommand {
         } else {
             try out.sink.write(first.png)
         }
+        Nudge.emit(
+            Nudge.forShot(Nudge.ShotFacts(
+                captureHeight: Double(first.rect.height),
+                wasCapped: fit != nil,
+                wasTiled: strips != nil,
+                wroteToFile: out.out != nil,
+            )),
+            quiet: quiet.quiet,
+        )
     }
 
     /// The checked `--tile` request, or `nil` when `--tile` wasn't asked for.
