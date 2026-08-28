@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>animation</title>
+    <style>
+      #box {
+        width: 100px;
+        height: 100px;
+        background: #000;
+        opacity: 0;
+        transition: opacity 6s linear;
+      }
+      #box.on {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Probes whether a hosted or windowless WKWebView advances the two
+         page-side clocks that need a rendering update: requestAnimationFrame
+         and CSS transitions. Everything lands on `window` so a page-world
+         evaluate can read it. -->
+    <div id="box"></div>
+    <script>
+      window.rafCount = 0;
+      window.rafLastTime = 0;
+      window.rafFirstTime = null;
+      (function tick(time) {
+        window.rafCount++;
+        window.rafLastTime = time;
+        if (window.rafFirstTime === null) window.rafFirstTime = time;
+        window.requestAnimationFrame(tick);
+      })(performance.now());
+
+      window.transitionDurationMilliseconds = 6000;
+      window.transitionStart = null;
+      window.startTransition = function () {
+        var box = document.getElementById("box");
+        // Force a style resolution so the 0 -> 1 change is a transition and
+        // not a single computed jump.
+        void getComputedStyle(box).opacity;
+        box.classList.add("on");
+        window.transitionStart = performance.now();
+      };
+
+      // Opacity *and* the wall-clock time it has had, so a reader can judge
+      // progress without trusting its own sleep to be the length it asked for.
+      window.transitionProgress = function () {
+        return {
+          opacity: parseFloat(getComputedStyle(document.getElementById("box")).opacity),
+          elapsedMilliseconds: performance.now() - window.transitionStart,
+          durationMilliseconds: window.transitionDurationMilliseconds,
+        };
+      };
+    </script>
+  </body>
+</html>

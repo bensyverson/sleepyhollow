@@ -10,8 +10,9 @@ import WebKit
 /// theme, the dialog policy, the injected scripts, and the baseline console
 /// capture. ``load(_:)`` navigates and settles inside a budget the *host*
 /// keeps, never the page: a headless web view is free to throttle a hidden
-/// page's timers, and it never runs `requestAnimationFrame` at all, so a
-/// page-side deadline would lie.
+/// page's timers, and it never runs `requestAnimationFrame` at all (unless an
+/// operation opts into ``ensureOffscreenWindow()``), so a page-side deadline
+/// would lie.
 ///
 /// Nothing hangs, and nothing is reported as the wrong kind of failure. A
 /// navigation that never finishes becomes a ``SleepyError`` of kind
@@ -120,6 +121,10 @@ public final class PageHost {
 
     /// Whether this host has already pulled the jar into its cookie store.
     var hasImportedJar = false
+
+    /// The window ``PageHost/ensureOffscreenWindow()`` parked ``webView`` in;
+    /// `nil` until an operation asks for one.
+    var offscreenWindow: OffscreenWindow?
 
     private var isLoading = false
     private var hasStartedNavigation = false
