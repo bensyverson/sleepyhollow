@@ -17,19 +17,36 @@ public struct ShotImage: Friendly {
     /// The document rect this image shows, in CSS px (full-page space).
     public let rect: CGRect
 
-    /// Device pixels per CSS px: 1 for a point-for-pixel capture, 2 for a
-    /// Retina-density one.
+    /// Device pixels per CSS px **as rendered**: 1 for a point-for-pixel
+    /// capture, 2 for a Retina-density one. A readout stage that thins the
+    /// pixels (`--max-size`) leaves this alone — see
+    /// ``ShotCapture/scale`` — so read ``pixelsPerCSSPixel`` for the density
+    /// the bytes actually carry.
     public let scale: Int
 
+    /// The PNG's pixel size.
+    ///
+    /// Stored rather than derived from ``rect`` and ``scale``, because those
+    /// two stop implying it the moment a readout stage runs: `--max-size`
+    /// fits the pixels without moving the page, and a grid gutter will add
+    /// pixels that show no page at all.
+    public let pixelSize: CGSize
+
     /// Creates an image record.
-    public init(png: Data, rect: CGRect, scale: Int = 1) {
+    ///
+    /// - Parameter pixelSize: the PNG's real dimensions; defaults to the
+    ///   point-for-pixel size ``rect`` and `scale` imply.
+    public init(png: Data, rect: CGRect, scale: Int = 1, pixelSize: CGSize? = nil) {
         self.png = png
         self.rect = rect
         self.scale = scale
+        self.pixelSize = pixelSize
+            ?? CGSize(width: rect.width * CGFloat(scale), height: rect.height * CGFloat(scale))
     }
 
-    /// The PNG's pixel size implied by ``rect`` and ``scale``.
-    public var pixelSize: CGSize {
-        CGSize(width: rect.width * CGFloat(scale), height: rect.height * CGFloat(scale))
+    /// Pixels this PNG holds per CSS px of ``rect`` — ``scale`` until
+    /// `--max-size` thins it, a fraction of it afterwards.
+    public var pixelsPerCSSPixel: CGFloat {
+        rect.width > 0 ? pixelSize.width / rect.width : CGFloat(scale)
     }
 }
