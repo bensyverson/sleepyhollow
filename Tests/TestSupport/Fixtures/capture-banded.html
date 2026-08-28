@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Capture fixture: banded tall page</title>
+  <style>
+    /* 12982px tall — the report page from the 2026-08-28 field notes, at the
+       default 1280px viewport width. Thirteen solid 1000px bands (the last
+       one short) give every horizontal slice an identifiable colour, so a
+       tile can be checked against the region of the document it claims. */
+    html, body { margin: 0; padding: 0; }
+    body { height: 12982px; background: #ffffff; }
+    .band { position: absolute; left: 0; width: 100%; height: 1000px; }
+  </style>
+</head>
+<body>
+  <div class="band" style="top: 0px; background: rgb(0, 40, 90);"></div>
+  <div class="band" style="top: 1000px; background: rgb(17, 40, 90);"></div>
+  <div class="band" style="top: 2000px; background: rgb(34, 40, 90);"></div>
+  <div class="band" style="top: 3000px; background: rgb(51, 40, 90);"></div>
+  <div class="band" style="top: 4000px; background: rgb(68, 40, 90);"></div>
+  <div class="band" style="top: 5000px; background: rgb(85, 40, 90);"></div>
+  <div class="band" style="top: 6000px; background: rgb(102, 40, 90);"></div>
+  <div class="band" style="top: 7000px; background: rgb(119, 40, 90);"></div>
+  <div class="band" style="top: 8000px; background: rgb(136, 40, 90);"></div>
+  <div class="band" style="top: 9000px; background: rgb(153, 40, 90);"></div>
+  <div class="band" style="top: 10000px; background: rgb(170, 40, 90);"></div>
+  <div class="band" style="top: 11000px; background: rgb(187, 40, 90);"></div>
+  <div class="band" style="top: 12000px; height: 982px; background: rgb(204, 40, 90);"></div>
+</body>
+</html>

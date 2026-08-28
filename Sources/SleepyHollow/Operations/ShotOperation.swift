@@ -13,12 +13,14 @@ import WebKit
 /// restore it after. This is the fix for the exact bug the vision doc names:
 /// a control 2,400px down a page invisible to a viewport-shaped shot.
 ///
-/// Execution is a pipeline: **render** the region to a ``ShotCapture``, then
-/// (as later stages land) crop, tile, fit, grid — each a pure function over
-/// captures — and finally **encode** every capture to a ``ShotImage``. The
-/// output is a list even for a plain shot, because tiles and contact sheets
-/// are many images from one operation and the wire shape should not change
-/// when they arrive.
+/// Execution is a pipeline: **render** the region to a ``ShotCapture`` (the
+/// crop *is* the region), then **tile** it into strips, **fit** each strip to
+/// a pixel budget, and finally **encode** every capture to a ``ShotImage``.
+/// Each stage is a pure function over captures, and none changes what
+/// another means: `--tile` measures in CSS px of the page, `--max-size`
+/// measures in pixels of the file. The output is a list even for a plain
+/// shot, because tiles and contact sheets are many images from one operation
+/// and the wire shape should not change when they arrive.
 public struct ShotOperation: ExecutablePageOperation {
     /// The captures a shot produced, in order.
     public struct Output: Friendly {
@@ -38,9 +40,19 @@ public struct ShotOperation: ExecutablePageOperation {
     /// What to capture.
     public let region: ShotRegion
 
+    /// The pixel budget each output image is fitted to, when one was asked
+    /// for (`--max-size`).
+    public let fit: ShotFit?
+
+    /// How tall to cut the capture's strips, when tiling was asked for
+    /// (`--tile`).
+    public let tile: ShotTile.Height?
+
     /// Creates a shot operation.
-    public init(region: ShotRegion = .viewport) {
+    public init(region: ShotRegion = .viewport, fit: ShotFit? = nil, tile: ShotTile.Height? = nil) {
         self.region = region
+        self.fit = fit
+        self.tile = tile
     }
 
     /// Captures the region and returns its encoded images.
@@ -51,11 +63,28 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   inline) — the clean-negative shape `query --exists` and `find`
     ///   share, and the reason no blank PNG is written;
     ///   ``SleepyError/Kind/environment`` when the page's geometry or the
-    ///   snapshot itself can't be read.
+    ///   snapshot itself can't be read; ``SleepyError/Kind/usage`` when the
+    ///   resolved tile height is no taller than the overlap.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
+        let viewportHeight: CGFloat = host.webView.frame.height
         let capture = try await render(on: host)
-        return try Output(images: [capture.encoded()])
+        let strips = try tiled(capture, viewportHeight: viewportHeight)
+        let fitted = try strips.map { try fit?.applied(to: $0) ?? $0 }
+        // grid stage lands here
+        return try Output(images: fitted.map { try $0.encoded() })
+    }
+
+    /// The tile stage: the capture as itself when `--tile` wasn't asked for,
+    /// and otherwise the strips it cuts into.
+    ///
+    /// The bare `--tile`'s height is resolved here because this is the first
+    /// point that knows both the pixel budget and the viewport the page was
+    /// rendered at.
+    private func tiled(_ capture: ShotCapture, viewportHeight: CGFloat) throws -> [ShotCapture] {
+        guard let tile else { return [capture] }
+        let height: CGFloat = tile.resolved(maxSize: fit?.maxSize, viewportHeight: viewportHeight)
+        return try ShotTile(height: height).applied(to: capture)
     }
 
     /// The render stage: resolves the region to a document rect and
