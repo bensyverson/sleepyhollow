@@ -32,6 +32,7 @@ struct ShotCommand: AsyncParsableCommand {
           sleepy shot http://localhost:3000/ --rect 0,850,1280,600 --out band.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --out overview.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --tile --out strips.png
+          sleepy shot http://localhost:3000/ --full-page --max-size 2000 --grid lines --out map.png
           sleepy shot --session app --element '.toast' -o toast.png
 
         --tile writes strips-01.png, strips-02.png … next to --out and prints a JSON index on stdout: each entry's x, y, width and height are CSS document px, so a strip worth a closer look is --rect x,y,width,height with no arithmetic. Adjacent strips share 40 CSS px, and 'scale' is how many pixels of the file stand for one CSS px.
@@ -83,6 +84,21 @@ struct ShotCommand: AsyncParsableCommand {
     )
     var tile: ShotTile.Height?
 
+    @Option(
+        name: .long,
+        help: "Draw coordinate rulers in a gutter, labeled in CSS document px: 'lines' also lays faint guides across the page, 'rulers' leaves the page pixels untouched. Drawn after --max-size, so the gutter adds ~\(ShotGrid.minimumGutter)px beyond the cap.",
+    )
+    var grid: String?
+
+    @Option(name: .long, help: "Spacing between grid ticks and labels, in CSS px.")
+    var gridStep: Int = 100
+
+    /// The grid the flags ask for, or `nil` when `--grid` was not passed.
+    func gridOptions() throws -> ShotGrid.Options? {
+        guard let grid else { return nil }
+        return try ShotGrid.Options(mode: ShotGrid.Mode(parsing: grid), step: gridStep)
+    }
+
     /// The one region the flags name; more than one is a usage error rather
     /// than a silent precedence rule.
     func region() throws -> ShotRegion {
@@ -117,7 +133,7 @@ struct ShotCommand: AsyncParsableCommand {
         let fit: ShotFit? = try maxSize.map { try ShotFit(maxSize: $0) }
         let strips: StripRequest? = try stripRequest()
         let output = try await PageExecution.run(
-            ShotOperation(region: region, fit: fit, tile: strips?.height),
+            ShotOperation(region: region, fit: fit, tile: strips?.height, grid: gridOptions()),
             on: source.resolve(),
             flags: flags,
         )

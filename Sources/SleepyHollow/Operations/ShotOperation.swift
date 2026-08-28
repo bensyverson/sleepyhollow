@@ -48,8 +48,19 @@ public struct ShotOperation: ExecutablePageOperation {
     /// (`--tile`).
     public let tile: ShotTile.Height?
 
+    /// The grid to draw over each finished capture, or `nil` for none.
+    /// Drawn last, after any `--max-size` fit, so its labels stay legible;
+    /// the gutter therefore pushes the image past the cap by its own width.
+    public let grid: ShotGrid.Options?
+
     /// Creates a shot operation.
-    public init(region: ShotRegion = .viewport, fit: ShotFit? = nil, tile: ShotTile.Height? = nil) {
+    public init(
+        region: ShotRegion = .viewport,
+        fit: ShotFit? = nil,
+        tile: ShotTile.Height? = nil,
+        grid: ShotGrid.Options? = nil,
+    ) {
+        self.grid = grid
         self.region = region
         self.fit = fit
         self.tile = tile
@@ -71,8 +82,10 @@ public struct ShotOperation: ExecutablePageOperation {
         let capture = try await render(on: host)
         let strips = try tiled(capture, viewportHeight: viewportHeight)
         let fitted = try strips.map { try fit?.applied(to: $0) ?? $0 }
-        // grid stage lands here
-        return try Output(images: fitted.map { try $0.encoded() })
+        let gridded = try fitted.map { capture in
+            try grid.map { try ShotGrid.draw($0, on: capture, pixelsPerCSSPixel: capture.pixelsPerCSSPixel) } ?? capture
+        }
+        return try Output(images: gridded.map { try $0.encoded() })
     }
 
     /// The tile stage: the capture as itself when `--tile` wasn't asked for,

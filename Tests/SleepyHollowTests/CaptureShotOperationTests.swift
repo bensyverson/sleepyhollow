@@ -204,6 +204,23 @@ struct CaptureShotOperationTests {
         }
     }
 
+    @Test
+    @MainActor
+    func `a gridded shot adds the gutter and keeps the page rect`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-tall.html", relativeTo: base)!)
+            let plain = try await host.execute(ShotOperation())
+            let gridded = try await host.execute(ShotOperation(grid: ShotGrid.Options(mode: .rulers)))
+            let image = try #require(gridded.images.first)
+            let dimensions = try #require(pixelDimensions(ofPNG: image.png))
+            #expect(dimensions.width >= LoadOptions().size.width + ShotGrid.minimumGutter)
+            #expect(dimensions.height == LoadOptions().size.height + ShotGrid.minimumGutter)
+            #expect(image.rect == plain.images[0].rect)
+            #expect(image.pixelSize == CGSize(width: dimensions.width, height: dimensions.height))
+        }
+    }
+
     @Test func `the operation is Friendly and round-trips through its envelope`() throws {
         #expect(ShotOperation.kind == "shot")
         let envelope = try OperationEnvelope(ShotOperation(region: .rect(CGRect(x: 0, y: 850, width: 1280, height: 1285))))
