@@ -9,19 +9,36 @@
   <p id="early">Present before the load event.</p>
   <script>
     // The element and the predicate global appear together, after the page's
-    // own delay, so one fixture serves both --wait-for kinds. The delay comes
-    // from ?flip=<ms> (default 300): appears-later tests keep it short, while
-    // settles-at-once tests raise it so a loaded machine can't lose the race.
-    var flip = parseInt(new URLSearchParams(location.search).get('flip') || '300', 10);
+    // own flip, so one fixture serves both --wait-for kinds. ?flip=<ms>
+    // (default 300) flips on a timer: what an appears-later test waits for.
+    // ?flip=gate flips when the server answers /gate, which a FixtureGate
+    // holds until the test opens it: what a settles-at-once test needs, so it
+    // can assert the flip has *not* happened without racing a timer.
+    var flip = new URLSearchParams(location.search).get('flip') || '300';
     window.sleepyStage = 'early';
-    setTimeout(function () {
+    // A page-clock stamp of the load event: subtract it from performance.now()
+    // in any evaluation to measure how long the *host* took to come back to
+    // the page, which is the quantity a "settles at once" assertion used to
+    // bet on (see project/2026-08-28-wait-test-timing.md).
+    window.addEventListener('load', function () {
+      window.sleepyLoadAt = performance.now();
+    });
+    function sleepyArrive() {
       var late = document.createElement('div');
       late.id = 'late';
       late.textContent = 'Arrived late.';
       document.body.appendChild(late);
       window.sleepyStage = 'late';
       window.sleepyReady = true;
-    }, flip);
+    }
+    if (flip === 'gate') {
+      // fetch, deliberately: an outstanding fetch does not delay the load
+      // event, while a script or image element would — and these tests are
+      // about what the host does at the load event.
+      fetch('/gate').then(sleepyArrive);
+    } else {
+      setTimeout(sleepyArrive, parseInt(flip, 10));
+    }
   </script>
 </body>
 </html>

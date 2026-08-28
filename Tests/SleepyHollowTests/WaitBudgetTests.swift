@@ -5,34 +5,47 @@ import TestSupport
 
 @Suite("The budget is one ceiling over load and settle")
 struct WaitBudgetTests {
-    /// The page's element appears 300ms after *its* parse, which the server
-    /// holds back by 900ms. A budget of one second therefore reaches the load
-    /// event with almost nothing left — and a budget spent per phase would
-    /// have a second full second to find the element.
-    private func slowLatePage(base: URL) -> URL {
-        URL(string: "delay/900/wait-late.html", relativeTo: base)!
+    /// The slow page: the server holds the document back by two seconds, so
+    /// the navigation spends two seconds of whatever budget the test sets
+    /// before the wait even starts. `flip` chooses what makes the page's
+    /// `#late` element arrive — `gate` waits on a ``FixtureGate`` the test
+    /// opens, a number is a page timer of that many milliseconds.
+    private func slowLatePage(base: URL, flip: String) -> URL {
+        URL(string: "delay/2000/wait-late.html?flip=\(flip)", relativeTo: base)!
     }
 
     @Test
     @MainActor
     func `a slow navigation leaves the wait less budget, not a fresh one`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .selector("#late")
-            options.budget = 1
+            options.budget = 4
             let host = PageHost(options: options)
-            let started = Date()
+            // The release is anchored to the page's own request, not to this
+            // test's clock: the page reaches the gate as it parses, which is
+            // when the navigation's two seconds are spent, so waiting
+            // `budget - delay + 0.5` from there lands half a second *after*
+            // the one shared deadline and a second and a half *before* the
+            // fresh per-phase deadline a regression would grant — however slow
+            // the machine made the navigation, since both margins move with
+            // it. A sleep can only fire late, so this can never end the wait
+            // early; at worst it lands after both deadlines and the test
+            // proves less than it wants.
+            let opener = Task {
+                _ = await gate.awaitRequest()
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                await gate.open()
+            }
             do {
-                _ = try await host.load(slowLatePage(base: base))
-                Issue.record("expected a timeout: the navigation spent almost the whole budget")
+                _ = try await host.load(slowLatePage(base: base, flip: "gate"))
+                Issue.record("expected a timeout: only a per-phase budget is still running when the gate opens")
             } catch let error as SleepyError {
                 #expect(error.kind == .timeout)
             }
-            // The discriminator is the timeout above: a per-phase budget would
-            // have found the element and succeeded. The ceiling only proves
-            // the host's clock ends things — generous, because a loaded
-            // machine can stretch even a one-second budget's bookkeeping.
-            #expect(Date().timeIntervalSince(started) < 30, "and it must still end on the host's clock")
+            await opener.value
         }
     }
 
@@ -42,11 +55,12 @@ struct WaitBudgetTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .selector("#late")
-            // Generous: under full-suite load the 900ms delay plus navigation
-            // plus the flip can overshoot a small budget by seconds.
+            // Generous: under full-suite load the navigation plus the page's
+            // own flip can overshoot a small budget by seconds. Only the
+            // upper bound matters here — the element does arrive on its own.
             options.budget = 20
             let host = PageHost(options: options)
-            _ = try await host.load(slowLatePage(base: base))
+            _ = try await host.load(slowLatePage(base: base, flip: "300"))
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
             #expect(matched == "true")
         }
@@ -58,16 +72,34 @@ struct WaitBudgetTests {
     @Test
     @MainActor
     func `wait load still settles on the load event alone`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .load
             options.budget = 8
             let host = PageHost(options: options)
-            // ?flip=3000: the assertion below races the fixture's flip, and a
-            // loaded machine loses a 300ms race even when settling instantly.
-            _ = try await host.load(URL(string: "wait-late.html?flip=3000", relativeTo: base)!)
+            // The page's late element waits on a gate this test never opens
+            // before it looks: whatever the host's clock did with the load,
+            // `--wait-for load` demonstrably did not wait for that element.
+            _ = try await host.load(URL(string: "wait-late.html?flip=gate", relativeTo: base)!)
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
             #expect(matched == "false", "--wait-for load must not wait for anything the page does later")
+            // Not vacuous: the page really did have that work outstanding when
+            // the load returned. Generously bounded — a liveness check, never
+            // a discriminator.
+            #expect(await gate.awaitRequest(), "the page never reached the gate, so the assertion above proved nothing")
+            // And the gate is what held the element back: opening it produces
+            // exactly the element the assertion above found absent. A liveness
+            // bound, generous on purpose.
+            await gate.open()
+            var arrived = false
+            let deadline = Date().addingTimeInterval(15)
+            while !arrived, Date() < deadline {
+                arrived = try await host.evaluate("return document.querySelector('#late') !== null;") == "true"
+                if !arrived { try? await Task.sleep(nanoseconds: 50_000_000) }
+            }
+            #expect(arrived, "opening the gate must produce the element the page was waiting on")
         }
     }
 }

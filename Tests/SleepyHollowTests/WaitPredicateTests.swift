@@ -8,18 +8,22 @@ struct WaitPredicateTests {
     @Test
     @MainActor
     func `a predicate already true at the load event settles at once`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .predicate("window.sleepyStage === 'early'")
             options.budget = 5
             let host = PageHost(options: options)
-            // A generous flip: settling at once must beat it even on a loaded
-            // machine.
-            _ = try await host.load(URL(string: "wait-late.html?flip=3000", relativeTo: base)!)
-            // The page moves to 'late' after its flip delay; settling on the
-            // condition that was already true has to beat that.
+            _ = try await host.load(URL(string: "wait-late.html?flip=gate", relativeTo: base)!)
+            // The page moves to 'late' only when the test opens the gate, and
+            // it has not: settling on the condition that was already true is
+            // program order here, not a race with the page's timer.
             let stage: String = try await host.evaluate("return window.sleepyStage;", in: .page)
-            #expect(stage == "\"early\"", "a predicate true at the load event must not cost a poll cycle")
+            #expect(stage == "\"early\"", "a predicate true at the load event must not wait for the page's later work")
+            // Not vacuous: the page really did have that work outstanding.
+            #expect(await gate.awaitRequest(), "the page never reached the gate, so the assertion above proved nothing")
+            await gate.open()
         }
     }
 
