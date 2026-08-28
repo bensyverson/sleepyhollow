@@ -34,3 +34,9 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **A helper spawned by `sleepy open` must ignore `SIGPIPE`.** `open` reads the helper's stdout for the readiness line and then exits, closing its end of the pipe; anything the helper wrote afterwards would kill it seconds after the session opened. `HostCommand.detachFromSpawner()` sets `signal(SIGPIPE, SIG_IGN)` right after announcing.
 
+
+---
+
+## 2026-08-28
+
+**rule: "Modern Swift Regex, not the legacy APIs" does not apply in this package.** `Regex` and the `contains(_:)`/`firstMatch` family are `@available(macOS 13, *)`, and `Package.swift` sets the floor at macOS 12 — a regex literal in a library type fails to build three ways at once (availability, and `Regex` being non-`Sendable` in a `static let`). For a small lexical decision, hand-roll the scan; `@available` gating a core type is not worth it while the floor is 12.

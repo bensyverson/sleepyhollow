@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Eval custom element fixture</title>
+</head>
+<body>
+  <h1>Custom element</h1>
+  <script>
+    class StatusChip extends HTMLElement {
+      reportStatus() {
+        return 'ready';
+      }
+    }
+    customElements.define('status-chip', StatusChip);
+  </script>
+  <status-chip id="chip">Ready</status-chip>
+</body>
+</html>

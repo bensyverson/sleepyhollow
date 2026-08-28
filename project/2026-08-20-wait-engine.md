@@ -84,6 +84,16 @@ WaitProbeTests`, sandbox off), each driving a real `PageHost` against
   `undefined`, which is a silently wrong answer rather than a slow one. If
   `--page-world` ever lands as a flag, `--wait-for js:` should take it and keep
   page world as its default.
+
+  > **Corrected in place (2026-08-28, eval world leaf):** the premise here is
+  > gone — the vision no longer makes the isolated world the default for
+  > `sleepy eval`, for exactly the reason this bullet gives. `eval` defaults
+  > to the page world and takes `--world page|isolated`; the flag is not
+  > `--page-world`. Should `--wait-for js:` ever grow a world flag, it is
+  > `--world`, and this bullet's ruling — page world as the default — already
+  > matches the verb's. See
+  > [2026-08-28-agent-feedback-synthesis.md](2026-08-28-agent-feedback-synthesis.md)
+  > § Rulings.
 - **A predicate that throws is "not true yet"**, not a failure: `window.app.ready`
   before `app` exists is the common case. The last JavaScript failure is kept
   and printed in the timeout message, so a typo costs one budget and then says
