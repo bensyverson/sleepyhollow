@@ -12,23 +12,25 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - [project/2026-08-20-ax-spike.md](project/2026-08-20-ax-spike.md) — findings: `sleepy ax` reads via injected JS computation; the native AX path is dead for a headless CLI
 - [project/2026-08-20-wire-spike.md](project/2026-08-20-wire-spike.md) — findings: inventory-layer field availability, the fetch-recorder shape, and the headless timer-throttling trap (that last claim corrected in place — see the wait-engine note)
 - [project/2026-08-20-wait-engine.md](project/2026-08-20-wait-engine.md) — findings: the settle phase, the exact `--wait-for idle` contract, and what a headless page's timers really do
+- [project/2026-08-28-shot-scale-flag.md](project/2026-08-28-shot-scale-flag.md) — recommendation: a `shot --scale` density flag; why the CSS-`zoom` workaround renders the wrong breakpoint, and how the existing snapshot normalization already holds the 2× pixels
+- [project/2026-08-28-agent-readout-and-checks.md](project/2026-08-28-agent-readout-and-checks.md) — recommendation: `shot --max-size/--tile/--rect` composed with `--scale`, plus `contrast` and `overflow` assertion verbs and three small fixes, from two agents' field use on 2026-08-28
 - [project/gotchas.md](project/gotchas.md) — project quirks and rule corrections
 - [project/backlog.md](project/backlog.md) — work decided against: what it is, why it's parked, what would un-park it
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - [README.md](README.md) — the project's front door: what it is, install, quick start
 
-<!-- agents:begin core@f0c45b -->
+<!-- agents:begin core@3184e3 -->
 ## Working rules
 
 **Understand the why.** If the goal behind a request isn't clear, ask before solving — beware the XY problem.
 
-**Diverge, then converge.** Brainstorm options, weigh them against the user's goals, recommend one, confirm, then execute.
+**Diverge, then converge.** First brainstorm options (create choices), weigh them against the user's goals, recommend one (make choices), confirm, then execute.
 
 **Ambiguity.** If the *code* could go several ways, choose the idiomatic one for the language. If the *requirement* is ambiguous or the question is architectural, stop and ask — don't decide.
 
 **Dependencies.** Avoid them unless re-implementing would be unreasonable; ask before adding one; each is security and maintenance surface.
 
-**TDD, strictly red/green.** Write tests for every case and every new method first, watch them *all* fail, then implement. A test that is green during red tests nothing — remove or rewrite it. If an existing test must change to pass, explain why clearly. Every bug fix starts with a regression test.
+**TDD, strictly red/green.** Write tests for every case and every new method first, watch them *all* fail, then implement. A test that is green during red tests nothing — remove or rewrite it. If an existing test must change to pass because the behavior or expectation has changed, explain why clearly. Every bug fix starts with a regression test.
 
 **Plans and tasks live in `job`.** Open every session with `job orient` (no arguments), then read `project/gotchas.md`. Don't use Plan Mode or ad-hoc todo lists.
 
@@ -44,14 +46,14 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 
 **Gotchas.** When a project quirk costs you time and no rule predicts it, append it to `project/gotchas.md`. If a rule in this file was wrong or misled you, record that there too, prefixed `rule:`.
 
-**Where these rules come from.** The marked regions are generated and shared across repos — don't edit inside them. If a rule here is wrong or cost you time, say so in `project/gotchas.md` prefixed `rule:`; that is how shared rules get reviewed.
+**Where these rules come from.** The marked regions are generated and shared across repos via a CLI tool named `agents`; don't edit inside them. If a rule here is wrong or cost you time, say so in `project/gotchas.md` prefixed `rule:`; that is how shared rules get reviewed.
 
 ## Git
 
 - Offer to commit when a unit of work is complete and accepted. Rebase onto upstream; ask on real conflicts, explaining the conflict in plain terms first.
 - Commit all uncommitted files together — later changes usually depend on earlier ones, and a half-working state helps nobody. Never amend.
 - The subject completes "This commit…": present-tense verb first — "Adds…", "Fixes…", "Retires…". Detail goes in the body.
-- Pass the message with `-F <file>`, not inline `-m`; the shell interprets `-m` first. The same hazard applies to any `-m` flag, `job note -m` included.
+- Pass the message with `-F <file>`, not inline `-m`; the shell interprets `-m` first. Same for `job`: `note`, `done`, `add` and `edit` all take `-F <file>` (`-F -` reads stdin).
 - Pre-commit hooks run the formatter and tests. Run them yourself first (see the stack rules).
 <!-- agents:end core -->
 
