@@ -2,58 +2,69 @@ import AppKit
 import Foundation
 import WebKit
 
-/// `sleepy shot` — a PNG of the viewport, one element's rect, or the whole
-/// scrollable page.
+/// `sleepy shot` — a PNG of a ``ShotRegion``: the viewport, the whole
+/// scrollable page, one element's box, or an explicit document rect.
 ///
 /// The default capture is viewport-shaped: whatever ``LoadOptions/size`` the
-/// host was built with. ``fullPage`` and ``element`` both need content the
-/// viewport-sized backing store may never have rasterized — a headless
-/// `WKWebView` only reliably paints what's within its current `frame`, so
-/// both temporarily grow the frame to the document's full scroll height
-/// before capturing and restore it after. This is the fix for the exact bug
-/// the vision doc names: a control 2,400px down a page invisible to a
-/// viewport-shaped shot.
+/// host was built with. Every other region needs content the viewport-sized
+/// backing store may never have rasterized — a headless `WKWebView` only
+/// reliably paints what's within its current `frame` — so they temporarily
+/// grow the frame to the document's full scroll height before capturing and
+/// restore it after. This is the fix for the exact bug the vision doc names:
+/// a control 2,400px down a page invisible to a viewport-shaped shot.
+///
+/// Execution is a pipeline: **render** the region to a ``ShotCapture``, then
+/// (as later stages land) crop, tile, fit, grid — each a pure function over
+/// captures — and finally **encode** every capture to a ``ShotImage``. The
+/// output is a list even for a plain shot, because tiles and contact sheets
+/// are many images from one operation and the wire shape should not change
+/// when they arrive.
 public struct ShotOperation: ExecutablePageOperation {
-    /// The PNG bytes a capture produced.
+    /// The captures a shot produced, in order.
     public struct Output: Friendly {
-        /// The encoded PNG.
-        public let png: Data
+        /// Every encoded image, with its rect and scale. A plain shot has
+        /// exactly one.
+        public let images: [ShotImage]
 
-        /// Wraps encoded PNG bytes.
-        public init(png: Data) {
-            self.png = png
+        /// Wraps the captures.
+        public init(images: [ShotImage]) {
+            self.images = images
         }
     }
 
     /// The wire identifier.
     public static let kind: String = "shot"
 
-    /// A CSS selector to crop the screenshot to; `nil` captures the viewport
-    /// (or the full page, when ``fullPage`` is set).
-    public let element: String?
-
-    /// Capture the full scroll height instead of the viewport.
-    public let fullPage: Bool
+    /// What to capture.
+    public let region: ShotRegion
 
     /// Creates a shot operation.
-    public init(element: String? = nil, fullPage: Bool = false) {
-        self.element = element
-        self.fullPage = fullPage
+    public init(region: ShotRegion = .viewport) {
+        self.region = region
     }
 
-    /// Captures the page as configured and returns PNG bytes.
+    /// Captures the region and returns its encoded images.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/negative`` when
-    ///   ``element`` is set and either matches nothing or matches something
-    ///   with no rendered area (a `display: none` box, an empty inline) —
-    ///   the clean-negative shape `query --exists` and `find` share, and the
-    ///   reason no blank PNG is written; ``SleepyError/Kind/environment``
-    ///   when the page's geometry or the snapshot itself can't be read.
+    ///   the region is an element that either matches nothing or matches
+    ///   something with no rendered area (a `display: none` box, an empty
+    ///   inline) — the clean-negative shape `query --exists` and `find`
+    ///   share, and the reason no blank PNG is written;
+    ///   ``SleepyError/Kind/environment`` when the page's geometry or the
+    ///   snapshot itself can't be read.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
+        let capture = try await render(on: host)
+        return try Output(images: [capture.encoded()])
+    }
+
+    /// The render stage: resolves the region to a document rect and
+    /// snapshots exactly that, one CSS px to one pixel.
+    @MainActor
+    func render(on host: PageHost) async throws -> ShotCapture {
         let webView = host.webView
         let originalFrame = webView.frame
-        let needsFullHeight = fullPage || element != nil
+        let needsFullHeight = region != .viewport
         defer { if needsFullHeight { webView.frame = originalFrame } }
 
         if needsFullHeight {
@@ -61,33 +72,53 @@ public struct ShotOperation: ExecutablePageOperation {
             webView.frame = CGRect(x: 0, y: 0, width: originalFrame.width, height: max(originalFrame.height, height))
         }
 
-        var rect: CGRect?
-        if let element {
-            guard let measured = try await Self.boundingRect(of: element, on: host) else {
+        let rect: CGRect = try await resolvedRect(on: host, frame: webView.frame)
+        let configuration = WKSnapshotConfiguration()
+        configuration.rect = rect
+        let image = try await webView.takeSnapshot(configuration: configuration)
+        guard let rasterized = ShotCapture.rasterize(image, atPixelSize: rect.size) else {
+            throw SleepyError(
+                kind: .environment,
+                message: "Could not rasterize the snapshot.",
+                nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
+            )
+        }
+        return ShotCapture(image: rasterized, rect: rect, scale: 1)
+    }
+
+    /// The document rect the region names, given the (possibly grown) view
+    /// frame. The view is unscrolled, so view coordinates are document
+    /// coordinates.
+    @MainActor
+    private func resolvedRect(on host: PageHost, frame: CGRect) async throws -> CGRect {
+        switch region {
+        case .viewport, .fullPage:
+            return CGRect(origin: .zero, size: frame.size)
+        case let .rect(rect):
+            return rect
+        case let .element(selector):
+            guard let measured = try await Self.boundingRect(of: selector, on: host) else {
                 throw SleepyError(
                     kind: .negative,
-                    message: "No element matched '\(element)', so there was nothing to crop to.",
+                    message: "No element matched '\(selector)', so there was nothing to crop to.",
                     nextMove: "Check the selector against the page: "
-                        + "`sleepy query <page> --selector '\(element)'`; "
-                        + "if it arrives late, wait for it with --wait-for '\(element)'.",
+                        + "`sleepy query <page> --selector '\(selector)'`; "
+                        + "if it arrives late, wait for it with --wait-for '\(selector)'.",
                 )
             }
             guard measured.width.rounded() >= 1, measured.height.rounded() >= 1 else {
                 throw SleepyError(
                     kind: .negative,
-                    message: "'\(element)' matched, but it has no rendered area: "
+                    message: "'\(selector)' matched, but it has no rendered area: "
                         + "its rect is \(Self.describe(measured)).",
                     nextMove: "An element that is display:none, or an empty inline, has no box to crop to. "
                         + "Check what the cascade resolved to: "
-                        + "`sleepy style <page> --selector '\(element)' --property display`; "
+                        + "`sleepy style <page> --selector '\(selector)' --property display`; "
                         + "if it is sized late, wait for that with --wait-for.",
                 )
             }
-            rect = measured
+            return measured
         }
-
-        let png = try await Self.snapshotPNG(rect: rect, on: webView)
-        return Output(png: png)
     }
 
     /// The document's full scroll height in points, via
@@ -139,72 +170,5 @@ public struct ShotOperation: ExecutablePageOperation {
         let y: Double
         let width: Double
         let height: Double
-    }
-
-    /// Takes a snapshot of `webView`, cropped to `rect` when given, and
-    /// re-encodes it as PNG at exactly `rect`'s (or the view's) point size in
-    /// pixels — one CSS point, one output pixel.
-    ///
-    /// Measured, not documented: `takeSnapshot` hands back an `NSImage`
-    /// rasterized at the *host machine's* screen backing scale factor (2x on
-    /// a Retina Mac, 1x elsewhere) even though this web view is never
-    /// attached to a screen — a bare capture came back 2560×1600 pixels for
-    /// a 1280×800-point viewport on this Retina host, and `snapshotWidth`
-    /// does not change that (it only relabels the `NSImage`'s logical size;
-    /// the backing raster stays at the host's scale). Re-rendering into a
-    /// bitmap context built at the exact pixel size normalizes that away, so
-    /// the output depends only on `--size`/the element's rect, never on
-    /// which Mac ran the command — determinism by construction (vision doc
-    /// §5).
-    @MainActor
-    private static func snapshotPNG(rect: CGRect?, on webView: WKWebView) async throws -> Data {
-        let configuration = WKSnapshotConfiguration()
-        if let rect {
-            configuration.rect = rect
-        }
-        let image = try await webView.takeSnapshot(configuration: configuration)
-        let pixelSize = rect?.size ?? webView.frame.size
-        guard let png = Self.pngData(rendering: image, atPixelSize: pixelSize) else {
-            throw SleepyError(
-                kind: .environment,
-                message: "Could not encode the snapshot as PNG.",
-                nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
-            )
-        }
-        return png
-    }
-
-    /// Renders `image` into a fresh bitmap exactly `pixelSize` pixels wide
-    /// and tall — one point, one pixel — independent of the source image's
-    /// own backing resolution.
-    private static func pngData(rendering image: NSImage, atPixelSize pixelSize: CGSize) -> Data? {
-        let width = max(1, Int(pixelSize.width.rounded()))
-        let height = max(1, Int(pixelSize.height.rounded()))
-        guard let bitmap = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: width,
-            pixelsHigh: height,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0,
-        ) else {
-            return nil
-        }
-        bitmap.size = CGSize(width: width, height: height)
-        guard let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = context
-        image.draw(
-            in: CGRect(x: 0, y: 0, width: width, height: height),
-            from: .zero,
-            operation: .copy,
-            fraction: 1,
-        )
-        NSGraphicsContext.restoreGraphicsState()
-        return bitmap.representation(using: .png, properties: [:])
     }
 }
