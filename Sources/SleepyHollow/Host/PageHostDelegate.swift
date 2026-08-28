@@ -20,6 +20,25 @@ final class PageHostDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKSc
 
     // MARK: - Navigation
 
+    func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+        host?.noteNavigationStarted()
+    }
+
+    func webView(_: WKWebView, didCommit _: WKNavigation!) {
+        host?.noteNavigationStarted()
+    }
+
+    /// WebKit's only report that the web content process is gone — and the one
+    /// signal that separates a sandbox denial from a slow page.
+    ///
+    /// Under an agent sandbox the process launch is denied, this arrives, and
+    /// no navigation callback ever does; the host turns that into a
+    /// ``WebContentProcessFailure/neverLaunched`` load failure rather than
+    /// letting the budget expire on a page that was never going to answer.
+    func webViewWebContentProcessDidTerminate(_: WKWebView) {
+        host?.reportContentProcessTermination()
+    }
+
     func webView(_: WKWebView, didFinish _: WKNavigation!) {
         host?.finishNavigation(.finished)
     }

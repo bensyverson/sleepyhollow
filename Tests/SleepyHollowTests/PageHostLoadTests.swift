@@ -62,6 +62,54 @@ struct PageHostLoadTests {
             }
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
             #expect(elapsed < 20, "the host clock, not the fixture, must end the load")
+            #expect(host.contentProcessFailure == nil, "a slow page is not a dead web content process")
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a web content process that never launched is a load failure, not a timeout`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            var options = LoadOptions()
+            options.budget = 10
+            let host = PageHost(options: options)
+            let url = URL(string: "delay/600000/static.html", relativeTo: base)!
+            let started = Date()
+            async let loading: PageFacts = host.load(url)
+            // Let the navigation reach WebKit before the process is reported gone.
+            try await Task.sleep(nanoseconds: 200_000_000)
+            host.reportContentProcessTermination(.neverLaunched)
+            do {
+                _ = try await loading
+                Issue.record("expected a load failure")
+            } catch let error as SleepyError {
+                #expect(error.kind == .loadFailure)
+                #expect(error.exitStatus == ExitStatus.loadFailure)
+                #expect(error.message.hasPrefix("WebKit could not start under this sandbox"))
+                #expect(error.nextMove?.contains("dangerouslyDisableSandbox") == true)
+            }
+            #expect(host.contentProcessFailure == .neverLaunched)
+            let elapsed: TimeInterval = Date().timeIntervalSince(started)
+            #expect(elapsed < 5, "the failure must not wait out the budget")
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a host that never navigated reads a dead web content process as never launched`() {
+        let host = PageHost()
+        host.reportContentProcessTermination()
+        #expect(host.contentProcessFailure == .neverLaunched)
+    }
+
+    @Test
+    @MainActor
+    func `a web content process that dies after the page commits is a crash, not a sandbox denial`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "static.html", relativeTo: base)!)
+            host.reportContentProcessTermination()
+            #expect(host.contentProcessFailure == .crashedMidLoad)
         }
     }
 

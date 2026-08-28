@@ -13,9 +13,14 @@ import WebKit
 /// page's timers, and it never runs `requestAnimationFrame` at all, so a
 /// page-side deadline would lie.
 ///
-/// Nothing hangs. A navigation that never finishes becomes a
-/// ``SleepyError`` of kind ``SleepyError/Kind/timeout``; a navigation that
-/// fails becomes ``SleepyError/Kind/loadFailure``. Because the host outlives
+/// Nothing hangs, and nothing is reported as the wrong kind of failure. A
+/// navigation that never finishes becomes a ``SleepyError`` of kind
+/// ``SleepyError/Kind/timeout``; a navigation that fails becomes
+/// ``SleepyError/Kind/loadFailure``; and a web content process that dies —
+/// under a sandbox, one that never launched at all — becomes a
+/// ``SleepyError/Kind/loadFailure`` naming the sandbox instead of a timeout
+/// that would send the reader to raise a budget (see
+/// ``WebContentProcessFailure``). Because the host outlives
 /// the throw, the page's last known state stays readable as ``facts`` — that
 /// is the "last state attached" mechanism, kept out of the error so `Core`
 /// need not know about pages.
@@ -46,6 +51,9 @@ public final class PageHost {
         case failed
         /// The host's budget ran out first.
         case timedOut
+        /// The web content process stopped existing, so nothing the page could
+        /// have said will ever arrive — see ``WebContentProcessFailure``.
+        case contentProcessEnded(WebContentProcessFailure)
     }
 
     /// The options this host was built from.
@@ -65,6 +73,16 @@ public final class PageHost {
     /// After a ``SleepyError/Kind/timeout`` this is the page's last known
     /// state — read it from the same host that threw.
     public private(set) var facts: PageFacts = .init()
+
+    /// How the web content process ended during (or since) the last load, and
+    /// `nil` while it is alive — which is every ordinary load, including one
+    /// that times out.
+    ///
+    /// Public because it answers "can WebKit start here at all?" without
+    /// reading an error message: load anything, and
+    /// ``WebContentProcessFailure/neverLaunched`` means the environment, not
+    /// the page, is what failed.
+    public private(set) var contentProcessFailure: WebContentProcessFailure?
 
     /// The budget in seconds this host applies to a load: ``LoadOptions/budget``
     /// or ``LoadOptions/defaultBudget``.
@@ -104,6 +122,7 @@ public final class PageHost {
     var hasImportedJar = false
 
     private var isLoading = false
+    private var hasStartedNavigation = false
     private var pendingNavigation: CheckedContinuation<NavigationOutcome, Never>?
     private var navigationFailure: (any Error)?
     private var budgetTask: Task<Void, Never>?
@@ -172,8 +191,10 @@ public final class PageHost {
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when the
     ///   budget runs out, whether navigating or waiting (the page's last state
     ///   stays in ``facts``, and the page itself is left alone so it stays
-    ///   readable), ``SleepyError/Kind/loadFailure`` when the navigation
-    ///   fails, ``SleepyError/Kind/environment`` when the options ask for
+    ///   readable), ``SleepyError/Kind/loadFailure`` when the navigation fails
+    ///   or the web content process ends (including
+    ///   ``WebContentProcessFailure/neverLaunched``, the sandbox denial that
+    ///   used to read as a timeout), ``SleepyError/Kind/environment`` when the options ask for
     ///   something this host does not yet implement, or
     ///   ``SleepyError/Kind/usage`` when a load is already in flight or the
     ///   wait condition can never be met as written.
@@ -212,6 +233,8 @@ public final class PageHost {
     private func navigateAndSettle(_ url: URL) async throws -> PageFacts {
         facts = PageFacts()
         navigationFailure = nil
+        contentProcessFailure = nil
+        hasStartedNavigation = false
         delegate.mainFrameStatus = nil
 
         // One deadline for the whole pipeline: whatever navigating spends, the
@@ -255,6 +278,8 @@ public final class PageHost {
         case .timedOut:
             webView.stopLoading()
             throw timeout(url: url)
+        case let .contentProcessEnded(failure):
+            throw failure.error(url: url)
         }
     }
 
@@ -266,6 +291,41 @@ public final class PageHost {
         pendingNavigation = nil
         navigationFailure = failure
         continuation.resume(returning: outcome)
+    }
+
+    /// Notes that WebKit has begun the navigation — its provisional load
+    /// started, or the page committed.
+    ///
+    /// The only thing this records is that the web content process was alive
+    /// and talking, which is what tells a dead process apart from one that
+    /// never launched.
+    func noteNavigationStarted() {
+        hasStartedNavigation = true
+    }
+
+    /// Reports that the web content process has stopped existing, classified
+    /// by how far the navigation had got.
+    ///
+    /// This is the seam WebKit's `webViewWebContentProcessDidTerminate(_:)`
+    /// calls, and the one a test drives directly — the harness sandbox that
+    /// produces the real signal cannot be relied on inside a test run.
+    public func reportContentProcessTermination() {
+        reportContentProcessTermination(hasStartedNavigation ? .crashedMidLoad : .neverLaunched)
+    }
+
+    /// Reports a named web content process ending, failing the navigation in
+    /// flight with it.
+    ///
+    /// Nothing more can arrive from a process that is gone, so the load ends
+    /// here rather than sitting out its budget and reporting a timeout it did
+    /// not earn. With no navigation pending this only records `failure` in
+    /// ``contentProcessFailure``.
+    ///
+    /// - Parameter failure: what the ending means — see
+    ///   ``WebContentProcessFailure``.
+    public func reportContentProcessTermination(_ failure: WebContentProcessFailure) {
+        contentProcessFailure = failure
+        finishNavigation(.contentProcessEnded(failure))
     }
 
     /// Records a dialog the policy answered.
