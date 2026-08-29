@@ -19,11 +19,17 @@ from source:
 ```sh
 git clone https://github.com/bensyverson/sleepyhollow.git
 cd sleepyhollow
-swift build -c release
+swift package experimental-install --product sleepy
 ```
 
-The binary lands at `.build/release/sleepy`; put it on your `PATH` or call it
-by that full path.
+That builds a release binary and copies it to `~/.swiftpm/bin/sleepy`. Add
+that directory to your `PATH` once (`export PATH="$HOME/.swiftpm/bin:$PATH"`
+in `~/.zshrc`). The installer refuses to overwrite, so upgrading (or removing)
+goes through `swift package experimental-uninstall sleepy` first.
+
+To build without installing, run `swift build -c release` instead — the
+binary lands at `.build/release/sleepy`, and you can put it on your `PATH` or
+call it by that full path.
 
 To use the library from another Swift package instead, add it as a
 dependency in `Package.swift`:
