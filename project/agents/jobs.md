@@ -1,4 +1,4 @@
-<!-- agents:begin jobs@6661dd -->
+<!-- agents:begin jobs@5ae563 -->
 # Working in `job`
 
 Jobs is the tracker: where work is filed, how big a unit of work is, and what a fan-out mints before it launches. `project/agents/delegation.md` covers *running* agents; this file covers the tracker they claim from. `job <verb> --help` is the authority on flags — this file is the house convention around them.
@@ -26,7 +26,7 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 
 ## Identities
 
-- **The main thread uses the database's default identity** — no `--as`. It was recorded at `job init`.
+- **The main thread uses the database's default identity** — no `--as`. `job init --as <name>` records it: the name of whoever runs the session — an assistant's own name, not the account it runs under. `init` refuses without `--as` (or `--strict`, which records no default). `job gitignore` writes the `.gitignore` entries; `init` prints them only when the repo is missing one.
 - **Every subagent passes `--as <name>`, unique per agent, on every call**, plus an absolute `--db /abs/path/.jobs.db`. `.jobs.db` is usually gitignored, so it does not exist inside a worktree and a relative path fails there. Never "fix" that with `job init`; it creates a second, empty database.
 - **`note`, `done` and `release` on a claimed task must carry the claimant's identity.** A bare `job note <id>` against a task claimed `--as jars` fails with "task is claimed by jars"; a brief that shows `job note` without the identity is wrong.
 - **Agents `claim`, `note` and `release`. They never run `done`, and never commit.** They hand the work back; the integrator runs the suite, commits, and closes the leaves.
