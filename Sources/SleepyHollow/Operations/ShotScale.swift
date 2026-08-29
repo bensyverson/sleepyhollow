@@ -14,7 +14,10 @@ import Foundation
 /// *host machine's* screen backing scale, so a density above what the host
 /// rendered could only be reached by upscaling a softer image. A capture that
 /// silently upsampled would be a plausible wrong answer — a 2×-sized PNG that
-/// holds 1× detail — so ``ShotOperation`` refuses instead.
+/// holds 1× detail — so ``ShotOperation`` refuses instead. That is the
+/// intended behaviour for an embedder pinning a scale: a consumer that
+/// requires 2× would rather get a loud failure on a non-Retina host than a
+/// silent 1× image passed off as Retina-dense.
 public struct ShotScale: Friendly {
     /// The densest raster the flag accepts. Beyond 3× a screenshot is a
     /// memory bill, not a legibility gain.

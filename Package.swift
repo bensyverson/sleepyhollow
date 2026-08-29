@@ -22,7 +22,7 @@ let package = Package(
     ],
     dependencies: [
         // Sole runtime dependency; swift-docc-plugin is docs tooling only.
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.8.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),
     ],
     targets: [

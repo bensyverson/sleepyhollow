@@ -103,6 +103,25 @@ page, `sleepy sessions list` shows what's open, and `sleepy close <n>` ends
 it. Without `--session`, every invocation loads a fresh, ephemeral page unless
 you attach a `--jar` for cookies that should outlive it.
 
+## Embedding the library
+
+`PageHost` is the same headless browser the CLI drives, usable directly from
+Swift. Two of its defaults are worth knowing if you're coming from a raw
+`WKWebView`: a host never follows the Mac's Dark Mode setting (see
+`ColorTheme`), and a pinned `--scale`/`ShotScale` refuses to upsample, so it
+fails loudly on a non-Retina host instead of quietly rendering soft.
+
+```swift
+import SleepyHollow
+
+let host = PageHost(options: LoadOptions(size: ViewportSize(width: 1280, height: 800)))
+let facts = try await host.load(url)
+let shot = try await ShotOperation(scale: try ShotScale(factor: 2)).execute(on: host)
+```
+
+Build the API reference with `swift package generate-documentation` (see
+CLAUDE.md for the full DocC workflow).
+
 ## More
 
 - **PixelPeeper** is a sibling command-line tool (same author, separate

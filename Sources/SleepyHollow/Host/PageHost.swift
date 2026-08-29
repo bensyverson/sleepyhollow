@@ -31,6 +31,11 @@ import WebKit
 /// let facts = try await host.load(url)   // finalURL, status, console errors, dialogs
 /// let title = try await host.evaluate("return document.title;")
 /// ```
+///
+/// The host also stamps `NSAppearance(named: .aqua)` on the view to match
+/// ``ColorTheme``'s default of ``ColorTheme/light``, so — unlike a raw
+/// `WKWebView`, which inherits the Mac's own appearance — a page never
+/// renders in Dark Mode unless a caller asks for ``ColorTheme/dark``.
 @MainActor
 public final class PageHost {
     /// The script-message name the console capture posts on.
