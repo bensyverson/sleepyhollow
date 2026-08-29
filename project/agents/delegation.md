@@ -1,4 +1,4 @@
-<!-- agents:begin delegation@f131ed -->
+<!-- agents:begin delegation@722742 -->
 # Delegating to subagents
 
 Read this before dispatching agents. Every rule here was paid for. `project/agents/jobs.md` covers the tracker the work is filed in; `project/agents/harness.md` covers the tool the agents run inside.
@@ -27,7 +27,7 @@ Read this before dispatching agents. Every rule here was paid for. `project/agen
 ## Workflow
 
 1. **Settle ambiguity with the user before dispatching**, and record each decision as a `job note` on the target leaf. An agent that returns with a flagged question instead of a guess is working correctly.
-2. **Commit and push before dispatching.** A harness-made worktree branches from **local HEAD at dispatch**; a hand-made one branches from whatever you name in `git worktree add` — that is `main`, not `origin/main`. Either way the stale base is exactly your uncommitted work, and the push puts the base every agent branched from on the remote.
+2. **Commit before dispatching.** A harness-made worktree branches from **local HEAD at dispatch**; a hand-made one branches from whatever you name in `git worktree add` — that is `main`, not `origin/main`. Either way the stale base is exactly your uncommitted work. (A remote agent clones from `origin` instead — see `project/agents/harness.md`.)
 3. **One worktree per parallel agent**, so one agent's red tests can't break another's build. Run them in the background; the carve above, not the worktree, decides which of them run at the same time. To make one by hand: `git worktree add .claude/worktrees/<name> -b wt/<name> main`; to remove it after integration: `git worktree remove --force .claude/worktrees/<name>` and `git branch -D wt/<name>`.
 4. **Book the work in `job` before you dispatch, and give each agent a unique `--as` and an absolute `--db`.** See `project/agents/jobs.md` for the identity rules, what an agent may and may not run, and the container-plus-work-leaves a fan-out mints.
 5. **Agents don't commit; the integrator makes every commit that reaches `main`.** They return a summary, the worktree path and branch, **every new file listed by path** (`git diff` omits untracked files), and a **proposed commit message** for the integrator to edit — the agent knows what changed and why; the work itself travels back as a branch (step 6), so the report needs no pasted diff. Run `git -C <worktree> status --porcelain | grep '^??'` yourself; trust neither alone.
