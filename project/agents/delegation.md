@@ -1,4 +1,4 @@
-<!-- agents:begin delegation@149825 -->
+<!-- agents:begin delegation@b7460d -->
 # Delegating to subagents
 
 Read this before dispatching agents. Every rule here was paid for. `project/agents/jobs.md` covers the tracker the work is filed in; `project/agents/harness.md` covers the tool the agents run inside.
@@ -27,12 +27,12 @@ Read this before dispatching agents. Every rule here was paid for. `project/agen
 ## Workflow
 
 1. **Settle ambiguity with the user before dispatching**, and record each decision as a `job note` on the target leaf. An agent that returns with a flagged question instead of a guess is working correctly.
-2. **Commit before dispatching.** A harness-made worktree branches from **local HEAD at dispatch**; a hand-made one branches from whatever you name in `git worktree add` — that is `main`, not `origin/main`. Either way the stale base is exactly your uncommitted work; pushing is backup, not a spawn requirement.
+2. **Commit and push before dispatching.** A harness-made worktree branches from **local HEAD at dispatch**; a hand-made one branches from whatever you name in `git worktree add` — that is `main`, not `origin/main`. Either way the stale base is exactly your uncommitted work. The push is a step, not a backup: phrased as optional it gets skipped, and a day's integrations end up on one disk (SleepyHollow, 2026-08-28).
 3. **One worktree per parallel agent**, so one agent's red tests can't break another's build. Run them in the background; the carve above, not the worktree, decides which of them run at the same time. To make one by hand: `git worktree add .claude/worktrees/<name> -b wt/<name> main`; to remove it after integration: `git worktree remove --force .claude/worktrees/<name>` and `git branch -D wt/<name>`.
 4. **Book the work in `job` before you dispatch, and give each agent a unique `--as` and an absolute `--db`.** See `project/agents/jobs.md` for the identity rules, what an agent may and may not run, and the container-plus-work-leaves a fan-out mints.
-5. **Agents don't commit.** They return a summary, the worktree path and branch, and **every new file listed by path** (`git diff` omits untracked files); the work itself travels back as a branch (step 6), so the report needs no pasted diff. Run `git -C <worktree> status --porcelain | grep '^??'` yourself; trust neither alone.
-6. **Integrate by merging the agent's branch.** Wip-commit its worktree with hooks off — `git -C <worktree> add -A`, then `git -C <worktree> -c core.hooksPath=/dev/null commit -m wip` — then on main `git merge --no-ff --no-commit <the agent's branch>` (`wt/<name>` for a worktree you made; ask the agent for the name of one the harness made) and resolve conflicts properly. Read the whole staged diff before committing: that reading *is* the code review, and it is the only place an agent's work gets one. Commit each merge before starting the next — git refuses a second merge over a staged one.
-7. **Then run the full suite once over the combined result, commit, remove the worktrees, and close the leaves.** Verify load-bearing claims independently — agent reports and numbers can be subtly wrong. Weigh an agent's pushback rather than adopting it: telling an agent its brief is probably wrong primes it to manufacture criticism, and an agent without the full picture sometimes needs to be told to revise or redo the work.
+5. **Agents don't commit — the integrator makes every commit that reaches `main`.** They return a summary, the worktree path and branch, **every new file listed by path** (`git diff` omits untracked files), and a **proposed commit message** for the integrator to edit — the agent knows what changed and why better than a report summary conveys; the work itself travels back as a branch (step 6), so the report needs no pasted diff. Run `git -C <worktree> status --porcelain | grep '^??'` yourself; trust neither alone.
+6. **Integrate by squash-merging the agent's branch.** Snapshot its worktree onto the throwaway branch with hooks off — `git -C <worktree> add -A`, then `git -C <worktree> -c core.hooksPath=/dev/null commit -m wip` — then on main `git merge --squash <the agent's branch>` (`wt/<name>` for a worktree you made; ask the agent for the name of one the harness made) and resolve conflicts properly. Read the whole staged diff before committing: that reading *is* the code review, and it is the only place an agent's work gets one. Then commit through the hooks with a real message, starting from the agent's proposed one. The snapshot commit never reaches `main` — it dies with the branch in step 7. **Never `--no-ff`**: it keeps that snapshot as a second parent, and `git log` fills with `wip` (eighteen in one day, SleepyHollow 2026-08-28). Commit each squash before starting the next — git refuses a second merge over a staged one.
+7. **Then run the full suite once over the combined result (the pre-commit hook, where the repo has one), push, remove the worktrees and their branches, and close the leaves.** Verify load-bearing claims independently — agent reports and numbers can be subtly wrong. Weigh an agent's pushback rather than adopting it: telling an agent its brief is probably wrong primes it to manufacture criticism, and an agent without the full picture sometimes needs to be told to revise or redo the work.
 
 ## Traps
 
@@ -70,7 +70,8 @@ Your report must include:
 2. Every new file, by path.
 3. Whether the suite passed and which command you ran.
 4. The worktree path and its branch name.
-5. DEVIATIONS from this brief, and why.
-6. WHAT IN THIS BRIEF IS WRONG? Answer explicitly. Briefs contain errors at a rate that makes this the cheapest check available; if a seam does not work the way this describes, say so rather than working around it. Fix minor bugs as you encounter them, and report the major ones.
+5. A proposed commit message: a subject completing "This commit…" (present-tense verb first), a body that says why.
+6. DEVIATIONS from this brief, and why.
+7. WHAT IN THIS BRIEF IS WRONG? Answer explicitly. Briefs contain errors at a rate that makes this the cheapest check available; if a seam does not work the way this describes, say so rather than working around it. Fix minor bugs as you encounter them, and report the major ones.
 ```
 <!-- agents:end delegation -->
