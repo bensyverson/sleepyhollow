@@ -15,6 +15,23 @@ extension SleepyHelpers {
     /// child. An `overflow-x: auto | scroll` ancestor ends the walk — its
     /// descendants are wide by design — and is listed under
     /// `scrollContainers` with how far it scrolls.
+    ///
+    /// The comparison is scroll-independent by construction, not by
+    /// correction: `sleepyRectOf` already folds `window.scrollX` into every
+    /// rect, so an element's document-space right edge (`rect.x + width`, or
+    /// `rect.x + scrollWidth` for a content spill) does not move as the page
+    /// scrolls — `box.left` shrinks by exactly what `scrollX` grows.
+    /// `viewportWidth` (`root.clientWidth`) is the viewport's own size, never
+    /// its scroll offset. Comparing the two is therefore always the question
+    /// "does this exceed one viewport width from the document's origin?",
+    /// regardless of where the page happens to be scrolled when the check
+    /// runs — verified 2026-08-28 by scrolling `capture-wide.html` to an
+    /// arbitrary offset and to its own maximum scroll (exactly its spill
+    /// amount) and finding the report byte-identical each time. Do not
+    /// "fix" this by adding `scrollX` to `viewportWidth`: at the page's own
+    /// maximum scroll, `scrollX + viewportWidth` equals `documentWidth`
+    /// exactly, which would cancel the very violation this check exists to
+    /// find.
     static let overflow: String = #"""
     const SLEEPY_OVERFLOW_TOLERANCE = 1;
 
