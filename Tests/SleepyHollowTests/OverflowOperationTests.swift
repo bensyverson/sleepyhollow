@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 @testable import SleepyHollow
 import Testing
@@ -75,6 +76,49 @@ struct OverflowOperationTests {
             #expect(report.violations.isEmpty)
             #expect(report.scrollContainers.isEmpty)
             #expect(report.viewportWidth == 1280)
+        }
+    }
+
+    /// Scrolls the page and returns where it actually landed, so a test that
+    /// depends on being scrolled fails loudly if it is not.
+    @MainActor
+    @discardableResult
+    private func scroll(_ host: PageHost, to point: CGPoint) async throws -> CGPoint {
+        let text: String = try await host.execute(EvalOperation(
+            source: "window.scrollTo(x, y); return [window.scrollX, window.scrollY];",
+            argumentsJSON: "{\"x\": \(point.x), \"y\": \(point.y)}",
+            world: .page,
+        ))
+        let parts: [Double] = try JSONDecoder().decode([Double].self, from: Data(text.utf8))
+        return CGPoint(x: parts[0], y: parts[1])
+    }
+
+    @Test
+    @MainActor
+    func `a horizontal scroll does not change the overflow report`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-wide.html", relativeTo: base)!)
+            let unscrolled: OverflowReport = try await host.execute(OverflowOperation())
+            #expect(!unscrolled.violations.isEmpty)
+            #expect(try await scroll(host, to: CGPoint(x: 600, y: 0)).x == 600)
+            let scrolled: OverflowReport = try await host.execute(OverflowOperation())
+            #expect(scrolled == unscrolled)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `a page scrolled by exactly its own spill still reports the violation`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let host = PageHost()
+            _ = try await host.load(URL(string: "capture-wide.html", relativeTo: base)!)
+            let unscrolled: OverflowReport = try await host.execute(OverflowOperation())
+            let violation: OverflowReport.Violation = try #require(unscrolled.violations.first)
+            let maxScroll: Double = violation.overflowBy
+            #expect(try await scroll(host, to: CGPoint(x: maxScroll, y: 0)).x == maxScroll)
+            let atMaxScroll: OverflowReport = try await host.execute(OverflowOperation())
+            #expect(atMaxScroll == unscrolled)
         }
     }
 
