@@ -77,6 +77,11 @@ public final class OffscreenWindow {
         /// A live page keeps working — an infinite rAF chain is genuine
         /// activity, so a `--wait-for idle` over one will not settle. That is
         /// the caller's choice to make per operation.
+        ///
+        /// This is the one case that touches private API
+        /// (`disableWindowOcclusionDetection(on:)`). No shipping operation
+        /// asks for it; it exists, measured and tested, for the parked
+        /// time-series capture.
         case live
     }
 
@@ -97,9 +102,11 @@ public final class OffscreenWindow {
     ///   view, and its frame size becomes the window's content size.
     /// - Parameter ordering: how far the window is ordered in.
     /// - Parameter rendering: whether the hosted page runs rendering updates;
-    ///   ``Rendering/live`` by default, which is the reason to host a page
-    ///   that is not being printed.
-    public init(hosting view: NSView, ordering: Ordering = .back, rendering: Rendering = .live) {
+    ///   ``Rendering/hidden`` by default. ``Rendering/live`` is the only path
+    ///   that reaches private API, and it stays dormant until an operation
+    ///   asks for it by name — the ruling of 2026-08-28 (window doc, "The one
+    ///   piece of SPI"): keep it, unused, until time series is un-parked.
+    public init(hosting view: NSView, ordering: Ordering = .back, rendering: Rendering = .hidden) {
         Self.prohibitActivation()
         window = NSWindow(
             contentRect: CGRect(origin: Self.parkedOrigin, size: view.frame.size),

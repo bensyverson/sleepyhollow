@@ -70,7 +70,9 @@ Ordering moves `isVisible` and nothing else. Also measured and equally ineffecti
 
 It lives in exactly one place, `OffscreenWindow.disableWindowOcclusionDetection(on:)`, guarded by `responds(to:)` so a future macOS that drops the selector degrades to `Rendering.hidden` behaviour rather than crashing — and the rAF test goes red, which is the correct alarm. `NSWindow` has no equivalent: `_setWindowOcclusionDetectionEnabled:`, `_setOcclusionState:` and `_setAllowsWindowOcclusion:` are all absent from `NSWindow` on this OS (*probe*, `NSWindow.instancesRespond(to:)`).
 
-**This is a decision the main thread should ratify.** Shipping private API is a standing maintenance and fragility cost. The alternative is to ship the window without it, which serves `pdf` (a window is all `NSPrintOperation` needs) and leaves the time-series spike impossible — a hosted page that still cannot animate. The build here takes the SPI, isolated and guarded; reverting it is deleting one function and one `if`.
+> **Ruling (2026-08-28, Ben):** keep the SPI in, unused. `Rendering.hidden` is now the default on both `OffscreenWindow.init` and `PageHost.ensureOffscreenWindow()`, so no shipping operation reaches `_setWindowOcclusionDetectionEnabled:`; `Rendering.live` stays in the code, measured and covered by `OffscreenWindowTests`, for the day the time-series capture is un-parked (`project/backlog.md`). A test pins that the default host reports `visibilityState === "hidden"`.
+
+**This was a decision for the main thread to ratify.** Shipping private API is a standing maintenance and fragility cost. The alternative is to ship the window without it, which serves `pdf` (a window is all `NSPrintOperation` needs) and leaves the time-series spike impossible — a hosted page that still cannot animate. The build here takes the SPI, isolated and guarded; reverting it is deleting one function and one `if`.
 
 ## (e) `document.visibilityState`
 

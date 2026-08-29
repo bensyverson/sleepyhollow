@@ -125,7 +125,7 @@ struct OffscreenWindowTests {
             let windowlessCount = try await Self.number(windowless, "return window.rafCount;")
 
             let hosted = PageHost()
-            _ = hosted.ensureOffscreenWindow()
+            _ = hosted.ensureOffscreenWindow(rendering: .live)
             _ = try await hosted.load(url)
             try await Task.sleep(nanoseconds: Self.probeNanoseconds)
             let hostedCount = try await Self.number(hosted, "return window.rafCount;")
@@ -134,6 +134,18 @@ struct OffscreenWindowTests {
             // The fixture's first tick is a direct call, so 1 means "no frame".
             #expect(windowlessCount <= 1)
             #expect(hostedCount > 1)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `the default hosting leaves the page hidden, so the private API is never reached`() async throws {
+        try await FixtureServer.withRunningOnMainActor { _, base in
+            let url = URL(string: "static.html", relativeTo: base)!
+            let hosted = PageHost()
+            _ = hosted.ensureOffscreenWindow()
+            _ = try await hosted.load(url)
+            #expect(try await hosted.evaluate("return document.visibilityState;") == "\"hidden\"")
         }
     }
 
@@ -148,7 +160,7 @@ struct OffscreenWindowTests {
             #expect(try await windowless.evaluate("return document.visibilityState;") == "\"hidden\"")
 
             let hosted = PageHost()
-            _ = hosted.ensureOffscreenWindow()
+            _ = hosted.ensureOffscreenWindow(rendering: .live)
             _ = try await hosted.load(url)
             #expect(try await hosted.evaluate("return document.visibilityState;") == "\"visible\"")
         }
@@ -167,7 +179,7 @@ struct OffscreenWindowTests {
             let windowlessProgress = try await Self.progress(windowless)
 
             let hosted = PageHost()
-            _ = hosted.ensureOffscreenWindow()
+            _ = hosted.ensureOffscreenWindow(rendering: .live)
             _ = try await hosted.load(url)
             try await hosted.evaluate("window.startTransition();", in: .page)
             try await Task.sleep(nanoseconds: Self.probeNanoseconds)

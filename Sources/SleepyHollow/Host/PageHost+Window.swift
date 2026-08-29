@@ -32,13 +32,15 @@ public extension PageHost {
     ///   ``OffscreenWindow/Ordering/back`` by default, which is what AppKit's
     ///   printing path needs (`NSWindow.isVisible` must be `true`).
     /// - Parameter rendering: whether the hosted page runs rendering updates;
-    ///   ``OffscreenWindow/Rendering/live`` by default.
+    ///   ``OffscreenWindow/Rendering/hidden`` by default, so a host that only
+    ///   needs a window (printing) never reaches the private API behind
+    ///   ``OffscreenWindow/Rendering/live``.
     /// - Returns: the host's window, parked off every screen; the same
     ///   instance on every call.
     @discardableResult
     func ensureOffscreenWindow(
         ordering: OffscreenWindow.Ordering = .back,
-        rendering: OffscreenWindow.Rendering = .live,
+        rendering: OffscreenWindow.Rendering = .hidden,
     ) -> OffscreenWindow {
         if let offscreenWindow {
             return offscreenWindow
