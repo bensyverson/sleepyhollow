@@ -159,9 +159,14 @@ public struct LoadFlagOptions: ParsableArguments {
     /// Parses one `--size` value: `WxH`, or a width alone taking the default
     /// height — breakpoints are widths, so `--size 480` is the common form.
     ///
+    /// - Parameter raw: the value as typed.
+    /// - Parameter named: how the failure should spell the thing that was
+    ///   mistyped — `--size` for the flag, and `resize` for the verb whose
+    ///   argument takes the identical shape, so neither teaches the other's
+    ///   spelling.
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` naming
     ///   both shapes.
-    public static func viewportSize(parsing raw: String) throws -> ViewportSize {
+    public static func viewportSize(parsing raw: String, named: String = "--size") throws -> ViewportSize {
         let cleaned: String = raw.trimmingCharacters(in: .whitespaces).lowercased()
         let parts: [Substring] = cleaned.split(separator: "x", maxSplits: 1, omittingEmptySubsequences: false)
         let width: Int? = parts.first.flatMap { Int($0) }
@@ -169,8 +174,9 @@ public struct LoadFlagOptions: ParsableArguments {
         guard parts.count <= 2, let width, width > 0, let height, height > 0 else {
             throw SleepyError(
                 kind: .usage,
-                message: "'--size \(raw)' is neither WxH nor a width.",
-                nextMove: "Use e.g. --size 1280x800, or a width alone — --size 480 means 480x\(ViewportSize.default.height).",
+                message: "'\(named) \(raw)' is neither WxH nor a width.",
+                nextMove: "Use e.g. \(named) 1280x800, or a width alone — "
+                    + "\(named) 480 means 480x\(ViewportSize.default.height).",
             )
         }
         return ViewportSize(width: width, height: height)

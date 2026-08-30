@@ -92,7 +92,7 @@ public final class SessionHost {
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
     ///   the name is already open or the socket cannot be bound, or whatever
-    ///   ``PageHost/load(_:)`` throws for the initial URL — in which case the
+    ///   ``PageHost/load(_:budget:)`` throws for the initial URL — in which case the
     ///   host has already cleaned up after itself.
     public func start() async throws {
         guard listener == nil, !isStopped else {

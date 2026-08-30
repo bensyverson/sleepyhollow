@@ -21,6 +21,7 @@ struct SessionOperationsRegistryTests {
         OverflowOperation.kind,
         PDFOperation.kind,
         QueryOperation.kind,
+        ResizeOperation.kind,
         ShotOperation.kind,
         StyleOperation.kind,
         SubmitOperation.kind,

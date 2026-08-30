@@ -59,6 +59,10 @@ struct RecipesCommand: ParsableCommand {
       sleepy query --session app --selector 'my-widget'
       sleepy click --session app --at 620,180
 
+    Check another breakpoint without reopening → resize
+      sleepy resize --session app 390x844
+      sleepy shot --session app --out narrow.png
+
     Compare a screenshot against a baseline → peep compare (PixelPeeper, a
     sibling tool: it works on any PNG in pixel space; Sleepy owns the page
     and its CSS-px coordinates)

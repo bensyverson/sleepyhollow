@@ -14,6 +14,7 @@ public enum SessionOperations {
         var registry = OperationRegistry()
         registry.register(ReadFactsOperation.self)
         registry.register(NavigateOperation.self)
+        registry.register(ResizeOperation.self)
         registry.register(ShotOperation.self)
         registry.register(PDFOperation.self)
         registry.register(ArchiveOperation.self)

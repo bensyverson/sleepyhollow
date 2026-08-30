@@ -1,6 +1,6 @@
 import Foundation
 
-/// The settle phase of ``PageHost/load(_:)``: what happens between the
+/// The settle phase of ``PageHost/load(_:budget:)``: what happens between the
 /// navigation's load event and the load returning.
 ///
 /// One engine per host, built from ``LoadOptions/wait``. It contributes the

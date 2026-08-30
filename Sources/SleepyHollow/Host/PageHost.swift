@@ -8,7 +8,7 @@ import WebKit
 /// A host is built from ``LoadOptions`` and owns everything per-page — the web
 /// view and its non-persistent data store, the fixed viewport, the named
 /// theme, the dialog policy, the injected scripts, and the baseline console
-/// capture. ``load(_:)`` navigates and settles inside a budget the *host*
+/// capture. ``load(_:budget:)`` navigates and settles inside a budget the *host*
 /// keeps, never the page: a headless web view is free to throttle a hidden
 /// page's timers, and it never runs `requestAnimationFrame` at all (unless an
 /// operation opts into ``ensureOffscreenWindow()``), so a page-side deadline
@@ -70,7 +70,7 @@ public final class PageHost {
     /// Exposed deliberately: the capture, find and cookie families need
     /// `WKWebView`'s own APIs (`takeSnapshot`, `printOperation(with:)`, `find`,
     /// `WKHTTPCookieStore`), and a wrapper that only forwarded them would be
-    /// an adapter holding no decision. Navigation belongs to ``load(_:)`` —
+    /// an adapter holding no decision. Navigation belongs to ``load(_:budget:)`` —
     /// loading through this property bypasses the budget and the facts.
     public let webView: WKWebView
 
@@ -90,11 +90,26 @@ public final class PageHost {
     /// the page, is what failed.
     public private(set) var contentProcessFailure: WebContentProcessFailure?
 
-    /// The budget in seconds this host applies to a load: ``LoadOptions/budget``
-    /// or ``LoadOptions/defaultBudget``.
+    /// The budget in seconds this host applies to a load that names none of
+    /// its own: ``LoadOptions/budget`` or ``LoadOptions/defaultBudget``.
+    ///
+    /// A per-call override (``load(_:budget:)``) does not change it — it is
+    /// the host's default, not a record of the last load.
     public var budget: TimeInterval {
         options.budget ?? LoadOptions.defaultBudget
     }
+
+    /// The viewport this host renders at, in points.
+    ///
+    /// Initialised from ``LoadOptions/size`` and moved only by
+    /// ``PageHost/resize(to:)``, which is what keeps it and the web view's
+    /// frame the same fact. Read it rather than the web view's frame: a
+    /// full-page capture grows the frame for the duration of one snapshot and
+    /// puts it back, and during that window the frame is not the viewport.
+    ///
+    /// The setter is module-internal only because ``PageHost/resize(to:)``
+    /// lives in its own file; nothing else in the library writes it.
+    public internal(set) var viewport: ViewportSize
 
     /// One subscriber to a script-message name.
     struct MessageSink {
@@ -153,18 +168,11 @@ public final class PageHost {
     public init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {
         self.options = options
         self.jars = jars
+        viewport = options.size
         waiter = WaitEngine(condition: options.wait)
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
-        webView = WKWebView(
-            frame: CGRect(
-                x: 0,
-                y: 0,
-                width: CGFloat(options.size.width),
-                height: CGFloat(options.size.height),
-            ),
-            configuration: configuration,
-        )
+        webView = WKWebView(frame: PageHost.frame(for: options.size), configuration: configuration)
         webView.navigationDelegate = delegate
         webView.uiDelegate = delegate
         webView.appearance = NSAppearance(named: options.theme.appearanceName)
@@ -183,7 +191,17 @@ public final class PageHost {
         }
     }
 
-    /// Navigates to `url` and settles, inside the host's ``budget``.
+    /// Navigates to `url` and settles, inside `budget` seconds — or the
+    /// host's own ``budget`` when none is given.
+    ///
+    /// The override exists because a budget is a property of the *call*, not
+    /// of the browser: one embedder loads a local fixture in a second and a
+    /// third-party page in thirty, and without this it would need a pool of
+    /// hosts keyed by budget to say so (the first library embedding did, and
+    /// asked — `project/2026-08-29-woodcase-harness-feedback.md`, finding 5).
+    /// Whatever applies here bounds the *whole* pipeline — navigation, action
+    /// steps and the settle phase share it — and it is the number a timeout
+    /// names, so the reader raises the right one.
     ///
     /// Settling is the navigation's load event *and* ``LoadOptions/wait``:
     /// the load event alone for ``WaitCondition/load`` or no condition, and
@@ -198,6 +216,9 @@ public final class PageHost {
     /// still lands. A load that throws saves too, quietly: a login that
     /// redirected and then timed out has still minted its cookie.
     ///
+    /// - Parameter url: where to navigate.
+    /// - Parameter budget: seconds this one load gets, or `nil` for the
+    ///   host's ``budget``.
     /// - Returns: the load's ``PageFacts`` — also left in ``facts``.
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when the
     ///   budget runs out, whether navigating or waiting (the page's last state
@@ -215,7 +236,7 @@ public final class PageHost {
     ///   not answer, and a tool that can hang is worse than one that reports a
     ///   zero it labels.
     @discardableResult
-    public func load(_ url: URL) async throws -> PageFacts {
+    public func load(_ url: URL, budget: TimeInterval? = nil) async throws -> PageFacts {
         // Set synchronously, before the first suspension: two `load` calls can
         // otherwise interleave on the main actor and the first navigation's
         // continuation is lost — which is a hang, the one thing forbidden.
@@ -228,9 +249,10 @@ public final class PageHost {
         }
         isLoading = true
         defer { isLoading = false }
+        let applied: TimeInterval = budget ?? self.budget
         try await importJarIfNeeded()
         do {
-            let loaded: PageFacts = try await navigateAndSettle(url)
+            let loaded: PageFacts = try await navigateAndSettle(url, within: applied)
             try await saveJar()
             return loaded
         } catch {
@@ -239,9 +261,10 @@ public final class PageHost {
         }
     }
 
-    /// The load pipeline proper: navigate, settle, act. Split out of
-    /// ``load(_:)`` so the jar's import and export can bracket every exit.
-    private func navigateAndSettle(_ url: URL) async throws -> PageFacts {
+    /// The load pipeline proper: navigate, settle, act, all inside `budget`.
+    /// Split out of ``load(_:budget:)`` so the jar's import and export can
+    /// bracket every exit.
+    private func navigateAndSettle(_ url: URL, within budget: TimeInterval) async throws -> PageFacts {
         facts = PageFacts()
         navigationFailure = nil
         contentProcessFailure = nil
@@ -252,7 +275,7 @@ public final class PageHost {
         // settle phase does not get again.
         let deadline = DispatchTime.now() + budget
         waiter?.startWatching(in: self)
-        let outcome: NavigationOutcome = await navigate(to: url)
+        let outcome: NavigationOutcome = await navigate(to: url, within: budget)
         facts.finalURL = webView.url
         switch outcome {
         case .finished:
@@ -288,7 +311,7 @@ public final class PageHost {
             throw loadFailure(url: url, error: navigationFailure)
         case .timedOut:
             webView.stopLoading()
-            throw timeout(url: url)
+            throw timeout(url: url, budget: budget)
         case let .contentProcessEnded(failure):
             throw failure.error(url: url)
         }
@@ -346,10 +369,10 @@ public final class PageHost {
 
     // MARK: - Navigation
 
-    private func navigate(to url: URL) async -> NavigationOutcome {
+    private func navigate(to url: URL, within budget: TimeInterval) async -> NavigationOutcome {
         let outcome: NavigationOutcome = await withCheckedContinuation { continuation in
             pendingNavigation = continuation
-            budgetTask = Task { @MainActor [weak self, budget] in
+            budgetTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(max(0, budget) * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 self?.finishNavigation(.timedOut)
@@ -370,7 +393,7 @@ public final class PageHost {
 
     // MARK: - Failures
 
-    private func timeout(url: URL) -> SleepyError {
+    private func timeout(url: URL, budget: TimeInterval) -> SleepyError {
         let reached: String = facts.finalURL.map { " Last known page: \($0.absoluteString)." } ?? ""
         return SleepyError(
             kind: .timeout,

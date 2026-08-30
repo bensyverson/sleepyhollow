@@ -89,7 +89,7 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   resolved tile height is no taller than the overlap.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
-        let viewportHeight: CGFloat = host.webView.frame.height
+        let viewportHeight = CGFloat(host.viewport.height)
         let capture = try await render(on: host)
         let strips = try tiled(capture, viewportHeight: viewportHeight)
         let fitted = try strips.map { try fit?.applied(to: $0) ?? $0 }
@@ -112,9 +112,34 @@ public struct ShotOperation: ExecutablePageOperation {
     }
 
     /// The render stage: resolves the region to a document rect and
-    /// snapshots exactly that, one CSS px to one pixel.
+    /// snapshots exactly that, at ``scale`` device pixels per CSS px.
+    ///
+    /// This is the `CGImage` path. ``execute(on:)`` is the encoded one — it
+    /// runs this and then tiles, fits, grids and PNG-encodes, because PNG
+    /// bytes are what crosses the wire to a CLI or a session client. An
+    /// embedder that wants pixels in process should call this instead and read
+    /// ``ShotCapture/image``: encoding here only to decode again is a lossless
+    /// round trip that costs two full passes over the raster and buys nothing
+    /// (`project/2026-08-29-woodcase-harness-feedback.md`, finding 8).
+    ///
+    /// The returned ``ShotCapture`` is self-describing: ``ShotCapture/rect``
+    /// is the document rect in CSS px, ``ShotCapture/scale`` the density it
+    /// was rasterized at, and ``ShotCapture/encoded()`` is still available for
+    /// a caller that wants both. The readout stages — ``ShotTile``,
+    /// ``ShotFit``, ``ShotGrid`` — are functions over captures, so an embedder
+    /// composing its own pipeline starts here.
+    ///
+    /// - Parameter host: the page to capture; its ``PageHost/viewport``
+    ///   decides a ``ShotRegion/viewport`` capture's size.
+    /// - Returns: the rendered pixels, un-encoded.
+    /// - Throws: ``SleepyError`` — the render stage's half of what
+    ///   ``execute(on:)`` reports: ``SleepyError/Kind/negative`` for an
+    ///   element region that matches nothing or has no rendered area, and
+    ///   ``SleepyError/Kind/environment`` when the page's geometry or the
+    ///   snapshot cannot be read, or ``scale`` is denser than the host's own
+    ///   raster.
     @MainActor
-    func render(on host: PageHost) async throws -> ShotCapture {
+    public func render(on host: PageHost) async throws -> ShotCapture {
         let webView = host.webView
         let originalFrame = webView.frame
         let needsFullHeight = region != .viewport

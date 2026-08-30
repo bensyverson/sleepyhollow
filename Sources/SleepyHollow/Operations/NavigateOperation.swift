@@ -32,7 +32,7 @@ public struct NavigateOperation: ExecutablePageOperation {
 
     /// Navigates to ``url`` when there is one, and returns the page's facts.
     ///
-    /// - Throws: whatever ``PageHost/load(_:)`` throws — a
+    /// - Throws: whatever ``PageHost/load(_:budget:)`` throws — a
     ///   ``SleepyError/Kind/loadFailure`` for a navigation that failed, a
     ///   ``SleepyError/Kind/timeout`` when the budget ran out.
     @MainActor

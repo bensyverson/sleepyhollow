@@ -14,7 +14,7 @@ struct HelpGoldenTests {
         ["load"], ["shot"], ["pdf"], ["archive"],
         ["dom"], ["query"], ["style"], ["find"], ["ax"],
         ["console"], ["wire"], ["eval"],
-        ["click"], ["fill"], ["submit"],
+        ["click"], ["fill"], ["submit"], ["resize"],
         ["open"], ["close"],
         ["sessions"], ["sessions", "list"], ["sessions", "prune"], ["sessions", "close"],
         ["jars"], ["jars", "list"], ["jars", "clear"], ["jars", "rm"],
@@ -27,7 +27,7 @@ struct HelpGoldenTests {
         ["load"], ["shot"], ["pdf"], ["archive"],
         ["dom"], ["query"], ["style"], ["find"], ["ax"],
         ["console"], ["wire"], ["eval"],
-        ["click"], ["fill"], ["submit"],
+        ["click"], ["fill"], ["submit"], ["resize"],
         ["open"], ["close"],
         ["sessions", "close"],
         ["jars", "clear"], ["jars", "rm"],
@@ -162,5 +162,6 @@ struct HelpGoldenTests {
         #expect(result.standardOutput.contains("ax"))
         #expect(result.standardOutput.contains("eval"))
         #expect(result.standardOutput.contains("peep"))
+        #expect(result.standardOutput.contains("sleepy resize"))
     }
 }

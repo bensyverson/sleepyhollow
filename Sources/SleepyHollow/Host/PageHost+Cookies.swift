@@ -36,7 +36,7 @@ public extension PageHost {
     /// Writes the live store's cookies back to ``LoadOptions/jar``.
     ///
     /// A no-op when no jar was named. Call this after mutating cookies past
-    /// the end of a load — ``PageHost/load(_:)`` already saves for itself.
+    /// the end of a load — ``PageHost/load(_:budget:)`` already saves for itself.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
     ///   the jar cannot be written.
@@ -71,7 +71,7 @@ extension PageHost {
 
     /// Saves the jar, swallowing a write failure.
     ///
-    /// Used on ``PageHost/load(_:)``'s failing paths: a login that redirected
+    /// Used on ``PageHost/load(_:budget:)``'s failing paths: a login that redirected
     /// and then timed out has still minted its cookie, and the load's own
     /// error is the one worth reporting.
     func saveJarIgnoringFailure() async {
