@@ -20,12 +20,28 @@ public struct SessionRecord: Friendly {
     /// Seconds of idle time after which the helper exits by itself.
     public let idleTimeout: TimeInterval
 
+    /// The ceiling, in seconds, the helper applies to one operation — the
+    /// `--budget` its `sleepy open` carried, or ``LoadOptions/defaultBudget``.
+    ///
+    /// Recorded so a client can bound its own wait against the *helper's*
+    /// clock rather than against a number it made up: a session opened with
+    /// `--budget 60000` may legitimately take a minute to answer, and a client
+    /// that assumed 30 s would call that a timeout (job issue MN69b).
+    public let budget: TimeInterval
+
     /// Creates a record.
-    public init(processID: Int32, url: URL?, startedAt: Date, idleTimeout: TimeInterval) {
+    public init(
+        processID: Int32,
+        url: URL?,
+        startedAt: Date,
+        idleTimeout: TimeInterval,
+        budget: TimeInterval = LoadOptions.defaultBudget,
+    ) {
         self.processID = processID
         self.url = url
         self.startedAt = startedAt
         self.idleTimeout = idleTimeout
+        self.budget = budget
     }
 
     /// How long the helper has been up, as of now.

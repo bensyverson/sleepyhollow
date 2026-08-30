@@ -112,6 +112,7 @@ public final class SessionHost {
             url: url,
             startedAt: Date(),
             idleTimeout: idleTimeout,
+            budget: page.budget,
         )
         try registry.write(record, for: name)
         self.record = record

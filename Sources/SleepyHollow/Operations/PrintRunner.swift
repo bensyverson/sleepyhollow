@@ -18,8 +18,26 @@ import Foundation
 ///
 /// The callback and the deadline race, and the first one wins: ``finish(_:)``
 /// resumes at most once, so a late `didRun:` after a timeout is dropped.
+///
+/// **A runner outlives its `await`.** `NSPrintOperation` does not retain the
+/// object it sends `didRun:` to, and the operation goes on running on its
+/// secondary thread after the deadline has already answered the caller — so a
+/// runner released at that point is a dangling delegate AppKit will message
+/// later. It did, three times on 2026-08-29: two aborts with
+/// `doesNotRecognizeSelector` and one SIGSEGV in `objc_msgSend`, all reached
+/// from `-[NSConcretePrintOperation _finishModalOperation]`. ``pending`` is
+/// the strong reference that makes the callback safe.
 @MainActor
 final class PrintRunner: NSObject {
+    /// Every runner AppKit may still call back into.
+    ///
+    /// A runner joins before `runModal` and leaves when `didRun:` arrives. One
+    /// whose callback never comes stays here for the life of the process,
+    /// deliberately: the only way to know AppKit is finished with the delegate
+    /// is to be told, and freeing it on a guess is the crash this exists to
+    /// stop. The leak is one small object per print that outlived its budget.
+    private static var pending: Set<PrintRunner> = []
+
     /// Waits for `operation` to finish printing, or for `budget` to run out.
     ///
     /// - Parameters:
@@ -31,8 +49,7 @@ final class PrintRunner: NSObject {
     /// - Returns: `true` when AppKit reported success, `false` when it
     ///   reported failure or the budget ran out first.
     static func runModal(_ operation: NSPrintOperation, in window: NSWindow, budget: TimeInterval) async -> Bool {
-        let runner = PrintRunner()
-        return await runner.run(operation, in: window, budget: budget)
+        await PrintRunner().run(operation, in: window, budget: budget)
     }
 
     /// The waiting caller, cleared by whichever of the callback or the
@@ -44,7 +61,11 @@ final class PrintRunner: NSObject {
 
     /// Starts the operation and waits for whichever of `didRun:` or the
     /// deadline arrives first.
-    private func run(_ operation: NSPrintOperation, in window: NSWindow, budget: TimeInterval) async -> Bool {
+    ///
+    /// Not private: the lifetime this method takes on — the runner survives
+    /// the return, because AppKit still holds it as a delegate — is what
+    /// `PrintRunnerLifetimeTests` observes.
+    func run(_ operation: NSPrintOperation, in window: NSWindow, budget: TimeInterval) async -> Bool {
         let finished: Bool = await withCheckedContinuation { continuation in
             self.continuation = continuation
             deadline = Task { @MainActor [weak self] in
@@ -52,6 +73,9 @@ final class PrintRunner: NSObject {
                 guard !Task.isCancelled else { return }
                 self?.finish(false)
             }
+            // Before `runModal`, not after: the operation can call back from
+            // its own thread the moment it is under way.
+            Self.pending.insert(self)
             operation.runModal(
                 for: window,
                 delegate: self,
@@ -80,13 +104,19 @@ final class PrintRunner: NSObject {
     /// The selector is spelled out in the `@objc` attribute so no later
     /// rename — the formatter's `unusedArguments` rule included — can move it
     /// out from under AppKit.
+    ///
+    /// Arriving here is also the one proof that AppKit is done with this
+    /// delegate, so it is where the runner leaves ``pending``.
     @objc(printOperationDidRun:success:contextInfo:)
     private nonisolated func printOperationDidRun(
         _: NSPrintOperation,
         success: Bool,
         contextInfo _: UnsafeMutableRawPointer?,
     ) {
-        Task { @MainActor in self.finish(success) }
+        Task { @MainActor in
+            self.finish(success)
+            PrintRunner.pending.remove(self)
+        }
     }
 
     /// Resumes the waiting caller, at most once.

@@ -24,7 +24,7 @@ import SleepyHollow
 /// possible: they are refused with a usage error naming `sleepy open` rather
 /// than accepted and quietly ignored. `--budget` is the exception, because it
 /// has an honest meaning on this side — it bounds how long the client waits
-/// for the helper's socket to answer.
+/// for the helper to answer, connection and reply alike.
 public enum PageExecution {
     /// Every load-shaping flag, in the order ``loadShapingFlags(_:)`` reports
     /// them: the order they appear in ``LoadFlagOptions``.
@@ -82,9 +82,11 @@ public enum PageExecution {
     /// The client for `name`, bounded by `flags`' budget when one was given.
     ///
     /// `--budget` is the invocation's ceiling everywhere else, so it is the
-    /// ceiling here too — on the connection, which is the only part of a
-    /// session operation this side owns. The work's own clock stays with the
-    /// helper, which is the only process that knows when its page gave up.
+    /// ceiling here too: it bounds the connection *and*, since 2026-08-29, the
+    /// wait for the reply — see ``SleepyHollow/SessionClient/deadline``. The
+    /// helper keeps its own clock on the work, because it is the only process
+    /// that knows when its page gave up; this side keeps the promise that
+    /// nothing hangs when the helper's clock stops running.
     public static func client(
         for name: SessionName,
         flags: LoadFlagOptions? = nil,
@@ -94,10 +96,12 @@ public enum PageExecution {
         guard let milliseconds: Int = flags?.budget else {
             return SessionClient(name: name, registry: registry)
         }
+        let budget = TimeInterval(milliseconds) / 1000
         return SessionClient(
             name: name,
             registry: registry,
-            connectTimeout: TimeInterval(milliseconds) / 1000,
+            budget: budget,
+            connectTimeout: budget,
         )
     }
 

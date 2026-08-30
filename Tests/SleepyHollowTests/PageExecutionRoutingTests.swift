@@ -74,7 +74,15 @@ struct PageExecutionRoutingTests {
         #expect(PageExecution.loadShapingFlags(flags).isEmpty)
         try PageExecution.requireSessionCompatible(flags)
         let name: SessionName = try #require(SessionName("login"))
-        #expect(try PageExecution.client(for: name, flags: flags).connectTimeout == 5)
+        let client: SessionClient = try PageExecution.client(for: name, flags: flags)
+        #expect(client.connectTimeout == 5)
+        #expect(client.budget == 5)
+        #expect(SessionClient.deadline(forBudget: 5) == 5 + SessionClient.transportMargin)
+    }
+
+    @Test func `a session client without --budget defers to the session's own`() throws {
+        let name: SessionName = try #require(SessionName("login"))
+        #expect(try PageExecution.client(for: name, flags: nil).budget == nil)
     }
 
     // MARK: - The load verb's target
