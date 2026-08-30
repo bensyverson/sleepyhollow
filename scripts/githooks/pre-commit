@@ -24,7 +24,25 @@ if [ -n "$STAGED_FILES" ]; then
     done
 fi
 
-swift test --quiet
+# The suite is capped at five minutes (Ben, 2026-08-29): a run past that is a
+# deadlock — WebKit session and print tests wedge under machine-wide load
+# (job issue MN69b) — not slowness, so it is killed and the commit refused
+# rather than left hanging. macOS has no `timeout`, hence the watchdog.
+SUITE_CAP_SECONDS=300
+swift test --quiet &
+SUITE_PID=$!
+( sleep "$SUITE_CAP_SECONDS"; pkill -P "$SUITE_PID" 2>/dev/null; kill "$SUITE_PID" 2>/dev/null
+  echo "swift test exceeded ${SUITE_CAP_SECONDS}s and was killed: treat it as a deadlock, not a slow run (see project/gotchas.md)." ) &
+WATCHDOG_PID=$!
+disown "$WATCHDOG_PID" 2>/dev/null || true
+set +e
+wait "$SUITE_PID"
+SUITE_STATUS=$?
+set -e
+kill "$WATCHDOG_PID" 2>/dev/null || true
+if [ "$SUITE_STATUS" -ne 0 ]; then
+    exit "$SUITE_STATUS"
+fi
 
 # Shared agent rules: refuse a commit that leaves AGENTS.md or a generated
 # project/agents/ file stale or hand-edited. `agents` is built from ~/git/agents.
