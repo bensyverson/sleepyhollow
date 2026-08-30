@@ -39,6 +39,14 @@ extension ShotCommand {
     /// ``ShotPlan/loads`` is what makes that grouping safe: `--scale` changes
     /// only the raster, so every density of one size-and-theme pair comes off
     /// the same loaded page and a 2×2 size/scale sweep pays for two loads.
+    ///
+    /// The loads that remain all run through one ``HostGroup``, so every
+    /// combination renders against one cookie store and one jar: `--jar` is
+    /// imported once for the whole sweep rather than once per combination,
+    /// and a session a first combination establishes is still there for the
+    /// last. It does not share an HTTP cache — a non-persistent data store has
+    /// none to share (``HostGroup`` carries the measurement) — so each
+    /// combination still fetches the page's subresources for itself.
     @MainActor
     private func capture(
         _ plan: ShotPlan,
@@ -48,6 +56,7 @@ extension ShotCommand {
     ) async throws -> [Render] {
         let steps: [ActionStep] = try PageExecution.actionSteps()
         let pageSource: PageSource = try source.resolve()
+        let hosts = HostGroup(jar: flags.jar)
         var renders: [Render] = []
         for group in plan.loads {
             guard let first = group.first else { continue }
@@ -56,6 +65,7 @@ extension ShotCommand {
                 on: pageSource,
                 flags: flags,
                 loadOptions: options,
+                group: hosts,
                 onPage: { host in
                     var captures: [Render] = []
                     for variant in group {

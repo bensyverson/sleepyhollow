@@ -71,3 +71,25 @@ of an agent hand-rolling that check and getting it wrong.
 "200 px below this element" without arithmetic. Parked: document-space
 `--rect` plus `query` geometry covers it. Un-parked by an agent flow that
 needs it more than once.
+
+## 2026-08-29 — A shared HTTP cache across a `HostGroup`
+
+The performance half of finding 9: several hosts paying for a page's
+subresources once. `HostGroup` does not deliver it, and cannot as built —
+a shared *non-persistent* `WKWebsiteDataStore` shares cookies but no
+cache, and the deprecated `WKProcessPool` is inert
+(`2026-08-29-host-group-cache.md`). Two routes exist, each parked on a
+decision rather than on effort:
+
+- **An isolated persistent store per group.**
+  `WKWebsiteDataStore(forIdentifier:)` is macOS 14, so the win would be
+  version-gated, and it writes under `~/Library/WebKit`, breaking the
+  promise that nothing on disk is touched unless a jar is named.
+  Un-parked by: a floor of macOS 14, or a ruling that a group may write a
+  cache directory it also deletes.
+- **One web view re-used across a sweep.** The measured "one view, two
+  loads" row is the whole win, and `PageHost.resize(to:)` already moves
+  the viewport without a reload. Un-parked by: a measurement of whether a
+  page re-evaluates `prefers-color-scheme` when the view's
+  `NSAppearance` changes mid-life — without that, `--theme` still needs a
+  fresh host and a sweep only saves on the size axis.

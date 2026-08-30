@@ -166,11 +166,17 @@ public enum PageExecution {
     /// Verbs that need more than one operation, or the host itself — `cookies
     /// set` writes the jar back after the write — use this; everything else
     /// uses ``run(_:on:flags:preparing:registry:)``.
+    ///
+    /// Passing a `group` makes the ephemeral host a member of it, so a verb
+    /// that loads the same page several times — `shot`'s sweep — pays for its
+    /// subresources once. It changes nothing on the session path: a session
+    /// already is one long-lived browser.
     @MainActor
     public static func perform<Value>(
         on source: PageSource,
         flags: LoadFlagOptions? = nil,
         loadOptions: LoadOptions? = nil,
+        group: HostGroup? = nil,
         preparing: (LoadOptions) -> LoadOptions = { $0 },
         registry: SessionRegistry = SessionRegistry(),
         onPage: (PageHost) async throws -> Value,
@@ -180,7 +186,8 @@ public enum PageExecution {
         case let .url(url):
             let resolved: LoadOptions = try loadOptions ?? defaultLoadOptions(flags)
             let options: LoadOptions = preparing(resolved)
-            let host = PageHost(options: options)
+            let host: PageHost = try group.map { try PageHost.member(of: $0, options: options) }
+                ?? PageHost(options: options)
             _ = try await host.load(url)
             return try await onPage(host)
         case let .session(name):

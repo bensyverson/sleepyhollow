@@ -119,6 +119,12 @@ let facts = try await host.load(url)
 let shot = try await ShotOperation(scale: try ShotScale(factor: 2)).execute(on: host)
 ```
 
+Hosts that need one identity — sign in once, then render many pages — are
+built as members of a `HostGroup`, which owns the cookie store and the jar
+for all of them. It does not share an HTTP cache: see
+[project/2026-08-29-host-group-cache.md](project/2026-08-29-host-group-cache.md)
+for what WebKit does and does not share.
+
 Build the API reference with `swift package generate-documentation` (see
 CLAUDE.md for the full DocC workflow).
 

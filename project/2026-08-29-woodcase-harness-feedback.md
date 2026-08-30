@@ -62,6 +62,8 @@ The viewport is fixed at `PageHost.init`. A component snapshot measures its cont
 
 Every `PageHost` gets `WKWebsiteDataStore.nonPersistent()` and its own content process, so two hosts share nothing. Measured value of a warm cache: **142 ms per page load** on a 3.4 MB-of-scripts page. Suggested: let `LoadOptions` optionally carry a `WKWebsiteDataStore` (and/or a shared `WKProcessPool`) so a caller running many pages can opt in, with today's per-host non-persistent store as the default. This is not test-only — `sleepy shot --sweep` and any batch verb pay the same cost per page.
 
+> **Corrected 2026-08-29, while building the fix** ([2026-08-29-host-group-cache.md](2026-08-29-host-group-cache.md)). The suggestion does not work: sharing a non-persistent `WKWebsiteDataStore` between hosts shares cookies but **no cache**, and a shared `WKProcessPool` is deprecated at this package's macOS 12 floor and provably inert. Only the persistent default store shares a cache, and one web view reloading is the only ephemeral arrangement that reuses anything. `HostGroup` was built for the cookie half; the 142 ms is still on the table.
+
 ## 10. Reinforces #1: a message-named wait condition
 
 The same starvation described in #1 is why Woodcase still loads with `wait: nil` and keeps `readySignalScript` + `waitForSignal`. The smallest fix is `WaitCondition.message(name:)` — settle when the page posts to a named script-message handler — roughly 20 lines in `WaitEngine`. It would let the consumer delete two of its own pieces and stop documenting a reason to avoid a SleepyHollow feature.

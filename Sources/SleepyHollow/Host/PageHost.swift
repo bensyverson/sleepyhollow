@@ -142,11 +142,22 @@ public final class PageHost {
     /// alone is the condition.
     let waiter: WaitEngine?
 
+    /// The group this host is a member of, or `nil` for an ordinary host that
+    /// owns its data store, its content process and its jar alone.
+    ///
+    /// A member's cookie store and jar bookkeeping belong to the group. Its
+    /// *cache* does not: WebKit gives an ephemeral session no shared cache, so
+    /// every member still fetches its own subresources — see ``HostGroup``,
+    /// which carries the measurement, and ``PageHost/member(of:options:)``.
+    public let group: HostGroup?
+
     /// Where ``LoadOptions/jar`` is read from and written back to. Never
     /// touched unless a jar was named — see ``PageHost/importJarIfNeeded()``.
+    /// In a group this is the group's store, and the group does the reading.
     let jars: JarStore
 
     /// Whether this host has already pulled the jar into its cookie store.
+    /// Unused in a group, where the flag belongs to the group.
     var hasImportedJar = false
 
     /// The window ``PageHost/ensureOffscreenWindow()`` parked ``webView`` in;
@@ -172,13 +183,48 @@ public final class PageHost {
     ///   scripts, waiting, and the rest of ``LoadOptions``.
     /// - Parameter jars: where a named jar is read and written; the default
     ///   store honours `SLEEPYHOLLOW_HOME`, and tests inject a throwaway root.
-    public init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {
+    public convenience init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {
+        self.init(options: options, jars: jars, group: nil)
+    }
+
+    /// Creates a host that shares `group`'s browser: its data store, so its
+    /// cookies, and its jar.
+    ///
+    /// A factory rather than an `init(options:jars:group:)` for two reasons.
+    /// Joining a group is the only construction that can be *refused* (a
+    /// member whose ``LoadOptions/jar`` disagrees with the group's), and a
+    /// throwing initializer would make `try` the price of every ordinary
+    /// host. And a member takes no `jars` argument at all: the group owns the
+    /// jar store, so there is no second store to pass and no question of which
+    /// one wins.
+    ///
+    /// - Parameter group: the browser to join.
+    /// - Parameter options: the load's shape. ``LoadOptions/jar`` may name the
+    ///   group's own jar or nothing; a member inherits the group's either way.
+    /// - Returns: a host indistinguishable from an ordinary one except that
+    ///   the cookies it holds are the group's. Not its cache — see
+    ///   ``HostGroup`` for what a shared data store does and does not share.
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when
+    ///   ``LoadOptions/jar`` names a jar that is not the group's.
+    public static func member(of group: HostGroup, options: LoadOptions = LoadOptions()) throws -> PageHost {
+        try group.requireJarAgrees(with: options.jar)
+        return PageHost(options: options, jars: group.jars, group: group)
+    }
+
+    /// The designated initializer: everything a host is, plus the group whose
+    /// browser it shares.
+    private init(options: LoadOptions, jars: JarStore, group: HostGroup?) {
         self.options = options
         self.jars = jars
+        self.group = group
         viewport = options.size
         waiter = WaitEngine(condition: options.wait)
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        if let group {
+            group.configure(configuration)
+        } else {
+            configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        }
         if options.fileAccessRoot != nil { configuration.preferences.allowLocalFileReads() }
         webView = WKWebView(frame: PageHost.frame(for: options.size), configuration: configuration)
         webView.navigationDelegate = delegate
