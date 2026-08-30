@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Message signal fixture</title>
+</head>
+<body>
+  <h1>Message signal fixture</h1>
+  <p id="early">Present before the load event.</p>
+  <script>
+    // Posts once to the script-message handler named by ?handler= (default
+    // sleepyReady), ?delay= milliseconds after parsing (default 200): the
+    // push a `--wait-for message:<name>` load settles on. The try/catch keeps
+    // the page working when no host registered that handler — an unregistered
+    // handler name is a TypeError in the page, not a signal.
+    var params = new URLSearchParams(location.search);
+    var handler = params.get('handler') || 'sleepyReady';
+    var delay = parseInt(params.get('delay') || '200', 10);
+    window.sleepyPosted = false;
+    setTimeout(function () {
+      try {
+        window.webkit.messageHandlers[handler].postMessage('ready');
+        window.sleepyPosted = true;
+      } catch (ignored) { /* nothing is listening; nothing to settle */ }
+    }, delay);
+  </script>
+</body>
+</html>

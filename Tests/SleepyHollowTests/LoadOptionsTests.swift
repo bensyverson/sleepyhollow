@@ -49,7 +49,9 @@ struct LoadOptionsTests {
     }
 
     @Test func `every wait condition survives JSON transport`() throws {
-        let conditions: [WaitCondition] = [.selector("#x"), .predicate("window.ready"), .idle, .load]
+        let conditions: [WaitCondition] = [
+            .selector("#x"), .predicate("window.ready"), .message("appReady"), .idle, .load,
+        ]
         for condition in conditions {
             let data: Data = try JSONEncoder().encode(condition)
             let decoded: WaitCondition = try JSONDecoder().decode(WaitCondition.self, from: data)

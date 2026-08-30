@@ -67,6 +67,18 @@ sleepy shot http://localhost:3000/ --out after.png
 peep compare before.png after.png
 ```
 
+Wait until the page is actually ready before reading it → `--wait-for`, on
+any loading verb. The page pushes and the host holds the budget, so no verb
+needs a sleep: `js:<expr>` is re-evaluated **inside the page** until it is
+truthy, and `message:<name>` settles when the page itself posts to
+`window.webkit.messageHandlers.<name>`.
+
+```sh
+sleepy shot http://localhost:3000/app --wait-for '#chart' --out chart.png
+sleepy load http://localhost:3000/app --wait-for 'js:window.ready === true'
+sleepy load http://localhost:3000/app --wait-for message:appReady
+```
+
 Read console errors → `load`, `console`
 
 ```sh

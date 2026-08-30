@@ -133,7 +133,7 @@ public final class PageHost {
 
     /// The settle phase for ``LoadOptions/wait``; `nil` when the load event
     /// alone is the condition.
-    private let waiter: WaitEngine?
+    let waiter: WaitEngine?
 
     /// Where ``LoadOptions/jar`` is read from and written back to. Never
     /// touched unless a jar was named — see ``PageHost/importJarIfNeeded()``.
@@ -181,7 +181,12 @@ public final class PageHost {
         install(ConsoleCapture.script(messageName: Self.consoleMessageName))
         install(SleepyHelpers.script)
         if let waiter {
-            register(messageName: WaitEngine.messageName, in: .isolated)
+            // Each in the world its push comes from: a handler registered in
+            // the isolated world is invisible to a page-world script, and to
+            // the page itself.
+            for registration in waiter.messageRegistrations {
+                register(messageName: registration.name, in: registration.world)
+            }
             for script in waiter.scripts {
                 install(script)
             }
@@ -205,7 +210,7 @@ public final class PageHost {
     ///
     /// Settling is the navigation's load event *and* ``LoadOptions/wait``:
     /// the load event alone for ``WaitCondition/load`` or no condition, and
-    /// otherwise the wait engine's selector, predicate or idle phase running
+    /// otherwise the wait engine's selector, predicate, message or idle phase running
     /// on after it. Both phases share the one budget — whatever navigating
     /// spends, waiting does not get again — so a loading verb inherits waiting
     /// by passing its ``LoadOptions`` through unchanged.

@@ -104,6 +104,30 @@ struct LoadFlagOptionsTests {
         #expect(options.wait == .predicate("window.ready === true"))
     }
 
+    @Test func `a message: prefix resolves to a message condition`() throws {
+        let options = try LoadFlagOptions.resolve(
+            size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "message:appReady",
+            budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
+        )
+        #expect(options.wait == .message("appReady"))
+    }
+
+    @Test func `a message: name that is not an identifier teaches the shape`() {
+        do {
+            _ = try LoadFlagOptions.resolve(
+                size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "message:app ready",
+                budgetMilliseconds: nil, confirm: nil, promptText: nil, steps: Self.noSteps,
+            )
+            Issue.record("expected a usage error")
+        } catch let error as SleepyError {
+            #expect(error.kind == .usage)
+            #expect(error.message.contains("app ready"))
+            #expect(error.nextMove?.contains("message:") == true)
+        } catch {
+            Issue.record("expected a SleepyError, got \(error)")
+        }
+    }
+
     @Test func `the idle keyword resolves to the idle condition`() throws {
         let options = try LoadFlagOptions.resolve(
             size: nil, theme: nil, jar: nil, injectPaths: [], injectWorld: nil, waitFor: "idle",

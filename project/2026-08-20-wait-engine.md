@@ -24,6 +24,29 @@ page stay readable.
 | `.predicate` | host-side `evaluate` in the **page world** | every 50 ms |
 | `.idle` | host-side sampling of a page-world activity watcher | every 100 ms, 500 ms quiet window |
 
+> **Corrected 2026-08-29 (page-side wait leaf):** the `.predicate` row is
+> wrong, and so is every sentence below that says the engine re-checks a
+> predicate on its own cadence. A host-side poll runs on `@MainActor`, and in
+> an embedding that saturates the main actor it is simply never scheduled: a
+> page that set its ready flag at 200 ms reported a 10 s timeout, and the
+> affected tests passed whenever they ran alone
+> ([2026-08-29-woodcase-harness-feedback.md](2026-08-29-woodcase-harness-feedback.md),
+> findings 1 and 10 — the one item there that cost real time). `.predicate`
+> now compiles to `PredicateWatch`, a document-start **page-world** script
+> that re-evaluates the expression on a `setTimeout(check, 16)` loop and posts
+> once when it is truthy (and once, earlier, with its first failure text, so a
+> starved host can still say *why* nothing became true). The host keeps a slow
+> 250 ms backstop probe and the load-event check, exactly as `.selector` does,
+> and still owns the deadline — it just stops being the thing that *checks*.
+> A third kind arrived with it: `.message(name)` / `--wait-for message:<name>`,
+> which settles when the page posts to a named script-message handler in its
+> own world. `.idle` still samples from the host every 100 ms, deliberately
+> (see [2026-08-29-woodcase-harness-plan.md](2026-08-29-woodcase-harness-plan.md),
+> "Decided against"). Reproduced under load with `scripts/flake-hunt.sh 3 12`;
+> the mechanism itself is pinned by `WaitPredicateTests` — "the page's push
+> settles a predicate with no host poll behind it", which sets the engine's
+> backstop interval to an hour and asserts the host probed exactly once.
+
 ## What "idle" means, exactly
 
 A page is idle when 500 ms pass — measured on the host's clock — in which all

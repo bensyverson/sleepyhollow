@@ -58,7 +58,10 @@ public struct LoadFlagOptions: ParsableArguments {
     )
     public var injectWorld: InjectedScript.World?
 
-    @Option(name: .long, help: "Wait condition: a selector, 'js:<expr>', 'idle', or 'load'.")
+    @Option(
+        name: .long,
+        help: "Wait condition: a selector, 'js:<expr>' (re-checked in the page), 'message:<name>' (the page posts to that script-message handler), 'idle', or 'load'.",
+    )
     public var waitFor: String?
 
     @Option(name: .long, help: "Ceiling in milliseconds for load, settle, and steps.")
@@ -233,7 +236,14 @@ public struct LoadFlagOptions: ParsableArguments {
         }
     }
 
-    private static func resolveWait(_ raw: String?) -> WaitCondition? {
+    /// Reads `--wait-for`: the two keywords, the two prefixed forms, and a
+    /// bare CSS selector.
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when
+    ///   `message:` names something no page could post to — a handler name
+    ///   has to be a plain identifier, and waiting a whole budget to say so
+    ///   would be a plausible wrong answer.
+    private static func resolveWait(_ raw: String?) throws -> WaitCondition? {
         guard let raw else { return nil }
         switch raw {
         case "idle":
@@ -243,6 +253,19 @@ public struct LoadFlagOptions: ParsableArguments {
         default:
             if raw.hasPrefix("js:") {
                 return .predicate(String(raw.dropFirst(3)))
+            }
+            if raw.hasPrefix("message:") {
+                let name = String(raw.dropFirst("message:".count))
+                guard WaitCondition.isValidMessageName(name) else {
+                    throw SleepyError(
+                        kind: .usage,
+                        message: "'--wait-for message:\(name)' does not name a script-message handler.",
+                        nextMove: "Name a plain identifier — letters, digits, '_' or '$', not starting with a "
+                            + "digit — and have the page call window.webkit.messageHandlers.<name>.postMessage(...), "
+                            + "as in --wait-for message:appReady.",
+                    )
+                }
+                return .message(name)
             }
             return .selector(raw)
         }

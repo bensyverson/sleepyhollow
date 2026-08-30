@@ -1,10 +1,51 @@
 import Foundation
-import SleepyHollow
+@testable import SleepyHollow
 import Testing
 import TestSupport
 
 @Suite("Wait for a JavaScript predicate")
 struct WaitPredicateTests {
+    /// Waits — generously — for the engine's one load-event check to have run.
+    ///
+    /// `@testable` on purpose: `probeCount` is the evidence that the *page*,
+    /// not a host poll, settled the wait.
+    @MainActor
+    private static func awaitFirstProbe(_ engine: WaitEngine, timeout: TimeInterval = 30) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while engine.probeCount == 0, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return engine.probeCount > 0
+    }
+
+    @Test
+    @MainActor
+    func `the page's push settles a predicate with no host poll behind it`() async throws {
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
+            var options = LoadOptions()
+            options.wait = .predicate("window.sleepyReady === true")
+            options.budget = 30
+            let host = PageHost(options: options)
+            let engine: WaitEngine = try #require(host.waiter)
+            // The host's periodic re-check is pushed past any run of this test:
+            // whatever ends the wait, it is not the host asking again.
+            engine.backstopInterval = 3600
+            let url = URL(string: "wait-late.html?flip=gate", relativeTo: base)!
+            let load = Task { @MainActor in try await host.load(url) }
+            // Program order, not a margin: the host's one check has completed
+            // and the page is still held at the gate, so the predicate was
+            // false when the host looked — and the host will not look again.
+            #expect(await Self.awaitFirstProbe(engine), "the host never ran its load-event check")
+            #expect(engine.probeCount == 1)
+            #expect(await gate.awaitRequest(), "the page never reached the gate, so the assertion above proved nothing")
+            await gate.open()
+            _ = try await load.value
+            #expect(engine.probeCount == 1, "only the load-event check ran host-side; the page pushed the rest")
+        }
+    }
+
     @Test
     @MainActor
     func `a predicate already true at the load event settles at once`() async throws {
