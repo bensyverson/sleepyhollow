@@ -188,6 +188,8 @@ struct HostGroupMeasurementTests {
     }
 
     /// A bare web view on `store`, with no ``PageHost`` machinery in the way.
+    /// Deprecated for the same reason as its one caller: the `pool` it takes.
+    @available(*, deprecated)
     @MainActor
     private static func view(store: WKWebsiteDataStore, pool: WKProcessPool? = nil) -> WKWebView {
         let configuration = WKWebViewConfiguration()

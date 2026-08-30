@@ -93,3 +93,23 @@ decision rather than on effort:
   page re-evaluates `prefers-color-scheme` when the view's
   `NSAppearance` changes mid-life — without that, `--theme` still needs a
   fresh host and a sweep only saves on the size axis.
+
+## 2026-08-29 — Per-load `wait:` on a shared host
+
+A `PageHost.load(_:wait:)` override to match `load(_:budget:)`, so one
+host serves pages with different settle conditions. Parked because wait
+instrumentation is document-start user scripts installed at host init;
+per-load would mean tearing down and reinstalling user scripts between
+loads and re-registering message handlers per world. Un-parked by a
+consumer that needs one host for pages with different conditions *and*
+cannot express them as one predicate or one `message:` handler
+(`2026-08-29-woodcase-harness-plan.md`).
+
+## 2026-08-29 — Page-side `idle`
+
+`WaitEngine.settleIdle` still samples from the host every 100 ms and
+starves under a saturated main actor exactly as the predicate did before
+`PredicateWatch`. Parked because `idle`'s quiet window is deliberately
+the host's to measure (`2026-08-20-wait-engine.md`), and no report has
+shown an `idle` timeout on a quiet page. Un-parked by one: an `idle`
+wait reported as a timeout under load on a page that had gone quiet.
