@@ -106,6 +106,11 @@ struct OpenCommand: AsyncParsableCommand {
 
     /// The `_host` argument vector: the session's identity, its URL, and every
     /// loading option this invocation carried.
+    ///
+    /// The loading flags themselves come from
+    /// ``LoadFlagOptions/sessionArguments(steps:)``, so the forwarding lives
+    /// beside the flags it forwards and a new one cannot be added without
+    /// meeting it.
     private func hostArguments(
         name sessionName: SessionName,
         url target: URL,
@@ -124,43 +129,7 @@ struct OpenCommand: AsyncParsableCommand {
         if recordWire {
             arguments.append("--record-wire")
         }
-        if let size: String = flags.size.first {
-            arguments += ["--size", size]
-        }
-        if let theme: ColorTheme = flags.theme.first {
-            arguments += ["--theme", theme.rawValue]
-        }
-        if let jar: JarName = flags.jar {
-            arguments += ["--jar", jar.rawValue]
-        }
-        for path in flags.inject {
-            arguments += ["--inject", path]
-        }
-        if let injectWorld: InjectedScript.World = flags.injectWorld {
-            arguments += ["--inject-world", injectWorld.rawValue]
-        }
-        if let waitFor: String = flags.waitFor {
-            arguments += ["--wait-for", waitFor]
-        }
-        if let budget: Int = flags.budget {
-            arguments += ["--budget", String(budget)]
-        }
-        if let confirm: LoadFlagOptions.DialogChoice = flags.confirm {
-            arguments += ["--confirm", confirm.rawValue]
-        }
-        if let promptText: String = flags.promptText {
-            arguments += ["--prompt-text", promptText]
-        }
-        return arguments + steps.flatMap(Self.arguments(for:))
-    }
-
-    /// One ordered action step, back in its flag form for the helper.
-    private static func arguments(for step: ActionStep) -> [String] {
-        switch step {
-        case let .click(selector): ["--click", selector]
-        case let .fill(selector, value): ["--fill", "\(selector)=\(value)"]
-        case let .submit(selector): ["--submit", selector]
-        }
+        return arguments + flags.sessionArguments(steps: steps)
     }
 
     /// Hands the helper's own rendered failure and exit code to the caller.

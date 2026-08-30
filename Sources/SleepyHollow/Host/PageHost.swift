@@ -179,10 +179,12 @@ public final class PageHost {
         waiter = WaitEngine(condition: options.wait)
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        if options.fileAccessRoot != nil { configuration.preferences.allowLocalFileReads() }
         webView = WKWebView(frame: PageHost.frame(for: options.size), configuration: configuration)
         webView.navigationDelegate = delegate
         webView.uiDelegate = delegate
         webView.appearance = NSAppearance(named: options.theme.appearanceName)
+        webView.applyBackdrop(options.backdrop)
         delegate.host = self
         register(messageName: Self.consoleMessageName, in: .page)
         install(ConsoleCapture.script(messageName: Self.consoleMessageName))
@@ -228,6 +230,21 @@ public final class PageHost {
     /// still lands. A load that throws saves too, quietly: a login that
     /// redirected and then timed out has still minted its cookie.
     ///
+    /// ### What a `file:` load can reach
+    ///
+    /// A plain `file:` navigation resolves relative subresources freely, in
+    /// sibling *and* parent directories: `../js/app.js`, `../images/logo.svg`
+    /// and an `@font-face` `src` two levels up all load (measured by the first
+    /// library embedding —
+    /// `project/2026-08-29-woodcase-harness-feedback.md`, finding 3). What it
+    /// cannot do is read a local file *from script*: `fetch()` and
+    /// `XMLHttpRequest` against a `file:` URL are refused, because a `file:`
+    /// document has an opaque origin. Setting ``LoadOptions/fileAccessRoot``
+    /// turns that on and navigates through
+    /// `WKWebView.loadFileURL(_:allowingReadAccessTo:)`, which also confines
+    /// subresource loading to the root — so the page itself has to be under
+    /// it. A non-`file:` URL ignores the root entirely.
+    ///
     /// - Parameter url: where to navigate.
     /// - Parameter budget: seconds this one load gets, or `nil` for the
     ///   host's ``budget``.
@@ -240,7 +257,8 @@ public final class PageHost {
     ///   ``WebContentProcessFailure/neverLaunched``, the sandbox denial that
     ///   used to read as a timeout), ``SleepyError/Kind/environment`` when the options ask for
     ///   something this host does not yet implement, or
-    ///   ``SleepyError/Kind/usage`` when a load is already in flight or the
+    ///   ``SleepyError/Kind/usage`` when a load is already in flight, when
+    ///   ``LoadOptions/fileAccessRoot`` is not a `file:` URL, or when the
     ///   wait condition can never be met as written.
     ///
     /// - Note: ``PageFacts/consoleErrorCount`` is `0` when a load times out.
@@ -261,6 +279,13 @@ public final class PageHost {
         }
         isLoading = true
         defer { isLoading = false }
+        if let root: URL = options.fileAccessRoot, !root.isFileURL {
+            throw SleepyError(
+                kind: .usage,
+                message: "The file access root '\(root.absoluteString)' is not a file: URL.",
+                nextMove: "Give a local directory — a read-access grant only means anything on this machine's disk.",
+            )
+        }
         let applied: TimeInterval = budget ?? self.budget
         try await importJarIfNeeded()
         do {
@@ -389,7 +414,13 @@ public final class PageHost {
                 guard !Task.isCancelled else { return }
                 self?.finishNavigation(.timedOut)
             }
-            webView.load(URLRequest(url: url))
+            // A read-access root only means anything for a `file:` document;
+            // for anything else `loadFileURL` is not even a legal call.
+            if let root: URL = options.fileAccessRoot, url.isFileURL {
+                webView.loadFileURL(url, allowingReadAccessTo: root)
+            } else {
+                webView.load(URLRequest(url: url))
+            }
         }
         budgetTask?.cancel()
         budgetTask = nil

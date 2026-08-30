@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>File fetch</title>
+  </head>
+  <body>
+    <p id="result">pending</p>
+    <script>
+      function settle(text) {
+        document.getElementById('result').textContent = text;
+        var marker = document.createElement('i');
+        marker.id = 'done';
+        document.body.appendChild(marker);
+      }
+      // Deliberately relative: under a file: document this resolves to a
+      // sibling file: URL, which only a read-access root lets fetch() read.
+      // No response.ok check: a fetch of a file: URL that succeeds still
+      // reports status 0, because there is no HTTP status to report.
+      fetch('file-fetch-target.txt')
+        .then(function (response) {
+          return response.text();
+        })
+        .then(function (text) {
+          settle('ok:' + text.trim());
+        })
+        .catch(function (error) {
+          settle('blocked:' + error.message);
+        });
+    </script>
+  </body>
+</html>

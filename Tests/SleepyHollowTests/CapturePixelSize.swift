@@ -47,6 +47,18 @@ func pixelColor(of image: CGImage, x: Int, y: Int) -> (red: UInt8, green: UInt8,
     return (samples[offset], samples[offset + 1], samples[offset + 2])
 }
 
+/// One pixel's colour *and* alpha, addressed from the image's top-left.
+///
+/// The samples are premultiplied, so a fully transparent pixel reads as
+/// `(0, 0, 0, 0)` whatever the page painted there — which is exactly the
+/// claim a transparent backdrop makes.
+func pixelRGBA(of image: CGImage, x: Int, y: Int) -> (red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8)? {
+    guard let samples = redrawnSamples(of: image, width: image.width, height: image.height) else { return nil }
+    let offset = (y * image.width + x) * 4
+    guard offset + 3 < samples.count else { return nil }
+    return (samples[offset], samples[offset + 1], samples[offset + 2], samples[offset + 3])
+}
+
 /// The mean absolute per-channel difference between two images, each redrawn
 /// into the same `width × height` RGBA buffer — 0 for identical pixels, and a
 /// handful for two renderings that differ only in antialiasing.

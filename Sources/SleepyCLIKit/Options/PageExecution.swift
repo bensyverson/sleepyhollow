@@ -29,7 +29,7 @@ public enum PageExecution {
     /// Every load-shaping flag, in the order ``loadShapingFlags(_:)`` reports
     /// them: the order they appear in ``LoadFlagOptions``.
     public static let loadShapingFlagNames: [String] = [
-        "--size", "--theme", "--jar", "--inject", "--inject-world", "--wait-for",
+        "--size", "--theme", "--transparent", "--jar", "--file-root", "--inject", "--inject-world", "--wait-for",
         "--confirm", "--prompt-text", "--click", "--fill", "--submit",
     ]
 
@@ -47,7 +47,9 @@ public enum PageExecution {
         let given: [Bool] = [
             !flags.size.isEmpty,
             !flags.theme.isEmpty,
+            flags.transparent,
             flags.jar != nil,
+            flags.fileRoot != nil,
             !flags.inject.isEmpty,
             flags.injectWorld != nil,
             flags.waitFor != nil,

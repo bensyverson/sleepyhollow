@@ -103,17 +103,6 @@ public struct ShotCapture: Sendable {
         return ShotImage(png: png, rect: rect, scale: scale, pixelSize: pixelSize)
     }
 
-    /// Renders `image` into a fresh bitmap exactly `pixelSize` pixels wide
-    /// and tall, independent of the source image's own backing resolution.
-    ///
-    /// Measured, not documented: `WKWebView.takeSnapshot` hands back an
-    /// `NSImage` rasterized at the *host machine's* screen backing scale
-    /// factor (2x on a Retina Mac, 1x elsewhere) even though the web view is
-    /// never attached to a screen, and `snapshotWidth` only relabels the
-    /// `NSImage`'s logical size. Re-rendering at the exact pixel size is what
-    /// makes the output depend only on the requested rect and scale, never on
-    /// which Mac ran the command — determinism by construction (vision doc
-    /// §5).
     /// How many device pixels `image` actually holds per point — the *host's*
     /// density, since that is what `WKWebView.takeSnapshot` rasterizes at.
     ///
@@ -127,6 +116,22 @@ public struct ShotCapture: Sendable {
         return CGFloat(representation.pixelsWide) / image.size.width
     }
 
+    /// Renders `image` into a fresh bitmap exactly `pixelSize` pixels wide
+    /// and tall, independent of the source image's own backing resolution.
+    ///
+    /// Measured, not documented: `WKWebView.takeSnapshot` hands back an
+    /// `NSImage` rasterized at the *host machine's* screen backing scale
+    /// factor (2x on a Retina Mac, 1x elsewhere) even though the web view is
+    /// never attached to a screen, and `snapshotWidth` only relabels the
+    /// `NSImage`'s logical size. Re-rendering at the exact pixel size is what
+    /// makes the output depend only on the requested rect and scale, never on
+    /// which Mac ran the command — determinism by construction (vision doc
+    /// §5).
+    ///
+    /// The destination keeps an alpha channel and is drawn with
+    /// `NSCompositingOperation.copy`, never composited onto white, so a
+    /// capture taken against ``LoadOptions/Backdrop/transparent`` arrives
+    /// here with alpha 0 and leaves with it.
     static func rasterize(_ image: NSImage, atPixelSize pixelSize: CGSize) -> CGImage? {
         let width = max(1, Int(pixelSize.width.rounded()))
         let height = max(1, Int(pixelSize.height.rounded()))

@@ -2,9 +2,13 @@ import ArgumentParser
 import Foundation
 import SleepyHollow
 
-/// The shared loading flags every loading verb takes: viewport, theme, jar,
-/// injected scripts and the world they land in, waiting, budget, dialog
-/// policy, and the ordered one-shot action flags.
+/// The shared loading flags every loading verb takes: viewport, theme,
+/// backdrop, jar, file-access root, injected scripts and the world they land
+/// in, waiting, budget, dialog policy, and the ordered one-shot action flags.
+///
+/// `--transparent` is declared here rather than on `shot` because the backdrop
+/// is fixed when the web view is built: a per-capture flag could not honour
+/// `sleepy open --transparent`, and one declaration serves both.
 ///
 /// `--click`/`--fill`/`--submit` are declared here only so `--help` renders
 /// them; ArgumentParser loses interleave order across separate array
@@ -44,6 +48,18 @@ public struct LoadFlagOptions: ParsableArguments {
 
     @Option(name: .long, help: "Attach a persistent cookie jar by name.")
     public var jar: JarName?
+
+    @Option(
+        name: .long,
+        help: "Let a file: page's own fetch()/XHR read local files; the page must be under this directory. Ignored for http(s) URLs.",
+    )
+    public var fileRoot: String?
+
+    @Flag(
+        name: .long,
+        help: "Paint nothing behind the page, so a transparent body captures as alpha 0.",
+    )
+    public var transparent: Bool = false
 
     @Option(
         name: .long,
@@ -107,8 +123,16 @@ public struct LoadFlagOptions: ParsableArguments {
             budgetMilliseconds: budget,
             confirm: confirm,
             promptText: promptText,
+            fileRoot: fileRoot,
+            backdrop: backdrop,
             steps: steps,
         )
+    }
+
+    /// The backdrop this invocation asked for: `--transparent` names the fact,
+    /// and the absence of it is the deterministic opaque default.
+    public var backdrop: LoadOptions.Backdrop {
+        transparent ? .transparent : .opaque
     }
 
     /// Resolves the flags for **one render of a sweep**: `shot` owns the
@@ -134,6 +158,8 @@ public struct LoadFlagOptions: ParsableArguments {
             budgetMilliseconds: budget,
             confirm: confirm,
             promptText: promptText,
+            fileRoot: fileRoot,
+            backdrop: backdrop,
             steps: steps,
         )
         options.size = size
@@ -198,18 +224,48 @@ public struct LoadFlagOptions: ParsableArguments {
         budgetMilliseconds: Int?,
         confirm: DialogChoice?,
         promptText: String?,
+        fileRoot: String? = nil,
+        backdrop: LoadOptions.Backdrop = .opaque,
         steps: [ActionStep],
     ) throws -> LoadOptions {
         try LoadOptions(
             size: resolveSize(size) ?? ViewportSize.default,
             theme: theme ?? .light,
+            backdrop: backdrop,
             jar: jar,
+            fileAccessRoot: resolveFileRoot(fileRoot),
             scripts: resolveScripts(injectPaths, in: injectWorld ?? .isolated),
             dialogs: DialogPolicy(acceptsConfirms: confirm == .accept, promptResponse: promptText),
             wait: resolveWait(waitFor),
             budget: resolveBudget(budgetMilliseconds),
             steps: steps,
         )
+    }
+
+    /// Checks `--file-root` against the file system: a read-access grant that
+    /// names nothing would be a load that silently reaches nothing.
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when the
+    ///   path is missing or is a file rather than a directory.
+    private static func resolveFileRoot(_ path: String?) throws -> URL? {
+        guard let path else { return nil }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+            throw SleepyError(
+                kind: .usage,
+                message: "'--file-root \(path)' does not exist.",
+                nextMove: "Give an existing directory — the root a file: page's scripts may read under.",
+            )
+        }
+        guard isDirectory.boolValue else {
+            throw SleepyError(
+                kind: .usage,
+                message: "'--file-root \(path)' is a file, not a directory.",
+                nextMove: "Give the directory that holds it, e.g. --file-root "
+                    + "\(URL(fileURLWithPath: path).deletingLastPathComponent().path).",
+            )
+        }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 
     private static func resolveSize(_ raw: String?) throws -> ViewportSize? {

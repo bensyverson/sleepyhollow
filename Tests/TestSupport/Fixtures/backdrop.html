@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Backdrop</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        /* Paints nothing: with an opaque backdrop the web view's own white
+           shows through, with a transparent one the pixels stay empty. */
+        background: transparent;
+      }
+      body {
+        height: 1600px;
+      }
+      .box {
+        position: absolute;
+        left: 0;
+        width: 200px;
+        height: 200px;
+        background: rgb(255, 0, 0);
+      }
+      #top {
+        top: 0;
+      }
+      #bottom {
+        top: 1400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box" id="top"></div>
+    <div class="box" id="bottom"></div>
+  </body>
+</html>

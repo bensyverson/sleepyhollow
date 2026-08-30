@@ -16,9 +16,22 @@
 
 `PageHost.load` calls `webView.load(URLRequest(url:))`. For a `file:` document that *does* reach relative subresources in sibling and parent directories (measured: `../js`, `../images`, `../../Fonts` and an `@font-face` `file:` URL all loaded), so Woodcase's `allowingReadAccessTo:` parameter became unused. But `WKWebView.loadFileURL(_:allowingReadAccessTo:)` grants more than that — `fetch()`/XHR against local files — and `LoadOptions` cannot express it. Worth a `LoadOptions.fileAccessRoot` if local-file pages matter. Also worth one sentence in the docs saying what a plain file load can and cannot reach.
 
+> **Correction, 2026-08-29 (leaf NS3hs).** The sentence above is wrong about `loadFileURL`: it does **not** grant `fetch()`/XHR against local files. Measured against `Tests/TestSupport/Fixtures/file-fetch.html`, a page fetching its own sibling `file-fetch-target.txt` (`swift test --filter PageHostFileAccess`, and a throwaway probe of the four combinations):
+>
+> | navigation | `allowFileAccessFromFileURLs` | `fetch()` / XHR |
+> | --- | --- | --- |
+> | `load(URLRequest)` | off | `Load failed` |
+> | `loadFileURL(_:allowingReadAccessTo:)` | off | `Load failed` |
+> | `load(URLRequest)` | on | reads the file (HTTP status 0) |
+> | `loadFileURL(_:allowingReadAccessTo:)` | on | reads the file (HTTP status 0) |
+>
+> The grant that matters is the private `WKPreferences` key `allowFileAccessFromFileURLs` — a `file:` document has an opaque origin, and the read-access root does not change that. `LoadOptions.fileAccessRoot` therefore sets *both*: `loadFileURL`, which confines **subresource** loading to the root and refuses a page outside it, and the preference, which is what unblocks script. WebKit does not bound the script grant to the root — a page under a fixtures-directory root still read `file:///etc/hosts` — so the option says *whether* a page may read local files, not which. Both facts are in `LoadOptions.fileAccessRoot`'s DocC and in `WKPreferences.allowLocalFileReads()`.
+
 ## 4. No transparent-backdrop option
 
 Woodcase's components are compared against a renderer output with a transparent background, so the WebKit view must not paint white. Getting that meant `host.webView.setValue(false, forKey: "drawsBackground")` — a private KVC key, on the `webView` the docs reserve for capture/find/cookie use. A `LoadOptions` flag (or a `ShotOperation` option) for opaque vs. transparent backdrop would retire the private key.
+
+> **Addendum, 2026-08-29 (leaf NS3hs).** Shipped as `LoadOptions.backdrop` / `--transparent`, with the key owned by one internal `WKWebView.applyBackdrop(_:)`. Two measurements while building it: this WebKit answers `_setDrawsBackground:` and **not** `setDrawsBackground:` (so a `responds(to:)` guard has to probe the underscored selector), and the public macOS 12 `underPageBackgroundColor` is neither sufficient nor necessary — `NSColor.clear` on its own leaves every capture pixel opaque white, and the private key on its own already yields alpha 0. Alpha then survives `ShotCapture.rasterize`, `--scale 2`, tiling and PNG encoding unchanged; nothing in the shot pipeline composites onto white.
 
 ## 5. No public resize on `PageHost`
 
