@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Later webfont fixture</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    #sample {
+      font-family: 'SleepyBlock', 'Times New Roman', Times, serif;
+      font-size: 160px;
+      line-height: 1.2;
+      color: #000000;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="sample">HHHHH</div>
+  <script>
+    // The @font-face does not exist at the load event, so nothing the
+    // navigation waits for covers this font. The request is gated on a route
+    // a test registers only when it wants the font: with no /gate route the
+    // server answers 404, this handler never runs, and the page provably has
+    // no webfont for the whole run — program order, and no clock in it.
+    fetch('/gate').then((response) => {
+      if (!response.ok) { return; }
+      const style = document.createElement('style');
+      style.textContent =
+        "@font-face { font-family: 'SleepyBlock'; src: url('/block-font.ttf') format('truetype'); font-display: swap; }";
+      document.head.appendChild(style);
+      void document.getElementById('sample').offsetWidth;
+    });
+  </script>
+</body>
+</html>

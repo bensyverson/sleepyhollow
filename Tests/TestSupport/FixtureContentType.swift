@@ -13,6 +13,8 @@ public enum FixtureContentType: String, Friendly {
     case javascript = "text/javascript; charset=utf-8"
     /// `image/png`, fixture images.
     case png = "image/png"
+    /// `font/ttf`, the generated fixture webfont.
+    case trueTypeFont = "font/ttf"
     /// `text/plain`, small text assets and dynamic-route replies.
     case plainText = "text/plain; charset=utf-8"
     /// `application/octet-stream`, the fallback for unknown extensions.
@@ -25,6 +27,7 @@ public enum FixtureContentType: String, Friendly {
         case "css": .css
         case "js", "mjs": .javascript
         case "png": .png
+        case "ttf": .trueTypeFont
         case "txt": .plainText
         default: .octetStream
         }

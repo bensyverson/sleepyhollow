@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Webfont fixture</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    #sample {
+      font-family: 'SleepyBlock', 'Times New Roman', Times, serif;
+      font-size: 160px;
+      line-height: 1.2;
+      color: #000000;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="sample">HHHHH</div>
+  <script>
+    // Nothing here can reach the webfont until the test opens the server's
+    // gate, so "the fallback is still showing" is program order rather than a
+    // bet on the host being quicker than the page.
+    window.__sleepyGateOpened = fetch('/gate').then(() => true);
+
+    // The tight race: the bytes are already in memory when the face is built,
+    // so the swap lands as close to the host's next instruction as a font swap
+    // can. If a snapshot ever misses a repaint, it misses this one.
+    window.__sleepyApplyBytes = async () => {
+      await window.__sleepyGateOpened;
+      const response = await fetch('/block-font.ttf');
+      const face = new FontFace('SleepyBlock', await response.arrayBuffer());
+      await face.load();
+      document.fonts.add(face);
+      await document.fonts.ready;
+      return document.fonts.check('160px SleepyBlock');
+    };
+
+    // The realistic race, and Woodcase's own shape: a CSS @font-face whose
+    // bytes come off the wire. Reading offsetWidth forces the style and layout
+    // pass that *starts* the font load, so document.fonts.ready reflects it
+    // instead of resolving on a document that has not asked for the font yet.
+    window.__sleepyApplyStyle = async (url) => {
+      await window.__sleepyGateOpened;
+      const style = document.createElement('style');
+      style.textContent =
+        "@font-face { font-family: 'SleepyBlock'; src: url('" + url + "') format('truetype'); font-display: block; }";
+      document.head.appendChild(style);
+      void document.getElementById('sample').offsetWidth;
+      await document.fonts.ready;
+      return document.fonts.check('160px SleepyBlock');
+    };
+  </script>
+</body>
+</html>

@@ -79,6 +79,23 @@ sleepy load http://localhost:3000/app --wait-for 'js:window.ready === true'
 sleepy load http://localhost:3000/app --wait-for message:appReady
 ```
 
+Capture a page that uses webfonts, without catching it mid-fallback → just
+`shot`; the load event already waits for a `@font-face` the page's own
+stylesheet asks for
+
+```sh
+sleepy shot http://localhost:3000/report --out report.png
+```
+
+Do **not** add a sleep, and do not reach for `--wait-for
+"js:document.fonts.status === 'loaded'"`: a shot flushes the page's rendering
+before it rasterizes, and both `document.fonts.status` and
+`document.fonts.check(…)` already read ready on a page that has not requested
+the font, so for a font the page asks for *after* load they settle on the
+fallback. Wait for what the page does instead — a selector, or a predicate
+naming the page's own state (measured:
+[2026-08-29-paint-after-fonts-ready.md](2026-08-29-paint-after-fonts-ready.md)).
+
 Read console errors → `load`, `console`
 
 ```sh

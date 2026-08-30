@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Late webfont fixture</title>
+  <style>
+    @font-face {
+      font-family: 'SleepyBlock';
+      src: url('/delay/600/block-font.ttf') format('truetype');
+      font-display: swap;
+    }
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    #sample {
+      font-family: 'SleepyBlock', 'Times New Roman', Times, serif;
+      font-size: 160px;
+      line-height: 1.2;
+      color: #000000;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="sample">HHHHH</div>
+</body>
+</html>

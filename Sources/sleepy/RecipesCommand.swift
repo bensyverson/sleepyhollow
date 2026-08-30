@@ -77,6 +77,15 @@ struct RecipesCommand: ParsableCommand {
       sleepy shot http://localhost:3000/app --wait-for '#chart' --out chart.png
       sleepy load http://localhost:3000/app --wait-for 'js:window.ready === true'
       sleepy load http://localhost:3000/app --wait-for message:appReady
+    Capture a page that uses webfonts, without catching it mid-fallback →
+    just shot; the load event already waits for a @font-face the page's own
+    stylesheet asks for
+      sleepy shot http://localhost:3000/report --out report.png
+    Do not add a sleep, and do not reach for --wait-for
+    "js:document.fonts.status === 'loaded'": a shot flushes the page's
+    rendering before it rasterizes, and both document.fonts.status and
+    document.fonts.check() already read ready on a page that has not
+    requested the font. Wait for what the page does instead.
 
     Read console errors → load, console
       sleepy load http://localhost:3000/app

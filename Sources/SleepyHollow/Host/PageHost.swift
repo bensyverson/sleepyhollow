@@ -26,6 +26,13 @@ import WebKit
 /// is the "last state attached" mechanism, kept out of the error so `Core`
 /// need not know about pages.
 ///
+/// Nothing has to settle between a page-side promise and a capture: a shot
+/// flushes the page's rendering before it rasterizes, so `await
+/// document.fonts.ready` through ``evaluate(_:arguments:in:)`` followed
+/// immediately by a ``ShotOperation`` is correct, windowless or hosted, and a
+/// sleep in between buys nothing (measured across four host configurations,
+/// `project/2026-08-29-paint-after-fonts-ready.md`).
+///
 /// ```swift
 /// let host = PageHost()
 /// let facts = try await host.load(url)   // finalURL, status, console errors, dialogs

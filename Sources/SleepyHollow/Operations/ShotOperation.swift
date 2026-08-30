@@ -15,6 +15,15 @@ import WebKit
 /// fix for the exact bug the vision doc names: a control 2,400px down a page
 /// invisible to a viewport-shaped shot.
 ///
+/// A shot flushes the page's rendering before it rasterizes, so it needs no
+/// settle after anything the page has already announced: a capture taken on
+/// the very next instruction after `document.fonts.ready` — or any other
+/// page-side promise — was pixel-identical to the same capture 400 ms later
+/// in every configuration measured, windowless and hosted alike
+/// (`project/2026-08-29-paint-after-fonts-ready.md`). Never sleep before a
+/// shot; if the page's *next* change is on a timer, that is a `--wait-for`
+/// condition, not a delay.
+///
 /// Execution is a pipeline: **render** the region to a ``ShotCapture`` at
 /// ``scale`` device pixels per CSS px (the crop *is* the region), then
 /// **tile** it into strips, **fit** each strip to a pixel budget, and finally
