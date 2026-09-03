@@ -123,31 +123,6 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - **The head of `AGENTS.md` lists where the docs live; keep that list current.**
 <!-- agents:end docs -->
 
-<!-- agents:begin delegation-brief@222f55 -->
-## Delegating to subagents
-
-Design on the main thread; dispatch execution to agents for anything larger than a small change. **Read `project/agents/delegation.md` before dispatching** — it carries what to delegate, how to carve the work, the worktree workflow, the traps, and the briefing template.
-
-- Fanning out is a decision, not a default: map each leaf's file surface first, parallelize only the disjoint set, pre-carve or reserve a contended file to one writer, and serialize the rest.
-- Commit before dispatching — a worktree branches from local HEAD, so uncommitted work is invisible to the agent.
-- Agents never commit; the integrator makes every commit on `main`: snapshot the agent's branch with hooks off, `git merge --squash` it, read the diff (that is the code review), commit through the hooks with a real message from the agent's proposed one, push, then close the leaves.
-- Choose the model deliberately, require **deviations from the brief** and **"what in this brief is wrong?"** in every report, and verify what comes back — the pushback, not the typing, is usually the value.
-<!-- agents:end delegation-brief -->
-
-<!-- agents:begin jobs-brief@42b137 -->
-## Jobs
-
-`job` is the tracker for plans and tasks. **Read `project/agents/jobs.md` before filing or claiming work** — it carries the shape of the tree, criteria and blockers, the identity rules for agents, and how big a leaf should be.
-
-- Subagents pass a unique `--as <name>` and an absolute `--db` on every call; they `claim`, `note` and `release`, never `done`.
-<!-- agents:end jobs-brief -->
-
-<!-- agents:begin harness-brief@a03f30 -->
-## Harness
-
-The harness an agent runs inside has facts of its own — the Bash sandbox, `$TMPDIR`, no TTY, worktree isolation, background processes. **`project/agents/harness.md` carries them.** Read it the first time a tool call fails with a permission error or a "too complex to verify" refusal, and before writing a brief for a subagent.
-<!-- agents:end harness-brief -->
-
 <!-- agents:begin background@882e19 -->
 ## Background
 
@@ -155,3 +130,15 @@ The harness an agent runs inside has facts of its own — the Bash sandbox, `$TM
 
 **It holds *current* state, so it is rewritten, not appended.** Every number, date and name appears there once and links the dated `project/` document it came from; when a fact changes, edit the sentence that holds it and let the dated record keep the history.
 <!-- agents:end background -->
+
+<!-- agents:begin index@836e52 -->
+## Situational instructions
+
+These files carry instructions for specific situations. When one applies, read the file before acting and follow it.
+
+| Situation | File |
+|---|---|
+| Before dispatching any subagent | `project/agents/delegation.md` |
+| Before filing or claiming work in job, and when running as a subagent | `project/agents/jobs.md` |
+| The first time a tool call is refused or denied, and before briefing a subagent | `project/agents/harness.md` |
+<!-- agents:end index -->
