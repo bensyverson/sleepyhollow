@@ -1,3 +1,6 @@
+sources:
+  - name: agents-md
+    path: /Users/ben/git/agents-md
 modules:
   - core
   - principles
