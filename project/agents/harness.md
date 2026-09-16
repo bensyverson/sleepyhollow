@@ -1,4 +1,4 @@
-<!-- agents:begin harness@ea582f -->
+<!-- agents:begin harness@8e9a29 -->
 # Harness facts
 
 Facts about the tool an agent runs *inside*, not about this project — they are identical in every repo, which is why they are not in `project/gotchas.md`. One section per harness; today there is only Claude Code. Read this the first time a call fails with a permission error or a refusal you did not expect: none of these failures names the harness, which is exactly what makes them expensive.
@@ -9,7 +9,7 @@ Facts about the tool an agent runs *inside*, not about this project — they are
 
 Bash calls are sandboxed by default. The sandbox denies reads of the user's home outside a short allowlist, denies writes outside the repo and `$TMPDIR`, and refuses to listen on or connect to a local port. So these fail sandboxed: any toolchain whose caches live under `~/Library` or `~/go` (Go, SwiftPM), every `git` command that reads `~/.gitconfig`, `psql` over its unix socket, anything that binds a port, `curl localhost`, and a tool installed outside the allowlist (`sleepy` is on `$PATH` but its directory is unreadable).
 
-Recognise the messages — each reads like a broken install, a corrupt config or a dead server:
+Recognize the messages — each reads like a broken install, a corrupt config or a dead server:
 
 - `fatal: unable to access '…/.gitconfig': Operation not permitted` — git
 - `open …/Library/Caches/go-build/…: operation not permitted`, or `package fmt is not in std` — Go
@@ -29,9 +29,9 @@ The `!` runner and `ssh -t` give a command no TTY: stdin reads EOF. A tool with 
 
 ### Worktree isolation
 
-An agent given its own worktree runs under a second check, on top of the sandbox, that every command stays in that worktree. Some isolation modes refuse a command they cannot verify — *"this command is too complex to verify that it stays inside the worktree"* — which reads like a sandbox denial and invites `dangerouslyDisableSandbox`; that does not help. Split it into plain calls and use the `Write` tool for file bodies rather than `cat > file <<EOF`. How much trips it varies by mode: at its strictest `&&`, `;`, loops and heredoc-plus-command are all refused; on 2026-08-28 here only a `for` loop was, while `&&`, `;`, a pipe and a heredoc all ran. Two neighbours have their own messages: pointing git at the shared checkout (`git -C /path/to/main …`) is refused, and so is writing to a shared-checkout path — the tool tells you to edit the worktree copy.
+An agent given its own worktree runs under a second check, on top of the sandbox, that every command stays in that worktree. Some isolation modes refuse a command they cannot verify — *"this command is too complex to verify that it stays inside the worktree"* — which reads like a sandbox denial and invites `dangerouslyDisableSandbox`; that does not help. Split it into plain calls and use the `Write` tool for file bodies rather than `cat > file <<EOF`. How much trips it varies by mode: at its strictest `&&`, `;`, loops and heredoc-plus-command are all refused; on 2026-08-28 here only a `for` loop was, while `&&`, `;`, a pipe and a heredoc all ran. Two neighbors have their own messages: pointing git at the shared checkout (`git -C /path/to/main …`) is refused, and so is writing to a shared-checkout path — the tool tells you to edit the worktree copy.
 
-Four more. A worktree lives under `<repo>/.claude/worktrees/<name>`, so any tool config that excludes dot-directories excludes the whole worktree — a linter or formatter run there reports success having checked zero files; pass the config explicitly. The shell's cwd resets between calls, so nothing carries over from an earlier `cd` — every path in a brief is absolute. The worktree branches from **local HEAD at dispatch**, not from `origin/main`, so commit before dispatching; a *remote* agent (`isolation: remote`, or a session on another machine) clones from `origin`, so push before dispatching one of those. And gitignored files do not exist in a worktree — `.jobs.db`, `local/`, dev databases — so pass every such path absolute, and never "fix" a missing one by re-initialising it.
+Four more. A worktree lives under `<repo>/.claude/worktrees/<name>`, so any tool config that excludes dot-directories excludes the whole worktree — a linter or formatter run there reports success having checked zero files; pass the config explicitly. The shell's cwd resets between calls, so nothing carries over from an earlier `cd` — every path in a brief is absolute. The worktree branches from **local HEAD at dispatch**, not from `origin/main`, so commit before dispatching; a *remote* agent (`isolation: remote`, or a session on another machine) clones from `origin`, so push before dispatching one of those. And gitignored files do not exist in a worktree — `.jobs.db`, `local/`, dev databases — so pass every such path absolute, and never "fix" a missing one by re-initializing it.
 
 ### Models
 

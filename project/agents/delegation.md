@@ -1,4 +1,4 @@
-<!-- agents:begin delegation@0a9536 -->
+<!-- agents:begin delegation@de921f -->
 # Delegating to subagents
 
 Every rule here was paid for. Four hold even if you read nothing else:
@@ -45,7 +45,7 @@ Every rule here was paid for. Four hold even if you read nothing else:
 
 - **The agent shell's cwd resets between calls, and where it starts depends on who made the worktree** — the worktree itself when the harness made it, possibly the main checkout when you made it by hand. So every path in a brief is absolute or `git -C <worktree>`.
 - **Never prefix a command with `cd /path/to/main/checkout &&`.** That prefix silently retargets the MAIN checkout — mutating tracked files there, or making `go test` quietly test main's code so wrong-reason-green tests read as passes.
-- **Gitignored files don't exist in a worktree** — `.jobs.db`, `local/`, dev databases. Pass every such path absolute, and never "fix" a missing one by re-initialising it.
+- **Gitignored files don't exist in a worktree** — `.jobs.db`, `local/`, dev databases. Pass every such path absolute, and never "fix" a missing one by re-initializing it.
 - **Parallel agents share one scratch directory.** Prefix every scratch file with your leaf id (`kdrp5-commitmsg.txt`), and read back any file before you pass it to `-F`; a generic name is clobbered without warning.
 - **Restate anything the agent cannot proceed without.** A leaf description the agent can't read is not a brief; load-bearing instructions go in the prompt or a committed file.
 - **Keep the sync preamble in every prompt** (`git merge --ff-only main`, falling back to `git rebase main`); it makes a missed commit survivable. A clean base report may only describe state *after* syncing, so it isn't evidence of a clean spawn.
