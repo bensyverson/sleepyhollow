@@ -1,6 +1,6 @@
 import Foundation
 
-extension PageHost {
+extension PageHost: DeadlineKeeper {
     /// Starts a call into the page and waits for its answer — or for
     /// `budget` seconds, or for the caller's cancellation, whichever comes
     /// first.
@@ -31,28 +31,9 @@ extension PageHost {
         within budget: TimeInterval,
         start: (_ answered: @escaping @MainActor (Result<Value, any Error>) -> Void) -> Void,
     ) async throws -> Value {
-        try Task.checkCancellation()
-        let pending = PageCall<Value>()
-        let delivery: PageCall<Value>.Delivery = try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                pending.arm(continuation)
-                pending.deadline = Task { @MainActor [weak self] in
-                    try? await Task.sleep(nanoseconds: UInt64(max(0, budget) * 1_000_000_000))
-                    guard !Task.isCancelled else { return }
-                    if pending.finish(.failure(Self.unanswered(call, within: budget))) {
-                        self?.abandon(call, because: .deadline(budget))
-                    }
-                }
-                start { result in pending.finish(result) }
-            }
-        } onCancel: {
-            Task { @MainActor [weak self] in
-                if pending.finish(.failure(CancellationError())) {
-                    self?.abandon(call, because: .cancelled)
-                }
-            }
+        try await PageCall<Value>.answer(call, within: budget, start: start) { [weak self] reason in
+            self?.abandon(call, because: reason)
         }
-        return delivery.value
     }
 
     /// Records the first call this host gave up on; later ones add nothing a
@@ -60,17 +41,6 @@ extension PageHost {
     private func abandon(_ call: String, because reason: AbandonedCall.Reason) {
         guard abandonedCall == nil else { return }
         abandonedCall = AbandonedCall(call: call, reason: reason)
-    }
-
-    /// The timeout for a call the page did not answer in time.
-    private static func unanswered(_ call: String, within budget: TimeInterval) -> SleepyError {
-        SleepyError(
-            kind: .timeout,
-            message: "The page did not answer \(call) within \(budget)s.",
-            nextMove: "The page holds a promise it never settles, its content process has stalled, or the "
-                + "machine is too loaded to run it. This host is now marked abandoned, so use a fresh one; "
-                + "raise the call budget only if the page is merely slow.",
-        )
     }
 
     /// How a timeout names an evaluated body: its first non-empty line,

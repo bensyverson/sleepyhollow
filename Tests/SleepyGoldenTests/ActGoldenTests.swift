@@ -69,7 +69,9 @@ struct ActGoldenTests {
         try await FixtureServer.withRunning { _, baseURL in
             let page = baseURL.appendingPathComponent("form.html").absoluteString
             let result = try await GoldenBinary.runOffPool([
-                "load", page, "--click", "#nowhere", "--budget", "3000",
+                // 6s, not 3s: the navigation must land inside the budget for
+                // the timeout to be the step's and name the selector.
+                "load", page, "--click", "#nowhere", "--budget", "6000",
             ])
             #expect(result.exitCode == 3)
             #expect(result.standardError.contains("#nowhere"))

@@ -13,7 +13,7 @@ struct WaitSelectorTests {
             await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .selector("#early")
-            options.budget = 5
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             let facts: PageFacts = try await host.load(URL(string: "wait-late.html?flip=gate", relativeTo: base)!)
             #expect(facts.httpStatus == 200)
@@ -36,12 +36,12 @@ struct WaitSelectorTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .selector("#late")
-            options.budget = 10
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             let started = Date()
             _ = try await host.load(URL(string: "wait-late.html", relativeTo: base)!)
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 30, "the host's clock ends the wait, not the fixture")
+            #expect(elapsed < TestSupport.livenessBudget, "the host's clock ends the wait, not the fixture")
             let matched: String = try await host.evaluate("return document.querySelector('#late') !== null;")
             #expect(matched == "true", "the load must not return before the element exists")
         }
@@ -53,7 +53,7 @@ struct WaitSelectorTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .selector("#agree:checked")
-            options.budget = 10
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             _ = try await host.load(URL(string: "wait-checked.html", relativeTo: base)!)
             let matched: String = try await host.evaluate("return document.querySelector('#agree:checked') !== null;")
@@ -93,7 +93,10 @@ struct WaitSelectorTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .selector("#not a { valid selector")
-            options.budget = 10
+            // Hang-sized: the navigation must land before the selector is
+            // even tried, and `.usage` rather than `.timeout` is what proves
+            // no budget was spent waiting.
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             let started = Date()
             do {
@@ -103,7 +106,10 @@ struct WaitSelectorTests {
                 #expect(error.kind == .usage)
                 #expect(error.exitStatus == ExitStatus.usage)
             }
-            #expect(Date().timeIntervalSince(started) < 30, "an invalid selector is invalid immediately")
+            #expect(
+                Date().timeIntervalSince(started) < TestSupport.livenessBudget,
+                "an invalid selector is invalid immediately",
+            )
         }
     }
 }

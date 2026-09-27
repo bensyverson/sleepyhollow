@@ -57,8 +57,11 @@ struct PageHostDialogTests {
     @MainActor
     func `a beforeunload handler never blocks the next navigation`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
+            // A blocked navigation is a hang, so the budget is hang-sized: what
+            // proves the handler did not block is that the second load *lands*
+            // on static.html, not how quickly it did.
             var options = LoadOptions()
-            options.budget = 5
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             _ = try await host.load(URL(string: "before-unload.html", relativeTo: base)!)
             let next: PageFacts = try await host.load(URL(string: "static.html", relativeTo: base)!)

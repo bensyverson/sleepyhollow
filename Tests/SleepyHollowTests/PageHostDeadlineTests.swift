@@ -50,7 +50,7 @@ struct PageHostDeadlineTests {
             var options = LoadOptions()
             options.callBudget = 1
             let host = PageHost(options: options)
-            _ = try await host.load(#require(URL(string: "static.html", relativeTo: base)))
+            try await Self.navigate(host, to: #require(URL(string: "static.html", relativeTo: base)))
             #expect(host.callBudget == 1)
             do {
                 _ = try await host.evaluate(Self.neverAnswers, in: .page)
@@ -95,10 +95,12 @@ struct PageHostDeadlineTests {
     @Test
     @MainActor
     func `a snapshot the page cannot answer in time times out, and its late answer is dropped`() async throws {
-        try await FixtureServer.withRunningOnMainActor { _, base in
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            let gate = FixtureGate()
+            await gate.install(on: server)
             let host = PageHost()
             _ = try await host.load(#require(URL(string: "static.html", relativeTo: base)))
-            Self.park(host.webView, forMilliseconds: 4000)
+            await Self.park(host.webView, until: gate)
             let configuration = WKSnapshotConfiguration()
             configuration.rect = CGRect(x: 0, y: 0, width: 100, height: 100)
             do {
@@ -112,25 +114,59 @@ struct PageHostDeadlineTests {
             // The page answers again once the route does; by then the
             // abandoned snapshot's own answer has come back too, and it must
             // be dropped rather than resume a finished call a second time.
+            await gate.open()
             let answer: String = try await host.evaluate("return 2;", budget: 120)
             #expect(answer == "2")
         }
     }
 
-    /// Parks the content process's main thread, without spinning, until a
-    /// slow route answers: a synchronous request blocks the page until it
-    /// returns.
+    /// Navigates `host`'s web view to `url` directly, outside
+    /// ``PageHost/load(_:budget:)``, and waits — hang-sized — for that
+    /// document to finish loading.
     ///
-    /// Issued straight to the web view, not awaited, so it is ordered ahead
-    /// of whatever the test sends next on the same connection, which then has
-    /// to wait behind it. Synchronous so the fire-and-forget call is not in an
-    /// async context, where the SDK would rather it were awaited.
+    /// For a host built with a deliberately tiny call budget: `load` spends
+    /// that budget on its console count, which on a loaded machine can take
+    /// longer than a second and fail the load as a `.timeout` before the call
+    /// under test is ever made. The readiness check goes straight to WebKit
+    /// for the same reason.
     @MainActor
-    static func park(_ webView: WKWebView, forMilliseconds milliseconds: Int) {
+    static func navigate(_ host: PageHost, to url: URL) async throws {
+        host.webView.load(URLRequest(url: url))
+        let landed = "\(url.path):complete"
+        let deadline = Date().addingTimeInterval(TestSupport.livenessBudget)
+        var state: String?
+        while true {
+            state = try? await host.webView.evaluateJavaScript("location.pathname + ':' + document.readyState") as? String
+            if state == landed || Date() >= deadline { break }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        try #require(state == landed, "\(url.absoluteString) never finished loading; last state \(state ?? "none")")
+    }
+
+    /// Parks the content process's main thread, without spinning, until the
+    /// test opens `gate`: a synchronous request to the gate's route blocks
+    /// the page until it returns.
+    ///
+    /// A gate rather than a timed route, so the page is still parked however
+    /// late the host's own budget fires on a loaded machine — a four-second
+    /// route lost that race to a half-second budget resuming seconds late.
+    /// Unopened, the gate still releases after ``FixtureGate/holdLimit``.
+    @MainActor
+    static func park(_ webView: WKWebView, until gate: FixtureGate) async {
+        await park(webView, onPath: gate.path)
+    }
+
+    /// Issues the parking request straight to the web view, not awaited, so
+    /// it is ordered ahead of whatever the test sends next on the same
+    /// connection, which then has to wait behind it. Synchronous so the
+    /// fire-and-forget call is not in an async context, where the SDK would
+    /// rather it were awaited.
+    @MainActor
+    private static func park(_ webView: WKWebView, onPath path: String) {
         webView.evaluateJavaScript(
             """
             const request = new XMLHttpRequest();
-            request.open('GET', '/delay/\(milliseconds)/static.html', false);
+            request.open('GET', '\(path)', false);
             request.send();
             """,
             completionHandler: nil,

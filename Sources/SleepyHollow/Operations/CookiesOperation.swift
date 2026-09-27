@@ -44,7 +44,7 @@ public struct CookiesOperation: ExecutablePageOperation {
         if let cookie {
             try await host.setCookie(cookie)
         }
-        let all: [CookieRecord] = await host.currentCookies()
+        let all: [CookieRecord] = try await host.currentCookies()
         guard let name else { return all.sorted(by: Self.byNameThenDomain) }
         return all.filter { $0.name == name }.sorted(by: Self.byNameThenDomain)
     }

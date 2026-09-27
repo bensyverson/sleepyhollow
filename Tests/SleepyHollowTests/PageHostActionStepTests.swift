@@ -51,7 +51,7 @@ struct PageHostActionStepTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.steps = [ActionStep.click(selector: "#go")]
-            options.budget = 10
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             // #go only exists ~300ms after the load event; the step must wait
             // for it rather than failing on the empty page.
@@ -66,7 +66,7 @@ struct PageHostActionStepTests {
             var options = LoadOptions()
             options.steps = [ActionStep.click(selector: "#go")]
             options.wait = .selector(".results")
-            options.budget = 8
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             // .results exists only because the click happened: a wait that ran
             // before the steps could never see it.
@@ -129,7 +129,11 @@ struct PageHostActionStepTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.steps = [ActionStep.click(selector: "#nowhere")]
-            options.budget = 2
+            // Spent in full on every run, so not hang-sized; but the
+            // navigation must land inside it for the timeout to be the step's
+            // and name `#nowhere`, and on a loaded machine two seconds did not
+            // reliably hold one. Six matches the other expected-timeout tests.
+            options.budget = 6
             let host = PageHost(options: options)
             do {
                 _ = try await host.load(URL(string: "form.html", relativeTo: base)!)

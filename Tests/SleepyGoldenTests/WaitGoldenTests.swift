@@ -25,7 +25,7 @@ struct WaitGoldenTests {
             let result = try await GoldenBinary.runOffPool(["load", url, "--wait-for", "#never-in-this-page", "--budget", "6000"])
             #expect(result.exitCode == 3)
             #expect(result.standardError.contains("#never-in-this-page"))
-            #expect(Date().timeIntervalSince(started) < 20)
+            #expect(Date().timeIntervalSince(started) < TestSupport.livenessBudget)
         }
     }
 

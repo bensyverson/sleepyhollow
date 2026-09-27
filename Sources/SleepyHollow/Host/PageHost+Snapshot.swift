@@ -12,6 +12,11 @@ public extension PageHost {
     /// keeps. ``ShotOperation`` goes through it; so should an embedder that
     /// snapshots the ``webView`` itself.
     ///
+    /// The call is made under a foreground hold: `takeSnapshot` takes no
+    /// foreground activity of its own, so on a page idle for more than a
+    /// second it would reach a content process WebKit has throttled to the
+    /// background band, which a loaded machine never schedules.
+    ///
     /// - Parameter configuration: what to snapshot; see
     ///   `WKSnapshotConfiguration`.
     /// - Parameter budget: seconds to wait for the image, or `nil` for the
@@ -23,16 +28,18 @@ public extension PageHost {
     ///   error when the snapshot fails, and ``SleepyError/Kind/environment``
     ///   when WebKit answers with neither an image nor an error.
     func snapshot(_ configuration: WKSnapshotConfiguration, budget: TimeInterval? = nil) async throws -> NSImage {
-        try await answer("snapshot", within: budget ?? callBudget) { answered in
-            webView.takeSnapshot(with: configuration) { image, error in
-                if let image {
-                    answered(.success(image))
-                } else {
-                    answered(.failure(error ?? SleepyError(
-                        kind: .environment,
-                        message: "WebKit answered the snapshot with neither an image nor an error.",
-                        nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
-                    )))
+        try await holdingForeground {
+            try await answer("snapshot", within: budget ?? callBudget) { answered in
+                webView.takeSnapshot(with: configuration) { image, error in
+                    if let image {
+                        answered(.success(image))
+                    } else {
+                        answered(.failure(error ?? SleepyError(
+                            kind: .environment,
+                            message: "WebKit answered the snapshot with neither an image nor an error.",
+                            nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
+                        )))
+                    }
                 }
             }
         }

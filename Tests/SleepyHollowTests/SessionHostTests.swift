@@ -52,7 +52,7 @@ struct SessionHostTests {
         )
         try await host.start()
         #expect(registry.liveness(of: name) == .live)
-        #expect(await stopped(host, within: 20))
+        #expect(await stopped(host, within: TestSupport.livenessBudget))
         #expect(registry.entries().isEmpty)
         #expect(!FileManager.default.fileExists(atPath: registry.directory(for: name).path))
     }

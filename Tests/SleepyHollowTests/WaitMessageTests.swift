@@ -49,7 +49,8 @@ struct WaitMessageTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             var options = LoadOptions()
             options.wait = .message("not a handler")
-            options.budget = 6
+            // Hang-sized: the navigation must land before the name is judged.
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             do {
                 _ = try await host.load(URL(string: "static.html", relativeTo: base)!)
@@ -69,7 +70,7 @@ struct WaitMessageTests {
             // The console capture posts on this one all through a load: waiting
             // on it would settle on the first console line the page emitted.
             options.wait = .message(PageHost.consoleMessageName)
-            options.budget = 6
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             do {
                 _ = try await host.load(URL(string: "console-errors.html", relativeTo: base)!)

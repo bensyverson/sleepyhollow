@@ -54,7 +54,7 @@ struct WaitPredicateTests {
             await gate.install(on: server)
             var options = LoadOptions()
             options.wait = .predicate("window.sleepyStage === 'early'")
-            options.budget = 5
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             _ = try await host.load(URL(string: "wait-late.html?flip=gate", relativeTo: base)!)
             // The page moves to 'late' only when the test opens the gate, and

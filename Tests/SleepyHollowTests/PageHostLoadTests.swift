@@ -61,7 +61,7 @@ struct PageHostLoadTests {
                 #expect(error.exitStatus == ExitStatus.timeout)
             }
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 20, "the host clock, not the fixture, must end the load")
+            #expect(elapsed < TestSupport.livenessBudget, "the host clock, not the fixture, must end the load")
             #expect(host.contentProcessFailure == nil, "a slow page is not a dead web content process")
         }
     }
@@ -70,8 +70,12 @@ struct PageHostLoadTests {
     @MainActor
     func `a web content process that never launched is a load failure, not a timeout`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
+            // Hang-sized: a budget that ran out while the test was still
+            // asleep would answer `.timeout` for a host that did nothing wrong.
+            // The typed `.loadFailure` below is what proves the report, not
+            // the budget, ended the load.
             var options = LoadOptions()
-            options.budget = 10
+            options.budget = TestSupport.livenessBudget
             let host = PageHost(options: options)
             let url = URL(string: "delay/600000/static.html", relativeTo: base)!
             let started = Date()
@@ -90,7 +94,7 @@ struct PageHostLoadTests {
             }
             #expect(host.contentProcessFailure == .neverLaunched)
             let elapsed: TimeInterval = Date().timeIntervalSince(started)
-            #expect(elapsed < 5, "the failure must not wait out the budget")
+            #expect(elapsed < TestSupport.livenessBudget, "the failure must not wait out the budget")
         }
     }
 
@@ -121,9 +125,12 @@ struct PageHostLoadTests {
             options.budget = 2
             let host = PageHost(options: options)
             let slow = URL(string: "delay/600000/static.html", relativeTo: base)!
-            async let first: PageFacts = host.load(slow)
-            // Let the first navigation actually start before racing it.
-            try await Task.sleep(nanoseconds: 200_000_000)
+            let first = Task { @MainActor in try await host.load(slow) }
+            // Program order, not a sleep: the first load was enqueued on the
+            // main actor before this yield, so it has claimed the host by the
+            // time this resumes — and its budget cannot have run out first, as
+            // it could behind a `Task.sleep` that resumed seconds late.
+            await Task.yield()
             do {
                 _ = try await host.load(URL(string: "static.html", relativeTo: base)!)
                 Issue.record("expected a usage error")
@@ -132,7 +139,7 @@ struct PageHostLoadTests {
             }
             // The first load must still reach its own timeout rather than hanging.
             do {
-                _ = try await first
+                _ = try await first.value
                 Issue.record("expected the first load to time out")
             } catch let error as SleepyError {
                 #expect(error.kind == .timeout)

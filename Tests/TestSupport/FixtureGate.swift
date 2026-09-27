@@ -62,7 +62,7 @@ public actor FixtureGate {
     /// for the page to have reached the gate at least `count` times.
     ///
     /// - Returns: `true` when the request arrived inside `timeout`.
-    public func awaitRequest(count: Int = 1, timeout: TimeInterval = 15) async -> Bool {
+    public func awaitRequest(count: Int = 1, timeout: TimeInterval = TestSupport.livenessBudget) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while requests < count, Date() < deadline {
             try? await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))

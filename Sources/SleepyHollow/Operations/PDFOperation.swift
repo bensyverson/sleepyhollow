@@ -86,7 +86,11 @@ public struct PDFOperation: ExecutablePageOperation {
         operation.showsPrintPanel = false
         operation.showsProgressPanel = false
 
-        let finished: Bool = await PrintRunner.runModal(operation, in: offscreen.window, budget: host.budget)
+        // Printing takes no foreground activity of its own, so an idle page
+        // would paginate from the background band WebKit throttled it to.
+        let finished: Bool = await host.holdingForeground {
+            await PrintRunner.runModal(operation, in: offscreen.window, budget: host.budget)
+        }
         guard finished else {
             throw SleepyError(
                 kind: .timeout,

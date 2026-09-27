@@ -35,12 +35,14 @@ struct WireRecorderMessageTests {
 
             // Delivery is asynchronous by nature: the exchanges are complete,
             // but the subscriber still has to be scheduled. Wait for the six
-            // messages the fixture's two fetches owe, then stop.
+            // messages the fixture's two fetches owe, then stop — hang-sized,
+            // and looking once more after the deadline, since the subscriber
+            // can be scheduled seconds late on a loaded machine.
             var messages: [String] = []
-            let deadline = Date().addingTimeInterval(2)
-            while Date() < deadline {
+            let deadline = Date().addingTimeInterval(TestSupport.livenessBudget)
+            while true {
                 messages = await collector.all()
-                if messages.count >= 6 { break }
+                if messages.count >= 6 || Date() >= deadline { break }
                 try? await Task.sleep(nanoseconds: 20_000_000)
             }
             pump.cancel()

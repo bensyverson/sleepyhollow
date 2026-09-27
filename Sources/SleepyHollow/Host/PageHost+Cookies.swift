@@ -22,15 +22,21 @@ public extension PageHost {
     ///
     /// In a ``HostGroup`` that store is the group's, so this is every
     /// member's cookies, not this host's alone.
-    func currentCookies() async -> [CookieRecord] {
-        await CookieStoreBridge.allCookies(in: cookieStore)
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when
+    ///   the store does not answer within ``callBudget`` (the host is then
+    ///   ``abandonedCall``).
+    func currentCookies() async throws -> [CookieRecord] {
+        try await CookieStoreBridge.allCookies(in: cookieStore, through: self)
     }
 
     /// Puts `record` in the live page store, replacing any cookie in the same
     /// slot (name, domain and path).
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when the
-    ///   record is not one Foundation will accept as a cookie.
+    ///   record is not one Foundation will accept as a cookie, and of kind
+    ///   ``SleepyError/Kind/timeout`` when the store does not answer within
+    ///   ``callBudget`` (the host is then ``abandonedCall``).
     func setCookie(_ record: CookieRecord) async throws {
         guard let cookie: HTTPCookie = record.httpCookie else {
             throw SleepyError(
@@ -39,7 +45,7 @@ public extension PageHost {
                 nextMove: "Give a non-empty --name and a --domain the page can actually be sent to.",
             )
         }
-        await CookieStoreBridge.set(cookie, in: cookieStore)
+        try await CookieStoreBridge.set(cookie, in: cookieStore, through: self)
     }
 
     /// Writes the live store's cookies back to ``LoadOptions/jar`` — or, in a
@@ -49,7 +55,8 @@ public extension PageHost {
     /// the end of a load — ``PageHost/load(_:budget:)`` already saves for itself.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
-    ///   the jar cannot be written.
+    ///   the jar cannot be written, and of kind ``SleepyError/Kind/timeout``
+    ///   when the store does not answer within the call budget.
     func saveJar() async throws {
         if let group {
             try await group.saveJar()
@@ -75,7 +82,8 @@ extension PageHost {
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
     ///   the jar exists but cannot be read — an unreadable jar must not look
-    ///   like a logged-out one.
+    ///   like a logged-out one; of kind ``SleepyError/Kind/timeout`` when the
+    ///   store does not answer within ``callBudget``.
     func importJarIfNeeded() async throws {
         if let group {
             try await group.importJarIfNeeded()
@@ -83,7 +91,7 @@ extension PageHost {
         }
         guard let jar: JarName = options.jar, !hasImportedJar else { return }
         hasImportedJar = true
-        try await CookieStoreBridge.load(jars.cookies(in: jar), into: cookieStore)
+        try await CookieStoreBridge.load(jars.cookies(in: jar), into: cookieStore, through: self)
     }
 
     /// Saves the jar, swallowing a write failure.

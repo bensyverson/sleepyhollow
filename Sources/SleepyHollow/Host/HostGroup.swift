@@ -87,6 +87,11 @@ public final class HostGroup {
     /// Whether the jar has already been pulled into the shared cookie store.
     private var hasImportedJar = false
 
+    /// The deadline in seconds each call into the shared cookie store gets —
+    /// ``LoadOptions/defaultCallBudget``, the same a host with no budget of
+    /// its own gives its page. Settable only so a test can shorten it.
+    var callBudget: TimeInterval = LoadOptions.defaultCallBudget
+
     /// Creates a group: a fresh non-persistent data store, optionally
     /// attached to a jar.
     ///
@@ -101,8 +106,12 @@ public final class HostGroup {
     }
 
     /// The cookies the shared page store currently holds.
-    public func currentCookies() async -> [CookieRecord] {
-        await CookieStoreBridge.allCookies(in: dataStore.httpCookieStore)
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when
+    ///   the store does not answer within the group's call budget
+    ///   (``LoadOptions/defaultCallBudget``).
+    public func currentCookies() async throws -> [CookieRecord] {
+        try await CookieStoreBridge.allCookies(in: dataStore.httpCookieStore, through: self)
     }
 
     /// Writes the shared store's cookies back to ``jar``.
@@ -112,7 +121,8 @@ public final class HostGroup {
     /// mutating cookies past the end of a load.
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
-    ///   the jar cannot be written.
+    ///   the jar cannot be written, and of kind ``SleepyError/Kind/timeout``
+    ///   when the store does not answer within the group's call budget.
     public func saveJar() async throws {
         guard let jar else { return }
         try await jars.write(currentCookies(), to: jar)
@@ -125,11 +135,12 @@ public final class HostGroup {
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment`` when
     ///   the jar exists but cannot be read — an unreadable jar must not look
-    ///   like a logged-out one.
+    ///   like a logged-out one; of kind ``SleepyError/Kind/timeout`` when the
+    ///   store does not answer within the group's call budget.
     func importJarIfNeeded() async throws {
         guard let jar, !hasImportedJar else { return }
         hasImportedJar = true
-        try await CookieStoreBridge.load(jars.cookies(in: jar), into: dataStore.httpCookieStore)
+        try await CookieStoreBridge.load(jars.cookies(in: jar), into: dataStore.httpCookieStore, through: self)
     }
 
     /// Saves the jar, swallowing a write failure — the shape a failing load
