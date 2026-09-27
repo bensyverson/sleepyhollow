@@ -33,6 +33,16 @@ public struct LoadOptions: Friendly {
     /// terminates (30 seconds).
     public static let defaultBudget: TimeInterval = 30
 
+    /// The deadline hosts give each call into the page when ``callBudget`` is
+    /// `nil` (60 seconds).
+    ///
+    /// Sized for a machine under load, not for a healthy page: a call that
+    /// answers in milliseconds alone has taken tens of seconds under a
+    /// parallel test suite, and a deadline near the healthy figure would
+    /// report the machine's load as the page's failure. Its one job is that
+    /// no call waits forever.
+    public static let defaultCallBudget: TimeInterval = 60
+
     /// Viewport size in points. Default 1280×800.
     public var size: ViewportSize
 
@@ -93,6 +103,19 @@ public struct LoadOptions: Friendly {
     /// ``defaultBudget``. The CLI expresses this in milliseconds.
     public var budget: TimeInterval?
 
+    /// Deadline in seconds for each single call into the loaded page — an
+    /// evaluation, a snapshot, the console count a load ends with; `nil`
+    /// applies ``defaultCallBudget``.
+    ///
+    /// Separate from ``budget`` because it bounds something else: ``budget``
+    /// is how long a load may take to settle, this is how long the page may
+    /// take to *answer* one question. WebKit's completion handlers have no
+    /// timeout of their own, so without it a page that never settles an
+    /// evaluated promise suspends its caller for good. A call that outlives
+    /// it throws ``SleepyError/Kind/timeout`` and leaves the host
+    /// ``PageHost/abandonedCall``.
+    public var callBudget: TimeInterval?
+
     /// Ordered actions executed after the load event and before ``wait``
     /// gates the verb's read; each auto-waits for its selector.
     public var steps: [ActionStep]
@@ -108,6 +131,7 @@ public struct LoadOptions: Friendly {
         dialogs: DialogPolicy = DialogPolicy(),
         wait: WaitCondition? = nil,
         budget: TimeInterval? = nil,
+        callBudget: TimeInterval? = nil,
         steps: [ActionStep] = [],
     ) {
         self.size = size
@@ -119,6 +143,7 @@ public struct LoadOptions: Friendly {
         self.dialogs = dialogs
         self.wait = wait
         self.budget = budget
+        self.callBudget = callBudget
         self.steps = steps
     }
 }

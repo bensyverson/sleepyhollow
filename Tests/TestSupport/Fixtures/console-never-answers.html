@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Console count that never answers</title>
+  <script>
+    // The host reads the console capture's error count once the load settles.
+    // Here that read yields a promise the page holds and never settles, so the
+    // count never comes back: the round-trip every load makes is the one that
+    // hangs. Kept reachable from `window` — WebKit fails a call whose promise
+    // has been collected, so only a held promise hangs.
+    Object.defineProperty(window.__sleepyHollow, 'errorCount', {
+      get: function () { return (window.__never = window.__never || new Promise(function () {})); },
+      configurable: true
+    });
+  </script>
+</head>
+<body>
+  <p>This page never answers its console count.</p>
+</body>
+</html>

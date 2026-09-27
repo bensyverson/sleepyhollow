@@ -58,7 +58,7 @@ enum IdleWatch {
         world: .page,
     )
 
-    /// The body ``PageHost/evaluate(_:arguments:in:)`` runs to take one
+    /// The body ``PageHost/evaluate(_:arguments:in:budget:)`` runs to take one
     /// ``Sample``; a page without the watcher reads as ``Sample/unknown``.
     static let sampleBody: String = """
     var watch = window.\(stateGlobal);

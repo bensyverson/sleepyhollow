@@ -95,7 +95,9 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   ``SleepyError/Kind/environment`` when the page's geometry or the
     ///   snapshot itself can't be read, or when ``scale`` is denser than the
     ///   host's own raster; ``SleepyError/Kind/usage`` when the
-    ///   resolved tile height is no taller than the overlap.
+    ///   resolved tile height is no taller than the overlap; and
+    ///   ``SleepyError/Kind/timeout`` when the page does not answer a call
+    ///   within the host's ``PageHost/callBudget``.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
         let viewportHeight = CGFloat(host.viewport.height)
@@ -146,7 +148,9 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   element region that matches nothing or has no rendered area, and
     ///   ``SleepyError/Kind/environment`` when the page's geometry or the
     ///   snapshot cannot be read, or ``scale`` is denser than the host's own
-    ///   raster.
+    ///   raster; ``SleepyError/Kind/timeout`` when the page does not answer the
+    ///   snapshot, or a geometry read, within ``PageHost/callBudget`` (see
+    ///   ``PageHost/snapshot(_:budget:)``).
     @MainActor
     public func render(on host: PageHost) async throws -> ShotCapture {
         let webView = host.webView
@@ -163,7 +167,7 @@ public struct ShotOperation: ExecutablePageOperation {
         let rect: CGRect = try await resolvedRect(on: host, frame: webView.frame)
         let configuration = WKSnapshotConfiguration()
         configuration.rect = rect
-        let image = try await webView.takeSnapshot(configuration: configuration)
+        let image: NSImage = try await host.snapshot(configuration)
         try requireDensity(of: image)
         let pixels = CGSize(width: rect.width * CGFloat(scale.factor), height: rect.height * CGFloat(scale.factor))
         guard let rasterized = ShotCapture.rasterize(image, atPixelSize: pixels) else {

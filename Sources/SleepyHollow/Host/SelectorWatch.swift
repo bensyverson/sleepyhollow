@@ -25,7 +25,7 @@ enum SelectorWatch {
         )
     }
 
-    /// The body ``PageHost/evaluate(_:arguments:in:)`` runs to check the
+    /// The body ``PageHost/evaluate(_:arguments:in:budget:)`` runs to check the
     /// selector host-side, with `sleepySelector` in scope.
     ///
     /// Returns a ``WaitEngine/Probe``: `truthy` when at least one element

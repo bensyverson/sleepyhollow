@@ -24,7 +24,7 @@ enum WireInventoryScript {
         "responseEnd",
     ]
 
-    /// The body ``PageHost/evaluate(_:arguments:in:)`` runs: an array of
+    /// The body ``PageHost/evaluate(_:arguments:in:budget:)`` runs: an array of
     /// entries decodable as ``ResourceEntry``, main frame first.
     static let expression: String = """
     const timingFields = [\(timingFields.map { "'\($0)'" }.joined(separator: ", "))];

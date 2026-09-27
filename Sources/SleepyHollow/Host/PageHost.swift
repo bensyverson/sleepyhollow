@@ -21,14 +21,20 @@ import WebKit
 /// under a sandbox, one that never launched at all — becomes a
 /// ``SleepyError/Kind/loadFailure`` naming the sandbox instead of a timeout
 /// that would send the reader to raise a budget (see
-/// ``WebContentProcessFailure``). Because the host outlives
+/// ``WebContentProcessFailure``). Every call into a loaded page — an
+/// ``evaluate(_:arguments:in:budget:)``, a ``snapshot(_:budget:)``, the
+/// console count a load ends with — has a deadline too, ``callBudget``,
+/// because WebKit's completion handlers have none: a page that never answers
+/// becomes a ``SleepyError/Kind/timeout`` naming the call, and the host
+/// records the call it gave up on in ``abandonedCall`` so a pool knows not to
+/// reuse it. Because the host outlives
 /// the throw, the page's last known state stays readable as ``facts`` — that
 /// is the "last state attached" mechanism, kept out of the error so `Core`
 /// need not know about pages.
 ///
 /// Nothing has to settle between a page-side promise and a capture: a shot
 /// flushes the page's rendering before it rasterizes, so `await
-/// document.fonts.ready` through ``evaluate(_:arguments:in:)`` followed
+/// document.fonts.ready` through ``evaluate(_:arguments:in:budget:)`` followed
 /// immediately by a ``ShotOperation`` is correct, windowless or hosted, and a
 /// sleep in between buys nothing (measured across four host configurations,
 /// `project/2026-08-29-paint-after-fonts-ready.md`).
@@ -105,6 +111,22 @@ public final class PageHost {
     public var budget: TimeInterval {
         options.budget ?? LoadOptions.defaultBudget
     }
+
+    /// The deadline in seconds this host gives a call into the page that
+    /// names none of its own: ``LoadOptions/callBudget`` or
+    /// ``LoadOptions/defaultCallBudget``.
+    public var callBudget: TimeInterval {
+        options.callBudget ?? LoadOptions.defaultCallBudget
+    }
+
+    /// The first call into the page this host stopped waiting for, or `nil`
+    /// while every call it has made has answered.
+    ///
+    /// Once set it stays set: nothing tells the host when WebKit is finally
+    /// done with a call it abandoned, so a host with one is never safe to
+    /// hand to another caller. A pool of hosts checks this on check-in and
+    /// discards the host rather than reusing it — see ``AbandonedCall``.
+    public internal(set) var abandonedCall: AbandonedCall?
 
     /// The viewport this host renders at, in points.
     ///
@@ -307,6 +329,10 @@ public final class PageHost {
     ///   ``LoadOptions/fileAccessRoot`` is not a `file:` URL, or when the
     ///   wait condition can never be met as written.
     ///
+    ///   A load that settles and then does not answer the console count
+    ///   within ``callBudget`` is a ``SleepyError/Kind/timeout`` too, and
+    ///   leaves the host ``abandonedCall``.
+    ///
     /// - Note: ``PageFacts/consoleErrorCount`` is `0` when a load times out.
     ///   Reading it needs a round-trip to a page that has just proved it will
     ///   not answer, and a tool that can hang is worse than one that reports a
@@ -388,7 +414,7 @@ public final class PageHost {
                 facts.httpStatus = delegate.mainFrameStatus
             }
             try await waiter?.settle(in: self, url: url, by: deadline, budget: budget)
-            facts.consoleErrorCount = await consoleErrorCount()
+            facts.consoleErrorCount = try await consoleErrorCount(for: url)
             return facts
         case .failed:
             throw loadFailure(url: url, error: navigationFailure)
@@ -473,8 +499,27 @@ public final class PageHost {
         return outcome
     }
 
-    private func consoleErrorCount() async -> Int {
-        guard let text: String = try? await evaluate(ConsoleCapture.countExpression, in: .page) else {
+    /// The page's console error count, inside the host's ``callBudget``.
+    ///
+    /// A page that cannot run the count (its frame is gone, it threw) reads
+    /// as `0`, as ever; a page that does not *answer* it is a timeout, not a
+    /// zero, because a page that has just stopped answering will not answer
+    /// the verb's own read either.
+    private func consoleErrorCount(for url: URL) async throws -> Int {
+        let text: String
+        do {
+            text = try await evaluate(
+                ConsoleCapture.countExpression,
+                arguments: [:],
+                in: .page,
+                within: callBudget,
+                naming: "the console error count for \(url.absoluteString)",
+            )
+        } catch let error as SleepyError where error.kind == .timeout {
+            throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
             return 0
         }
         return Int(text) ?? 0

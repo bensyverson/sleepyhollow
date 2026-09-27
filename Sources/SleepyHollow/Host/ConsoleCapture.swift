@@ -33,12 +33,12 @@ enum ConsoleCapture {
         InjectedScript(source: source(messageName: messageName), injectAt: .documentStart, world: .page)
     }
 
-    /// The body ``PageHost/evaluate(_:arguments:in:)`` runs to read the count.
+    /// The body ``PageHost/evaluate(_:arguments:in:budget:)`` runs to read the count.
     static let countExpression: String = """
     return (window.\(stateGlobal) && window.\(stateGlobal).errorCount) || 0;
     """
 
-    /// The body ``PageHost/evaluate(_:arguments:in:)`` runs to read the whole
+    /// The body ``PageHost/evaluate(_:arguments:in:budget:)`` runs to read the whole
     /// log: `{ messages, droppedMessages }`, decodable as ``ConsoleLog``.
     static let logExpression: String = """
     const state = window.\(stateGlobal);

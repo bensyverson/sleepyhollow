@@ -14,7 +14,7 @@
 /// in the isolated world; the DOM is shared, page JavaScript is not.
 ///
 /// The composed source is a *function body*: it ends in `return axSnapshot();`
-/// and is handed straight to ``PageHost/evaluate(_:arguments:in:)``.
+/// and is handed straight to ``PageHost/evaluate(_:arguments:in:budget:)``.
 enum AXScript {
     /// The whole computation, in the order the parts depend on each other.
     static let source: String = [
