@@ -1,4 +1,4 @@
-<!-- agents:begin harness@c4f863 -->
+<!-- agents:begin harness@dcdb6a -->
 # Harness facts
 
 Facts about the tool an agent runs *inside*, not about this project — they are identical in every repo, which is why they are not in `project/gotchas.md`. One section per harness; today there is only Claude Code. Read this the first time a call fails with a permission error or a refusal you did not expect: none of these failures names the harness, which is exactly what makes them expensive.
@@ -40,6 +40,10 @@ The main thread runs the top tier; subagents run Opus — judgment calls, conten
 ### Long-running processes
 
 A backgrounded process is reaped when the session ends, so a server meant to outlive it must be detached (`nohup … >/dev/null 2>&1 & disown`). Never clean up with `pkill -f <pattern>`: the pattern matches other agents' processes and the shared dev server in the main checkout, which then goes down silently. Kill by port (`lsof -ti :<port> | xargs kill`) or by pid. `go run` execs a compiled binary from a temp path, so a `pkill -f` on the source pattern misses the process actually holding the port, and you keep talking to a stale server. A wait loop that polls `pgrep -f <pattern>` never ends: the pattern matches the loop's own command line. Wait on a pid or on an output file.
+
+### Your context fill
+
+Run `contextfill` ([bensyverson/contextfill](https://github.com/bensyverson/contextfill)) to read how full your context window is; `contextfill --agents` adds each subagent's own fill. That is the number the delegation guide's 40% line is measured in. A subagent's completion notification reports about the same figure, but only once the agent stops; watch a running agent with `contextfill --agents`. Where a PostToolUse hook runs `contextfill hook`, the reading also arrives after every commit, a subagent's included.
 
 ### The shell
 
