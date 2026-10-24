@@ -1,4 +1,4 @@
-<!-- agents:begin jobs@5ba5cd -->
+<!-- agents:begin jobs@42b4fe -->
 # Working in `job`
 
 **Subagents pass a unique `--as <name>` and an absolute `--db` on every call; they `claim`, `note` and `release`, never `done`.**
@@ -13,7 +13,7 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 - **Criteria are the leaf's definition of done**: short checkable sentences, attached with `--criterion` on `add`, `edit` or an imported plan. They start pending, and `done` refuses to close over a pending one (`--all-passed`, `--all=<state>` and `--force-close-with-pending` override).
 - **Mark a criterion with `job edit <id> --set-criterion "<label>=passed"`**, or at close with `job done <id> --criterion "<label>=passed"`. `edit` is not claim-guarded, so marking one never needs the claim.
 - **`blockedBy` orders the frontier; it does not lock a task.** `next`, `orient` and `claim --next` skip a blocked leaf, but `job claim <id>` on one still succeeds — dispatching blocked work is a decision, not something the tool will stop. Declare a block with `job block add <blocked> by <blocker>`.
-- **Discovered work goes in an issue-tree, not the plan.** A root created with `--kind issue` (or converted with `job kind <root> issue`) is skipped by `next`, `orient` and `claim --next`, so a bug found mid-plan doesn't derail it; `job issue "<title>"` files into it and records provenance from your live claim. Pass `--issues` to those verbs to work that kind instead.
+- **Discovered work goes in an issue-tree, not the plan.** A root created with `--kind issue` (or converted with `job kind <root> issue`) is skipped by `next`, `orient` and `claim --next`, so a bug found mid-plan doesn't derail it; `job issue "<title>"` files into it and records provenance from your live claim. Filing on another's behalf — transcribing an agent's report, holding no claim — pass `--found-in <id>`, or no edge is recorded. Pass `--issues` to those verbs to work that kind instead.
 - **`decision` is a reserved label**: `job label add <id> decision` makes the task a `Decision:` line in `job status` until it closes. That is where a question the plan is waiting on belongs.
 - **A plan is a dated doc under `project/` carrying a fenced YAML `tasks:` block**, loaded with `job import <file>` — `--dry-run` first, `--parent <id>` to nest it under existing work. `job schema` prints the grammar: `desc`, `labels`, `criteria`, `ref`/`blockedBy`, `foundIn`, `kind`, `children`.
 
@@ -23,6 +23,8 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 - **`job claim <id>` prints the full briefing**, so no follow-up `show` is needed. Claims last 30m and any write by the holder extends them; `job claim <id> 2h` for longer work, `job heartbeat` only during a genuine pause.
 - **Claiming focuses that leaf's root** — one focus per tree kind — which scopes bare `next`, `claim --next` and `orient` to that tree. `job focus <id>` sets it explicitly; `job focus --release` clears it.
 - **Note as you go, not only at the end.** A note is where a finding outlives the session: `job note <id> -F <file>`. At least one substantive note per leaf.
+- **A ruling other work builds on goes in the design doc it rules on**, and the note points there. A note alone falls out of view behind the next one and never reaches another repo's agents.
+- **Don't keep a session log on a root.** The handoff doc is the record; every note on a root is read by every `orient` that follows.
 - **Read the leaf's own history before anything expensive to change** — schema, a wire format, a public interface. `job show <id>` carries what `orient` elides.
 - **Close with `job done <id> -F <file>`**, marking criteria in the same call. `--claim-next` closes and takes the next leaf in the same root atomically.
 
@@ -35,7 +37,7 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 
 ## Filing work
 
-- **A leaf is a unit of WORK, grouped by the surface and the files it touches** — not one leaf per complaint. A review round of twenty-five items is not twenty-five leaves; "the form's typography, spacing and badge column" is one leaf, not four.
+- **A leaf is a unit of WORK, grouped by the surface and the files it touches** — not one leaf per complaint. A review round of twenty-five items is not twenty-five leaves; "the form's typography, spacing and badge column" is one leaf, not four. An issue pile is the exception: one issue per defect, grouped into work at claim time.
 - **Per-leaf overhead is roughly fixed** — a brief, a worktree, an integration, a file-contention negotiation. Keep a leaf separate when it carries a genuine decision, a different risk profile, or a distinct blocker; "it was a different sentence in the feedback" is none of those.
 - **Check an incoming item against what already exists before filing it.**
 - **A fan-out mints a container leaf plus a leaf per unit of work BEFORE dispatch.** Work that runs only inside an agent harness is invisible while it runs and leaves no durable notes where the rest of the project's history lives.

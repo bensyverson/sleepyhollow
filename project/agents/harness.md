@@ -1,4 +1,4 @@
-<!-- agents:begin harness@8e9a29 -->
+<!-- agents:begin harness@c4f863 -->
 # Harness facts
 
 Facts about the tool an agent runs *inside*, not about this project — they are identical in every repo, which is why they are not in `project/gotchas.md`. One section per harness; today there is only Claude Code. Read this the first time a call fails with a permission error or a refusal you did not expect: none of these failures names the harness, which is exactly what makes them expensive.
@@ -39,5 +39,9 @@ The main thread runs the top tier; subagents run Opus — judgment calls, conten
 
 ### Long-running processes
 
-A backgrounded process is reaped when the session ends, so a server meant to outlive it must be detached (`nohup … >/dev/null 2>&1 & disown`). Never clean up with `pkill -f <pattern>`: the pattern matches other agents' processes and the shared dev server in the main checkout, which then goes down silently. Kill by port (`lsof -ti :<port> | xargs kill`) or by pid. `go run` execs a compiled binary from a temp path, so a `pkill -f` on the source pattern misses the process actually holding the port, and you keep talking to a stale server.
+A backgrounded process is reaped when the session ends, so a server meant to outlive it must be detached (`nohup … >/dev/null 2>&1 & disown`). Never clean up with `pkill -f <pattern>`: the pattern matches other agents' processes and the shared dev server in the main checkout, which then goes down silently. Kill by port (`lsof -ti :<port> | xargs kill`) or by pid. `go run` execs a compiled binary from a temp path, so a `pkill -f` on the source pattern misses the process actually holding the port, and you keep talking to a stale server. A wait loop that polls `pgrep -f <pattern>` never ends: the pattern matches the loop's own command line. Wait on a pid or on an output file.
+
+### The shell
+
+When the shell is zsh, `$VAR` is not word-split, so `git commit -- $FILES` passes one path made of every name. Use an array, or list the paths.
 <!-- agents:end harness -->
