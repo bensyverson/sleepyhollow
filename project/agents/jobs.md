@@ -1,9 +1,9 @@
-<!-- agents:begin jobs@42b4fe -->
+<!-- agents:begin jobs@1b22be -->
 # Working in `job`
 
 **Subagents pass a unique `--as <name>` and an absolute `--db` on every call; they `claim`, `note` and `release`, never `done`.**
 
-Jobs is the tracker: where work is filed, how big a unit of work is, and what a fan-out mints before it launches. `project/agents/delegation.md` covers *running* agents; this file covers the tracker they claim from. `job <verb> --help` is the authority on flags — this file is the house convention around them.
+Jobs is the tracker: where work is filed, how big a unit of work is, and what a fan-out mints before it launches. `project/agents/delegation.md` covers *running* agents and `project/agents/planning.md` what a plan and its leaves should say; this file covers the tracker they claim from. `job <verb> --help` is the authority on flags — this file is the house convention around them.
 
 ## The tree
 
@@ -15,7 +15,7 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 - **`blockedBy` orders the frontier; it does not lock a task.** `next`, `orient` and `claim --next` skip a blocked leaf, but `job claim <id>` on one still succeeds — dispatching blocked work is a decision, not something the tool will stop. Declare a block with `job block add <blocked> by <blocker>`.
 - **Discovered work goes in an issue-tree, not the plan.** A root created with `--kind issue` (or converted with `job kind <root> issue`) is skipped by `next`, `orient` and `claim --next`, so a bug found mid-plan doesn't derail it; `job issue "<title>"` files into it and records provenance from your live claim. Filing on another's behalf — transcribing an agent's report, holding no claim — pass `--found-in <id>`, or no edge is recorded. Pass `--issues` to those verbs to work that kind instead.
 - **`decision` is a reserved label**: `job label add <id> decision` makes the task a `Decision:` line in `job status` until it closes. That is where a question the plan is waiting on belongs.
-- **A plan is a dated doc under `project/` carrying a fenced YAML `tasks:` block**, loaded with `job import <file>` — `--dry-run` first, `--parent <id>` to nest it under existing work. `job schema` prints the grammar: `desc`, `labels`, `criteria`, `ref`/`blockedBy`, `foundIn`, `kind`, `children`.
+- **A plan is a dated doc under `project/` carrying a fenced YAML `tasks:` block**, loaded with `job import <file>` — `--dry-run` first, `--parent <id>` to nest it under existing work. `job schema` prints the grammar: `desc`, `labels`, `criteria`, `ref`/`blockedBy`, `foundIn`, `kind`, `children`. What each leaf should say is in `project/agents/planning.md`.
 
 ## The session loop
 
@@ -45,7 +45,7 @@ Jobs is the tracker: where work is filed, how big a unit of work is, and what a 
 - **A leaf that turns out to be several is subdivided with `job split <id> "<a>" "<b>"`** — it must have no children yet, and it auto-closes once the new ones do. Carving work into new leaves mid-flight is rare; prefer it to quietly widening one leaf's scope.
 - **An ephemeral verifier that reports back and stops needs no leaf**; its verdict lands as a note on the container.
 - **Work decided against goes to `project/backlog.md`, not into a leaf.** Nothing there is scheduled or blocking; `job` holds active work only.
-- **A leaf's description is not a brief.** An agent that cannot read the tracker cannot read what is in it — restate anything load-bearing in the prompt or a committed file.
+- **A leaf's description doesn't replace the brief.** An agent that cannot read the tracker cannot read what is in it — restate anything load-bearing in the prompt or a committed file.
 
 ## Messages
 

@@ -30,7 +30,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - [README.md](README.md) — the project's front door: what it is, install, quick start
 
-<!-- agents:begin core@d4e43a -->
+<!-- agents:begin core@98d8a9 -->
 ## Working rules
 
 **Understand the why.** If the goal behind a request isn't clear, ask before solving — beware the XY problem.
@@ -64,9 +64,10 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 ## A session
 
 - **Start from the handoff doc in `project/`, if the last session left one, and `job orient`.** A handoff is current only if nothing has been committed since it (`git log` after its date); an older one is history, not a starting point. A handoff the user pastes wins.
+- **On the main thread, read `project/agents/delegation.md` in full before you begin, so whether to delegate is a choice, not a default.** A subagent skips this: its brief is its scope, and it doesn’t delegate further.
 - **Unless the user says they're around, assume they aren't.** Make the call yourself when it's safe and a two-way door, queue the rest, and report every decision at the end. While they're around, bring questions as they come up, including ones an agent raises mid-flight.
 - **Before starting, say what needs the user's eyes.**
-- **The session ends at the user's budget, or when your context passes 40%, whichever comes first.** Then integrate what's in flight, persist what the next session needs in the repo rather than memory, and write the handoff. Where the repo delegates, `project/agents/delegation.md` covers how.
+- **Continue working if there’s more to be done, but wrap up once you cross your context limit.** The main thread should wrap after passing 25%; subagents should prepare to hand over their work after passing 40% (check using `contextfill` if available).
 
 ## Git
 
@@ -141,7 +142,7 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 **It holds *current* state, so it is rewritten, not appended.** Every number, date and name appears there once and links the dated `project/` document it came from; when a fact changes, edit the sentence that holds it and let the dated record keep the history.
 <!-- agents:end background -->
 
-<!-- agents:begin index@836e52 -->
+<!-- agents:begin index@644452 -->
 ## Situational instructions
 
 These files carry instructions for specific situations. When one applies, read the file before acting and follow it.
@@ -151,4 +152,5 @@ These files carry instructions for specific situations. When one applies, read t
 | Before dispatching any subagent | `project/agents/delegation.md` |
 | Before filing or claiming work in job, and when running as a subagent | `project/agents/jobs.md` |
 | The first time a tool call is refused or denied, and before briefing a subagent | `project/agents/harness.md` |
+| Before writing a plan, importing a `tasks:` block, or detailing the leaves of work ahead | `project/agents/planning.md` |
 <!-- agents:end index -->
