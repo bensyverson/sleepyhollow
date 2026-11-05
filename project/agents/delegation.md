@@ -1,4 +1,4 @@
-<!-- agents:begin delegation@60e9da -->
+<!-- agents:begin delegation@437480 -->
 # Delegating to subagents
 
 Every rule here was paid for. Five hold even if you read nothing else:
@@ -33,8 +33,14 @@ Every rule here was paid for. Five hold even if you read nothing else:
   - **Pre-carve the shared seam** in one serial commit up front that creates the insertion points, then fan out. This is the general answer to a same-region collision.
   - **Reserve the file to a single writer**, and tell the others to code against its interface and describe the line they need instead of writing it. The cheapest single writer is the integrator: agents return the exact text as an *integration note* and it is applied at merge time — README rows, a one-line wiring call.
 - **Tell every agent which files another agent owns and what not to build.** An unstated boundary is not a boundary.
-- **When a running agent stops at a decision, resume it while its context is under about 40% full; past that, give the rest to a fresh agent** with a written summary of the state, the decisions made and what's left. Re-reading costs less than reasoning that loosens as context fills.
-- **Past 25% of its own context, the integrator dispatches no new agents and begins wrapping up**, well before an agent's 40%, because integrating and handing off still have to fit (`project/agents/harness.md` says how to read the fill; the hook reports it after each commit). 25% is a signal, not a hard cutoff: finish the step in hand, then integrate what's in flight, persist what the next session needs in the repo rather than memory (rulings in the docs they rule on, open questions as `job` notes, the state of play in the handoff doc), and write the handoff.
+- **When a running agent stops at a decision, resume it while its context is under about 40% full (a subagent's context line, core ▸ A session); past that, give the rest to a fresh agent** with a written summary of the state, the decisions made and what's left. Re-reading costs less than reasoning that loosens as context fills.
+- **Below the main thread's context line (core ▸ A session), the integrator keeps dispatching; past it, it dispatches no new agents, and wraps up in this order:**
+  1. Finish the step in hand.
+  2. Integrate every agent in flight: squash, review, commit, close its leaf. Don't stop an agent that is close to done to save context; integrating it is what the room below an agent's 40% is for.
+  3. Persist what the next session needs, in the repo rather than memory: rulings in the docs they rule on, open questions as `job` notes, and the state of play in the handoff doc, including any agent still running and how to integrate it.
+  4. Write the handoff.
+
+  The line marks when wrapping up *starts*, not a budget to finish within. It sits well below an agent's 40% because all four steps come after it and are expected to take the fill well past it, so don't wind down early to finish under it. Read the fill with `contextfill`, never by estimate (`project/agents/harness.md` ▸ Your context fill; the hook reports it after each commit).
 - **Carving occasionally mints a new leaf for a piece of a task, but rarely** (`job split`). Prefer it to quietly widening one leaf's scope, and don't let the carve become a replan.
 
 ## Workflow

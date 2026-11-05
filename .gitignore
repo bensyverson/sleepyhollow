@@ -20,3 +20,9 @@ DerivedData/
 
 # Claude Code agent worktrees — never committed
 .claude/worktrees/
+
+# job
+# Jobs cache and its sidecars — disposable, rebuilt from .jobs/log
+.jobs.db*
+# This machine's replica id, identity and focus
+.jobs/local.json
