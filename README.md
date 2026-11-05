@@ -12,9 +12,15 @@ output, move on.
 
 ## Install
 
-SleepyHollow is Swift and needs macOS 12 or later — it links the system
-`WebKit.framework` on purpose. There's no Homebrew formula yet, so build it
-from source:
+```sh
+brew install bensyverson/tap/sleepy
+```
+
+On macOS 15 or later with Apple silicon, that pours a prebuilt, signed binary;
+anywhere else Homebrew builds it from source with Xcode 26.4 or later.
+
+SleepyHollow is Swift and links the system `WebKit.framework` on purpose. To
+build it from source, on macOS 12 or later:
 
 ```sh
 git clone https://github.com/bensyverson/sleepyhollow.git

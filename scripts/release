@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# release — publish sleepy to Homebrew. The script itself lives in the tap, shared
+# by every formula there; this runs the copy in the tap checked out beside this repo.
+# See its --help, and scripts/release.conf for how it builds and checks sleepy.
+set -euo pipefail
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+tap="${repo}/../homebrew-tap"
+[[ -x "${tap}/scripts/release" ]] ||
+    { echo "release: no tap at ${tap}; clone bensyverson/homebrew-tap there" >&2; exit 3; }
+exec "${tap}/scripts/release" --repo "$repo" "$@"

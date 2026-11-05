@@ -15,6 +15,7 @@ struct SleepyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sleepy",
         abstract: "A headless WebKit browser for agents.",
+        version: SleepyVersion.current,
         subcommands: [LoadCommand.self, ShotCommand.self, PdfCommand.self, ArchiveCommand.self, DomCommand.self, QueryCommand.self, StyleCommand.self, FindCommand.self, AXCommand.self, ContrastCommand.self, OverflowCommand.self, ConsoleCommand.self, WireCommand.self, EvalCommand.self, ClickCommand.self, FillCommand.self, SubmitCommand.self, ResizeCommand.self, OpenCommand.self, CloseCommand.self, SessionsCommand.self, JarsCommand.self, CookiesCommand.self, RecipesCommand.self, DoctorCommand.self, HostCommand.self],
     )
 
