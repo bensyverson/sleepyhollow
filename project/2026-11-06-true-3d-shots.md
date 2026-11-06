@@ -127,3 +127,13 @@ tasks:
           - backface-visibility hidden hides a face turned away from the viewer (pixel test)
           - Ft2O4Q is closed against this leaf's tests
 ```
+
+## Ruling on the capture path (2026-11-06, decision `BJkByM`)
+
+Ben delegated the call ("I trust your recommendations"). It follows the spike's recommendation (`2026-11-06-compositor-capture.md`), in three independent pieces:
+
+1. **Ship the key-window override.** The host window claims to be key, so native controls draw active and `:focus`, `:focus-visible` and `document.hasFocus()` behave as in a real browser. **Pin the accent and highlight colors** to the system defaults rather than following the machine's System Settings, so a shot doesn't depend on who ran it.
+2. **Live hosting, with the window pinned to sRGB, becomes the default host for one-shot verbs**, not just `shot`. This fixes `ND4YmR` (frozen rAF, transitions and Web Animations) and the 1 Hz nested-timer throttle (likely `PFrL42`). We accept the costs: every verb's timing changes (pages animate, so a mid-animation shot can differ run to run; `--wait-for` is the answer), and it relies on the occlusion SPI.
+3. **`shot` renders through the compositor (`CARenderer`) by default where it can run.** It falls back to `takeSnapshot` when the area holds `<video>`, and **the output names the renderer**. A shot taken with the fallback keeps the CSS 3D caveat (`YnX53e`). We accept the second SPI (`_doAfterNextPresentationUpdate:`), the per-capture layer re-parenting, slower 2× shots, and strips for 2× pages taller than 8,192 CSS px.
+
+Piece 3 needs piece 2; piece 1 stands alone. Build leaves: the split of `8F71rl`.
