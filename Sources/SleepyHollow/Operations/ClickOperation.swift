@@ -12,6 +12,11 @@
 /// what gets clicked — the one thing a selector cannot reach, because CSS
 /// does not cross a shadow boundary and an event dispatched at the host never
 /// travels down into it.
+///
+/// **A fractional point is hit-tested exactly, but WebKit truncates it on
+/// mouse events**: `mousedown`, `mouseup` and `click` report whole-pixel
+/// `clientX`/`clientY`, while `pointerdown` and `pointerup` keep the fraction.
+/// See ``ActionScript``'s coordinate click for the detail.
 public struct ClickOperation: ExecutablePageOperation {
     /// This operation's typed result.
     public typealias Output = ActionOutcome

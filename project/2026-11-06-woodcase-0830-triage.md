@@ -23,6 +23,16 @@ The report's "what worked" section is worth keeping too: `PageHost` + `LoadOptio
 
 Each leaf is *investigate, then fix if it holds up*: confirm the problem against today's code first (several items are from a September build), and where a fix needs a product decision, stop and bring it back rather than guessing.
 
+## Verdicts
+
+**Item 4, a thrown body reads as `""` (2026-11-06, leaf `emvuHf`).** Not reproduced: raw `PageHost.evaluate` always threw on a thrown body, an unparseable one, `throw 'bare string'` and a `BigInt` return, so the `""` came from Woodcase's own helper. The real defect was that WebKit's error said only "A JavaScript exception occurred" and hid the page's message in `userInfo`; `evaluate` now throws `EvaluationError.javaScript(message:)` naming it (`PageHostScriptErrorTests`).
+
+**Item 6, frozen animation (2026-11-06, leaf `GzK3Rl`).** Fixed rather than documented: every `PageHost` is now live-hosted, so rAF, transitions and Web Animations run (`LiveHostingGoldenTests`, ND4YmR's fixture). The docs leaf's "loud paragraph" becomes "pages animate; wait for the end state", now in `shot --help` and recipes; the frozen behavior is opt-in via `PageHost.Hosting.windowless`.
+
+**Item 8, integer `clientX` (2026-11-06, leaf `ez5x58`).** WebKit's limit, not ours: nothing in Sleepy rounds the point, but WebKit truncates a `MouseEvent`'s `clientX`/`clientY` to whole px whatever the init dictionary says, and a `PointerEvent` too when its type is `click` or `auxclick`. So `mousedown`, `mouseup` and `click` handlers see the integer part, and `pointerdown`/`pointerup` keep the fraction (probed in-page). Documented in `click --help` and DocC, pinned by `ClickFractionalPointTests` (a canary: it goes red if WebKit starts keeping the fraction). Woodcase's workaround: read the position from `pointerdown`/`pointerup`, or click with `--selector`. Element-relative `--at` is parked in `backlog.md` (2026-11-06).
+
+**Item 9, pasteboard noise (2026-11-06, leaf `ez5x58`).** WebKit's, not Woodcase's tests and not Sleepy code. `sleepy dom <page> --click '#b'`, where the click runs `document.execCommand('copy')` or `navigator.clipboard.writeText`, prints `CFPasteboardSetExpirationDate returns error: Pasteboard already has contents.` on stderr (reproduced twice). Any page that copies triggers it under any host; not silenced. The same probe suggests the page's copy reaches the user's real system clipboard, which is a bigger problem than the noise: filed as issue `OqJ4a7`.
+
 ## Tasks
 
 Imported 2026-11-06; the tracker holds the current version (`job ls`).

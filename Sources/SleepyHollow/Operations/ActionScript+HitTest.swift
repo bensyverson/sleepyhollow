@@ -21,6 +21,13 @@ import Foundation
 /// the host cannot reach, since a click dispatched at the host travels up to
 /// the document and never down into what it renders.
 ///
+/// **Fractions reach the hit test, not every event.** The point goes to
+/// `elementFromPoint` unrounded, and the pointer events carry it unrounded,
+/// but WebKit truncates a `MouseEvent`'s `clientX`/`clientY` to whole CSS px
+/// regardless of the init dictionary — and a `PointerEvent` of type `click`
+/// too — so `mousedown`, `mouseup` and `click` handlers see the integer part.
+/// `ClickFractionalPointTests` pins both halves.
+///
 /// A closed shadow root exposes no `shadowRoot` to anyone, this tool
 /// included, so the descent stops at its host. That is the truth, not a
 /// limitation to paper over.

@@ -77,6 +77,12 @@ struct RecipesCommand: ParsableCommand {
       sleepy shot http://localhost:3000/app --wait-for '#chart' --out chart.png
       sleepy load http://localhost:3000/app --wait-for 'js:window.ready === true'
       sleepy load http://localhost:3000/app --wait-for message:appReady
+    Capture something that animates, the same way every run → shot with
+    --wait-for on its end state. Pages animate as in a browser
+    (requestAnimationFrame, CSS transitions and Web Animations all run), so a
+    shot of something still moving can differ from run to run
+      sleepy shot http://localhost:3000/ --wait-for '.done' --out done.png
+      sleepy shot http://localhost:3000/ --wait-for "js:document.getAnimations().every(a => a.playState !== 'running')" --out settled.png
     Capture a page that uses webfonts, without catching it mid-fallback →
     just shot; the load event already waits for a @font-face the page's own
     stylesheet asks for

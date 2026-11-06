@@ -33,9 +33,9 @@ public struct LoadFlagOptions: ParsableArguments {
     }
 
     @Option(
-        name: .long,
+        name: [.long, .customLong("viewport")],
         parsing: .singleValue,
-        help: "Viewport size WxH, e.g. 1280x800, or a width alone (480 means 480x800). Default 1280x800. Repeatable on `shot`, which renders each size.",
+        help: "Viewport size WxH (--viewport is the same flag), e.g. 1280x800, or a width alone (480 means 480x800). Default 1280x800. Repeatable on `shot`, which renders each size.",
     )
     public var size: [String] = []
 

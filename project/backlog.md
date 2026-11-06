@@ -113,3 +113,18 @@ starves under a saturated main actor exactly as the predicate did before
 the host's to measure (`2026-08-20-wait-engine.md`), and no report has
 shown an `idle` timeout on a quiet page. Un-parked by one: an `idle`
 wait reported as a timeout under load on a page that had gone quiet.
+
+## 2026-11-06 — Element-relative `click --at`
+
+`click --at` takes document CSS px only. `project/2026-08-28-agent-feedback-synthesis.md`
+promised an element-relative form ("click 10,5 inside `#canvas`") "later"
+and never parked it. Parked because the document-space form is the one
+that pastes across `query`, `shot --rect` and tile indexes, and the
+element-relative case is two verbs away: `query` the element's rect, add
+the offset. A `--within <selector>` would also need a rule for an element
+that moves or transforms between measuring and clicking. Un-parked by: an
+agent flow that clicks inside a moving or scaled element (a canvas, a
+carousel) and gets the arithmetic wrong, or two field reports asking for
+it. The fractional-`clientX` finding (`ClickFractionalPointTests`) is a
+neighbor, not a reason: WebKit truncates mouse-event coordinates however
+the point is expressed.

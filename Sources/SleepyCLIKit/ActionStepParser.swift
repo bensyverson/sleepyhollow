@@ -38,7 +38,7 @@ public enum ActionStepParser {
     /// ``parse(_:valueTakingOptions:)``); a boolean `@Flag` needs no entry.
     public static let knownValueTakingOptions: Set<String> = [
         // LoadFlagOptions
-        "--size", "--theme", "--jar", "--inject", "--wait-for", "--budget",
+        "--size", "--viewport", "--theme", "--jar", "--inject", "--wait-for", "--budget",
         "--confirm", "--prompt-text",
         // Shared option groups
         "--session", "--format", "--out",

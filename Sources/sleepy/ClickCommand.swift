@@ -21,6 +21,8 @@ struct ClickCommand: AsyncParsableCommand {
 
         --at x,y is in document CSS px: the page's top-left corner is 0,0, unscrolled — the same space `query` reports geometry in and `shot --rect` crops in, so a rect measured off a full-page capture, a tile index, or a query pastes straight across, at any scroll position. The point is scrolled into view, hit-tested with elementFromPoint, and followed down through every open shadow root, so the button a component renders is what gets clicked.
 
+        --at takes fractions (--at 100.75,300.25) and the hit test uses them exactly, but WebKit truncates a mouse event's clientX/clientY to whole px: a page's mousedown, mouseup and click handlers see 100,300, and pointerdown and pointerup see 100.75,300.25. A handler that rescales clientX on a canvas drawn below 1x can land one box off; read the position from pointerdown/pointerup, or click the element's center with --selector.
+
         A --selector click cannot reach that button: CSS does not cross a shadow boundary, and an event dispatched at the host travels up to the document, never down into what the host renders. A closed shadow root exposes nothing to anyone, this tool included, so a point over one clicks its host.
 
         Examples:
