@@ -72,6 +72,8 @@ It lives in exactly one place, `OffscreenWindow.disableWindowOcclusionDetection(
 
 > **Ruling (2026-08-28, Ben):** keep the SPI in, unused. `Rendering.hidden` is now the default on both `OffscreenWindow.init` and `PageHost.ensureOffscreenWindow()`, so no shipping operation reaches `_setWindowOcclusionDetectionEnabled:`; `Rendering.live` stays in the code, measured and covered by `OffscreenWindowTests`, for the day the time-series capture is un-parked (`project/backlog.md`). A test pins that the default host reports `visibilityState === "hidden"`.
 
+> **Superseded 2026-11-06 (Ben):** private SPI is acceptable for `shot` ("This isn't going in the App Store"), so `Rendering.live` may now back shipping paths. The first candidate is a compositor capture for true CSS 3D; see `2026-11-06-true-3d-shots.md`. The isolation, the `responds(to:)` guard and the red-on-loss test above all still apply.
+
 **This was a decision for the main thread to ratify.** Shipping private API is a standing maintenance and fragility cost. The alternative is to ship the window without it, which serves `pdf` (a window is all `NSPrintOperation` needs) and leaves the time-series spike impossible — a hosted page that still cannot animate. The build here takes the SPI, isolated and guarded; reverting it is deleting one function and one `if`.
 
 ## (e) `document.visibilityState`
