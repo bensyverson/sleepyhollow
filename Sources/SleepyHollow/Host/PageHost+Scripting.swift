@@ -14,6 +14,9 @@ public extension PageHost {
     /// completion value as JSON text — or throws once `budget` seconds pass
     /// without an answer.
     ///
+    /// JSON *text*: a string comes back quoted (`"\"ok\""`). To get a Swift
+    /// value, use ``evaluate(_:as:arguments:in:budget:)``, which decodes it.
+    ///
     /// The value is stringified *page-side* (`JSON.stringify`), which is the
     /// honest transport: what the page can serialize is what crosses, and
     /// nothing is re-interpreted host-side. `undefined` and values
@@ -36,11 +39,14 @@ public extension PageHost {
     ///   subject.
     /// - Parameter budget: seconds to wait for the answer, or `nil` for the
     ///   host's ``callBudget``.
-    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` naming
-    ///   the body's first line when the budget runs out, `CancellationError`
-    ///   when the caller is cancelled first, and WebKit's own error when the
-    ///   page throws or the frame is gone — the eval verb shapes that into a
-    ///   structured failure; the host does not pretend it was something else.
+    /// - Throws: ``EvaluationError/javaScript(message:)`` carrying the page's
+    ///   own message when the body throws or does not parse — including a
+    ///   value `JSON.stringify` refuses, such as a `BigInt`;
+    ///   ``SleepyError`` of kind ``SleepyError/Kind/timeout`` naming the
+    ///   body's first line when the budget runs out; `CancellationError`
+    ///   when the caller is cancelled first; and WebKit's own error when the
+    ///   frame is gone — the host does not pretend that was the script's
+    ///   fault. A failure is never an empty answer.
     @discardableResult
     func evaluate(
         _ body: String,
@@ -74,7 +80,8 @@ public extension PageHost {
                 in: nil,
                 in: world.contentWorld,
             ) { result in
-                answered(result.flatMap { value in
+                let lifted: Result<Any, any Error> = result.mapError { EvaluationError.lifting($0) ?? $0 }
+                answered(lifted.flatMap { value in
                     guard let text = value as? String else {
                         return .failure(SleepyError(
                             kind: .environment,
@@ -103,7 +110,7 @@ public extension PageHost {
             nextMessageSinkID += 1
             let id: Int = nextMessageSinkID
             messageSinks[name, default: []].append(MessageSink(id: id, continuation: continuation))
-            continuation.onTermination = { @Sendable _ in
+            continuation.onTermination = { @Sendable [weak self] _ in
                 Task { @MainActor [weak self] in
                     self?.removeSink(id: id, named: name)
                 }

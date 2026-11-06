@@ -24,8 +24,16 @@ final class PageHostDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKSc
         host?.noteNavigationStarted()
     }
 
-    func webView(_: WKWebView, didCommit _: WKNavigation!) {
+    /// Main-frame commits, behind ``PageHost/navigationCount``.
+    let navigations: NavigationTracker = .init()
+
+    func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
         host?.noteNavigationStarted()
+        // Every main-frame document that becomes the page arrives here once,
+        // a back-forward-cache restore included; a same-document change never
+        // does — which is the whole distinction ``PageHost/navigationCount``
+        // draws.
+        navigations.commit(url: webView.url)
     }
 
     /// WebKit's only report that the web content process is gone — and the one

@@ -32,6 +32,10 @@ final class WaitEngine {
         var truthy: Bool
         /// The JavaScript failure that stopped the check, if any.
         var failure: String?
+        /// Which ``PageHost/waitUntil(_:in:budget:)`` armed the check, so
+        /// concurrent waits on one handler hear only their own pushes; `nil`
+        /// from the load-time watches, which have one wait apiece.
+        var watch: String?
     }
 
     /// One script-message handler the host must register before it navigates.
@@ -50,7 +54,9 @@ final class WaitEngine {
     /// ``WaitCondition/message(_:)`` may not borrow: a post to one of these is
     /// instrumentation talking, not the page saying it is ready, and settling
     /// on it would be a plausible wrong answer.
-    static let reservedMessageNames: Set<String> = [messageName, PageHost.consoleMessageName]
+    static let reservedMessageNames: Set<String> = [
+        messageName, PageHost.consoleMessageName, PageHost.waitUntilMessageName,
+    ]
 
     /// Whether a page may be waited on for posts to `name`.
     static func isWaitableMessageName(_ name: String) -> Bool {

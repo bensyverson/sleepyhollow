@@ -215,16 +215,12 @@ public struct EvalOperation: ExecutablePageOperation {
         return object
     }
 
-    /// WebKit's userInfo key carrying the page's own exception message.
-    private static let exceptionMessageKey: String = "WKJavaScriptExceptionMessage"
-
-    /// Turns WebKit's error into a failure that states the page's complaint.
+    /// Turns the host's error into a failure that states the page's complaint.
     private static func failure(from error: any Error) -> SleepyError {
-        let details = error as NSError
-        guard let message = details.userInfo[exceptionMessageKey] as? String, !message.isEmpty else {
+        guard case let .javaScript(message) = error as? EvaluationError else {
             return SleepyError(
                 kind: .environment,
-                message: "The page could not run the script: \(details.localizedDescription)",
+                message: "The page could not run the script: \(error.localizedDescription)",
                 nextMove: "Retry against a settled page — a frame that navigates mid-evaluation cannot answer.",
             )
         }
