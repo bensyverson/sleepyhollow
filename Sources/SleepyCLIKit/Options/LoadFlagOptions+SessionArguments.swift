@@ -29,6 +29,9 @@ public extension LoadFlagOptions {
         if transparent {
             arguments.append("--transparent")
         }
+        if noJS {
+            arguments.append("--no-js")
+        }
         if let jar: JarName = jar {
             arguments += ["--jar", jar.rawValue]
         }

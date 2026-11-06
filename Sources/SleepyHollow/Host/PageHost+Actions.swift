@@ -145,13 +145,35 @@ extension PageHost {
     /// Tags the current document in the isolated world; the tag's absence
     /// afterwards is proof a *different* document is loaded, which is how a
     /// same-URL navigation is spotted.
-    private func markDocument() async -> String? {
+    func markDocument() async -> String? {
         let mark: String = UUID().uuidString
         let written: String? = try? await evaluate(
             "window[key] = mark; return true;",
             arguments: ["key": Self.documentMarkKey, "mark": mark],
         )
         return written == "true" ? mark : nil
+    }
+
+    /// Whether a navigation began after `mark` was written, judged from the
+    /// host's side: the web view loading, or the marked document gone, within
+    /// the start grace.
+    ///
+    /// The act primitives' own answer comes from a page-side `submit`
+    /// listener, and with the page's scripts off WebKit invokes no event
+    /// listener at all — the isolated world's included (measured 2026-11-06:
+    /// a form submitted by `requestSubmit()`, `submit()` and a button click
+    /// all navigated, and a capture-phase listener heard none of them). So
+    /// ``ActionScript`` asks this instead when ``LoadOptions/pageScripts`` is
+    /// ``LoadOptions/PageScripts/disabled``; it costs a click that does not
+    /// navigate the grace period.
+    func navigationStarted(sinceMark mark: String) async -> Bool {
+        let graceEnd = DispatchTime.now() + Self.navigationStartGrace
+        repeat {
+            if webView.isLoading { return true }
+            if await documentIsStillMarked(mark) == false { return true }
+            await pause()
+        } while DispatchTime.now() < graceEnd
+        return false
     }
 
     /// Whether the marked document is still the one loaded. A page that
@@ -165,7 +187,9 @@ extension PageHost {
     }
 
     private func documentIsComplete() async -> Bool {
-        let state: String? = try? await evaluate("return document.readyState;", in: .page)
+        // The isolated world: `readyState` is the shared document's, and the
+        // page world is closed to the host when the page's scripts are off.
+        let state: String? = try? await evaluate("return document.readyState;", in: .isolated)
         return state == "\"complete\""
     }
 

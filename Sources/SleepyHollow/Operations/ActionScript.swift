@@ -60,6 +60,12 @@ enum ActionScript {
         case let .point(point):
             named["point"] = ["x": point.x, "y": point.y]
         }
+        // With the page's scripts off the page-side submit watcher hears
+        // nothing, so the host judges a navigation itself — not for a fill,
+        // which cannot start one.
+        let mark: String? = host.options.pageScripts == .disabled && action != .fill
+            ? await host.markDocument()
+            : nil
         let text: String
         do {
             text = try await host.evaluate(helpers + "\n" + body, arguments: named, in: .isolated)
@@ -76,12 +82,16 @@ enum ActionScript {
         if let code = report.error {
             throw failure(code, action: action, target: target, report: report, arguments: named)
         }
+        var navigating: Bool = report.navigating ?? false
+        if !navigating, let mark {
+            navigating = await host.navigationStarted(sinceMark: mark)
+        }
         return ActionOutcome(
             action: action,
             selector: target.selector,
             tagName: report.tagName ?? "",
             value: report.value,
-            startedNavigation: report.navigating ?? false,
+            startedNavigation: navigating,
             hit: report.hit,
         )
     }

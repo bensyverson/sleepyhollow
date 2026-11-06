@@ -93,6 +93,13 @@ struct RecipesCommand: ParsableCommand {
     document.fonts.check() already read ready on a page that has not
     requested the font. Wait for what the page does instead.
 
+    Check the page works with JavaScript off (progressive enhancement) → any
+    loading verb with --no-js. <noscript> renders and @media (scripting: none)
+    matches; eval needs --world isolated, and console and --wait-for
+    js:/message: refuse
+      sleepy query http://localhost:3000/signup --selector 'noscript p, form' --no-js --format text
+      sleepy shot http://localhost:3000/signup --no-js --out no-js.png
+      sleepy load http://localhost:3000/signup --no-js --fill '#email=a@b.c' --submit '#signup'
     Read console errors → load, console
       sleepy load http://localhost:3000/app
       sleepy console http://localhost:3000/app --format text

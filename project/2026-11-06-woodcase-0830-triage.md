@@ -25,6 +25,8 @@ Each leaf is *investigate, then fix if it holds up*: confirm the problem against
 
 ## Verdicts
 
+**Item 1, JavaScript off (2026-11-06, leaf `4GBnw4`).** Shipped as `--no-js` / `LoadOptions(pageScripts: .disabled)`: `<noscript>` renders, every verb answers or refuses with a teaching error (`eval` in the page world, `console`, `js:`/`message:` waits, `--inject-world page`). Rulings made in Claude's hands, two-way doors: `eval` under `--no-js` refuses rather than silently switching to the isolated world; `console` refuses while `load` reports `consoleErrorCount: 0` (literally true: the console records only what scripts write); depending on the deprecated `WKPreferences.javaScriptEnabled` is accepted, since nothing else renders `<noscript>`.
+
 **Item 4, a thrown body reads as `""` (2026-11-06, leaf `emvuHf`).** Not reproduced: raw `PageHost.evaluate` always threw on a thrown body, an unparseable one, `throw 'bare string'` and a `BigInt` return, so the `""` came from Woodcase's own helper. The real defect was that WebKit's error said only "A JavaScript exception occurred" and hid the page's message in `userInfo`; `evaluate` now throws `EvaluationError.javaScript(message:)` naming it (`PageHostScriptErrorTests`).
 
 **Item 6, frozen animation (2026-11-06, leaf `GzK3Rl`).** Fixed rather than documented: every `PageHost` is now live-hosted, so rAF, transitions and Web Animations run (`LiveHostingGoldenTests`, ND4YmR's fixture). The docs leaf's "loud paragraph" becomes "pages animate; wait for the end state", now in `shot --help` and recipes; the frozen behavior is opt-in via `PageHost.Hosting.windowless`.

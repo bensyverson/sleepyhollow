@@ -44,9 +44,12 @@ public extension PageHost {
     ///   value `JSON.stringify` refuses, such as a `BigInt`;
     ///   ``SleepyError`` of kind ``SleepyError/Kind/timeout`` naming the
     ///   body's first line when the budget runs out; `CancellationError`
-    ///   when the caller is cancelled first; and WebKit's own error when the
-    ///   frame is gone — the host does not pretend that was the script's
-    ///   fault. A failure is never an empty answer.
+    ///   when the caller is cancelled first; a ``SleepyError`` of kind
+    ///   ``SleepyError/Kind/usage`` for the page world when the host was
+    ///   loaded with ``LoadOptions/PageScripts/disabled``, which closes it;
+    ///   and WebKit's own error when the frame is gone — the host does not
+    ///   pretend that was the script's fault. A failure is never an empty
+    ///   answer.
     @discardableResult
     func evaluate(
         _ body: String,
@@ -73,7 +76,12 @@ public extension PageHost {
         within budget: TimeInterval,
         naming call: String,
     ) async throws -> String {
-        try await answer(call, within: budget) { answered in
+        // WebKit refuses the page world with the same error code a throwing
+        // script gets, which would read as "the page threw".
+        if world == .page, options.pageScripts == .disabled {
+            throw LoadOptions.pageWorldClosed
+        }
+        return try await answer(call, within: budget) { answered in
             webView.callAsyncJavaScript(
                 Self.stringifying(body),
                 arguments: arguments,

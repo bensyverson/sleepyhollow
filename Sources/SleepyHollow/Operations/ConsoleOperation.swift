@@ -24,8 +24,14 @@ public struct ConsoleOperation: ExecutablePageOperation {
     public init() {}
 
     /// Reads the capture's buffer out of the page.
+    ///
+    /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when the
+    ///   page's scripts are off (``LoadOptions/PageScripts/disabled``): no
+    ///   page script ran to write anything, and an empty log would read as a
+    ///   clean one.
     @MainActor
     public func execute(on host: PageHost) async throws -> ConsoleLog {
+        guard host.options.pageScripts == .enabled else { throw LoadOptions.consoleNeverWritten }
         let text: String = try await host.evaluate(ConsoleCapture.logExpression, in: .page)
         do {
             return try JSONDecoder().decode(ConsoleLog.self, from: Data(text.utf8))

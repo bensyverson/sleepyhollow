@@ -52,9 +52,17 @@ extension WaitEngine {
 
     /// One activity reading; `nil` when the page could not be sampled (the
     /// caller decides what an unreadable page means — see `settleIdle`).
+    ///
+    /// With the page's scripts off, the page-world watcher never ran and that
+    /// world is closed to the host as well, so the reading comes from
+    /// ``IdleWatch/isolatedSampleBody`` instead.
     private func sample(in host: PageHost) async -> IdleWatch.Sample? {
+        let (body, world): (String, InjectedScript.World) = switch host.options.pageScripts {
+        case .enabled: (IdleWatch.sampleBody, .page)
+        case .disabled: (IdleWatch.isolatedSampleBody, .isolated)
+        }
         guard
-            let text: String = try? await host.evaluate(IdleWatch.sampleBody, in: .page),
+            let text: String = try? await host.evaluate(body, in: world),
             let sample: IdleWatch.Sample = try? Self.decode(IdleWatch.Sample.self, from: text)
         else {
             return nil

@@ -183,11 +183,16 @@ public struct EvalOperation: ExecutablePageOperation {
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when the
     ///   script has no value to return, ``argumentsJSON`` is not a JSON
-    ///   object, or the page reports a JavaScript failure, and
+    ///   object, the page reports a JavaScript failure, or ``world`` is the
+    ///   page's while its scripts are off (``LoadOptions/PageScripts/disabled``
+    ///   closes that world to this tool too), and
     ///   ``SleepyError/Kind/environment`` when WebKit could not run the
     ///   script at all.
     @MainActor
     public func execute(on host: PageHost) async throws -> String {
+        if world == .page, host.options.pageScripts == .disabled {
+            throw LoadOptions.pageWorldClosed
+        }
         let body: String = try evaluatedSource()
         let arguments: [String: Any] = try Self.arguments(from: argumentsJSON)
         do {

@@ -29,8 +29,8 @@ public enum PageExecution {
     /// Every load-shaping flag, in the order ``loadShapingFlags(_:)`` reports
     /// them: the order they appear in ``LoadFlagOptions``.
     public static let loadShapingFlagNames: [String] = [
-        "--size", "--theme", "--transparent", "--jar", "--file-root", "--inject", "--inject-world", "--wait-for",
-        "--confirm", "--prompt-text", "--click", "--fill", "--submit",
+        "--size", "--theme", "--transparent", "--no-js", "--jar", "--file-root", "--inject", "--inject-world",
+        "--wait-for", "--confirm", "--prompt-text", "--click", "--fill", "--submit",
     ]
 
     /// Which load-shaping flags `flags` actually carries.
@@ -48,6 +48,7 @@ public enum PageExecution {
             !flags.size.isEmpty,
             !flags.theme.isEmpty,
             flags.transparent,
+            flags.noJS,
             flags.jar != nil,
             flags.fileRoot != nil,
             !flags.inject.isEmpty,

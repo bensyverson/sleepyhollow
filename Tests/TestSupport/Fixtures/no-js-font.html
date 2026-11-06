@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Webfont, no script</title>
+  <!-- One subresource and no script: what the idle sampler sees of a page
+       whose own scripts are off. -->
+  <style>
+    @font-face {
+      font-family: 'SleepyBlock';
+      src: url('block-font.ttf') format('truetype');
+    }
+    #sample { font-family: 'SleepyBlock', serif; font-size: 40px; }
+  </style>
+</head>
+<body>
+  <div id="sample">HHHHH</div>
+</body>
+</html>

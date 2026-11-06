@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Server title</title>
+  <style>
+    body { margin: 0; font: 16px/1.4 -apple-system, sans-serif; color: #111; background: #fff; }
+    #fallback { color: #777; background: #fff; }
+    .tilted { perspective: 400px; }
+    .tilted > div { transform: rotateY(45deg); width: 100px; height: 60px; background: #369; }
+  </style>
+  <script>
+    // Progressive enhancement: everything this script does is what a page with
+    // scripting off must NOT show.
+    window.pageGlobal = 'set';
+    document.title = 'Enhanced title';
+    console.log('page script ran');
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('status').textContent = 'enhanced';
+      var added = document.createElement('p');
+      added.id = 'enhanced';
+      added.textContent = 'Added by script';
+      document.body.appendChild(added);
+    });
+  </script>
+</head>
+<body>
+  <h1>Progressive enhancement fixture</h1>
+  <noscript>
+    <p id="fallback">Scripting is off: this is the fallback.</p>
+    <div class="tilted"><div id="tilt"></div></div>
+  </noscript>
+  <p id="status">server</p>
+  <button id="button" type="button" onclick="this.textContent = 'handled'">Press</button>
+</body>
+</html>

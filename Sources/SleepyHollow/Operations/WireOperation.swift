@@ -59,8 +59,18 @@ public struct WireOperation: ExecutablePageOperation {
     }
 
     /// Settles, then reads both layers.
+    ///
+    /// With the page's scripts off (``LoadOptions/PageScripts/disabled``) the
+    /// fetch layer is empty by construction — only page script calls
+    /// `fetch()`, and none ran — and the recorder, a page-world script, could
+    /// not have run either. So the inventory is read as usual and the fetch
+    /// log is reported empty without asking the page: the true wire of a page
+    /// loaded without JavaScript.
     @MainActor
     public func execute(on host: PageHost) async throws -> WireLog {
+        guard host.options.pageScripts == .enabled else {
+            return try await WireLog(inventory: readInventory(on: host), fetches: [])
+        }
         try await settle(on: host)
         return try await WireLog(
             inventory: readInventory(on: host),

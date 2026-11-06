@@ -21,6 +21,9 @@ public struct InjectedScript: Friendly {
         /// with page JS. The default.
         case isolated
         /// The page's own world, for when the page's state is the subject.
+        ///
+        /// Closed with ``LoadOptions/PageScripts/disabled``: nothing runs
+        /// here then, a script installed here included.
         case page
     }
 

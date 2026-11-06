@@ -248,6 +248,7 @@ public final class PageHost {
             configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
         }
         if options.fileAccessRoot != nil { configuration.preferences.allowLocalFileReads() }
+        configuration.applyPageScripts(options.pageScripts)
         webView = WKWebView(frame: PageHost.frame(for: options.size), configuration: configuration)
         webView.navigationDelegate = delegate
         webView.uiDelegate = delegate
@@ -256,7 +257,7 @@ public final class PageHost {
         delegate.host = self
         register(messageName: Self.consoleMessageName, in: .page)
         install(ConsoleCapture.script(messageName: Self.consoleMessageName))
-        install(SleepyHelpers.script)
+        install(SleepyHelpers.script(for: options.pageScripts))
         if let waiter {
             // Each in the world its push comes from: a handler registered in
             // the isolated world is invisible to a page-world script, and to
@@ -358,6 +359,7 @@ public final class PageHost {
                 nextMove: "Give a local directory — a read-access grant only means anything on this machine's disk.",
             )
         }
+        try options.requireWaitAnswerable()
         let applied: TimeInterval = budget ?? self.budget
         try await importJarIfNeeded()
         do {

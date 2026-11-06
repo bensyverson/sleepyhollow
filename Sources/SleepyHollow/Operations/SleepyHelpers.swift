@@ -18,6 +18,12 @@ import Foundation
 /// parts are assembled inside one IIFE, so the only name it adds to the page
 /// is `sleepy`.
 ///
+/// With the page's own scripts off (``LoadOptions/PageScripts/disabled``)
+/// the page world is closed to this tool too, so the library is installed in
+/// the isolated world instead, and the verbs call it there: the same source,
+/// measuring the same shared DOM. An agent reaches it then with
+/// `sleepy eval --world isolated`.
+///
 /// Every function is defensive: a page can make any DOM accessor throw, and a
 /// check verb that throws is a check verb that lies.
 public enum SleepyHelpers {
@@ -30,16 +36,25 @@ public enum SleepyHelpers {
     static let source: String = [prologue, colors, elements, contrast, overflow, transforms, epilogue]
         .joined(separator: "\n\n")
 
-    /// The user script that installs the library on every page.
+    /// The user script that installs the library on every page, in the world
+    /// ``world(for:)`` names.
     ///
     /// Document *end*: the functions measure rendered geometry, so there is
     /// nothing for them to do before the document has one, and installing late
     /// keeps the library out of the way of anything the page does at start.
-    public static let script: InjectedScript = .init(
-        source: source,
-        injectAt: .documentEnd,
-        world: .page,
-    )
+    public static func script(for pageScripts: LoadOptions.PageScripts) -> InjectedScript {
+        InjectedScript(source: source, injectAt: .documentEnd, world: world(for: pageScripts))
+    }
+
+    /// Where the library lives: the page world, so `eval`'s default world
+    /// reaches it — unless the page's scripts are off, which closes that world
+    /// to this tool as well, and the isolated world is the one left.
+    public static func world(for pageScripts: LoadOptions.PageScripts) -> InjectedScript.World {
+        switch pageScripts {
+        case .enabled: .page
+        case .disabled: .isolated
+        }
+    }
 
     /// Opens the IIFE and refuses to overwrite a namespace already installed.
     private static let prologue: String = """
@@ -87,7 +102,11 @@ public enum SleepyHelpers {
         """
         let json: String
         do {
-            json = try await host.evaluate(body, arguments: ["options": options], in: .page)
+            json = try await host.evaluate(
+                body,
+                arguments: ["options": options],
+                in: world(for: host.options.pageScripts),
+            )
         } catch let error as SleepyError {
             throw error
         } catch {

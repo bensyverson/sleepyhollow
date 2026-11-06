@@ -106,6 +106,17 @@ fallback. Wait for what the page does instead — a selector, or a predicate
 naming the page's own state (measured:
 [2026-08-29-paint-after-fonts-ready.md](2026-08-29-paint-after-fonts-ready.md)).
 
+Check the page works with JavaScript off (progressive enhancement) → any
+loading verb with `--no-js`. `<noscript>` renders and `@media (scripting:
+none)` matches; `eval` needs `--world isolated`, and `console` and
+`--wait-for js:`/`message:` refuse
+
+```sh
+sleepy query http://localhost:3000/signup --selector 'noscript p, form' --no-js --format text
+sleepy shot http://localhost:3000/signup --no-js --out no-js.png
+sleepy load http://localhost:3000/signup --no-js --fill '#email=a@b.c' --submit '#signup'
+```
+
 Read console errors → `load`, `console`
 
 ```sh

@@ -3,12 +3,14 @@ import Foundation
 import SleepyHollow
 
 /// The shared loading flags every loading verb takes: viewport, theme,
-/// backdrop, jar, file-access root, injected scripts and the world they land
-/// in, waiting, budget, dialog policy, and the ordered one-shot action flags.
+/// backdrop, page scripts, jar, file-access root, injected scripts and the
+/// world they land in, waiting, budget, dialog policy, and the ordered
+/// one-shot action flags.
 ///
 /// `--transparent` is declared here rather than on `shot` because the backdrop
 /// is fixed when the web view is built: a per-capture flag could not honour
-/// `sleepy open --transparent`, and one declaration serves both.
+/// `sleepy open --transparent`, and one declaration serves both. `--no-js`
+/// (``LoadOptions/PageScripts/disabled``) is here for the same reason.
 ///
 /// `--click`/`--fill`/`--submit` are declared here only so `--help` renders
 /// them; ArgumentParser loses interleave order across separate array
@@ -60,6 +62,17 @@ public struct LoadFlagOptions: ParsableArguments {
         help: "Paint nothing behind the page, so a transparent body captures as alpha 0.",
     )
     public var transparent: Bool = false
+
+    /// `--no-js`: resolves to ``LoadOptions/PageScripts/disabled`` through
+    /// ``pageScripts``.
+    @Flag(
+        name: .customLong("no-js"),
+        help: ArgumentHelp(
+            "Load without the page's own JavaScript, as a browser with scripting off: <noscript> renders. "
+                + "eval then needs --world isolated; console and js:/message: waits refuse.",
+        ),
+    )
+    public var noJS: Bool = false
 
     @Option(
         name: .long,
@@ -125,6 +138,7 @@ public struct LoadFlagOptions: ParsableArguments {
             promptText: promptText,
             fileRoot: fileRoot,
             backdrop: backdrop,
+            pageScripts: pageScripts,
             steps: steps,
         )
     }
@@ -133,6 +147,12 @@ public struct LoadFlagOptions: ParsableArguments {
     /// and the absence of it is the deterministic opaque default.
     public var backdrop: LoadOptions.Backdrop {
         transparent ? .transparent : .opaque
+    }
+
+    /// Whether the page's own scripts run: `--no-js` turns them off, and the
+    /// absence of it is a browser's default.
+    public var pageScripts: LoadOptions.PageScripts {
+        noJS ? .disabled : .enabled
     }
 
     /// Resolves the flags for **one render of a sweep**: `shot` owns the
@@ -160,6 +180,7 @@ public struct LoadFlagOptions: ParsableArguments {
             promptText: promptText,
             fileRoot: fileRoot,
             backdrop: backdrop,
+            pageScripts: pageScripts,
             steps: steps,
         )
         options.size = size
@@ -226,15 +247,26 @@ public struct LoadFlagOptions: ParsableArguments {
         promptText: String?,
         fileRoot: String? = nil,
         backdrop: LoadOptions.Backdrop = .opaque,
+        pageScripts: LoadOptions.PageScripts = .enabled,
         steps: [ActionStep],
     ) throws -> LoadOptions {
-        try LoadOptions(
+        let world: InjectedScript.World = injectWorld ?? .isolated
+        if pageScripts == .disabled, world == .page, !injectPaths.isEmpty {
+            throw SleepyError(
+                kind: .usage,
+                message: "'--inject-world page' scripts can never run with --no-js: "
+                    + "turning the page's scripts off closes the page world to injected scripts too.",
+                nextMove: "Pass --inject-world isolated (the default): it shares the page's DOM. Or drop --no-js.",
+            )
+        }
+        return try LoadOptions(
             size: resolveSize(size) ?? ViewportSize.default,
             theme: theme ?? .light,
             backdrop: backdrop,
+            pageScripts: pageScripts,
             jar: jar,
             fileAccessRoot: resolveFileRoot(fileRoot),
-            scripts: resolveScripts(injectPaths, in: injectWorld ?? .isolated),
+            scripts: resolveScripts(injectPaths, in: world),
             dialogs: DialogPolicy(acceptsConfirms: confirm == .accept, promptResponse: promptText),
             wait: resolveWait(waitFor),
             budget: resolveBudget(budgetMilliseconds),

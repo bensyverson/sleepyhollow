@@ -1,8 +1,8 @@
 import Foundation
 
-/// Everything that shapes an ephemeral load: viewport, theme, backdrop, jar,
-/// file-access root, injected scripts, dialog policy, waiting, and the ordered
-/// one-shot action steps.
+/// Everything that shapes an ephemeral load: viewport, theme, backdrop,
+/// whether the page's own scripts run, jar, file-access root, injected
+/// scripts, dialog policy, waiting, and the ordered one-shot action steps.
 ///
 /// Loading verbs pass these through to the page host untouched — waiting and
 /// step execution live in the host's load pipeline, so verbs gain them
@@ -27,6 +27,47 @@ public struct LoadOptions: Friendly {
         /// against a renderer's output needs
         /// (`project/2026-08-29-woodcase-harness-feedback.md`, finding 4).
         case transparent
+    }
+
+    /// Whether the page's *own* JavaScript runs.
+    ///
+    /// A typed fact rather than a `Bool`, like ``Backdrop``: it names what is
+    /// switched off — the page's scripts — so it cannot be read as a switch on
+    /// this library's instrumentation, most of which keeps running.
+    public enum PageScripts: String, Friendly, CaseIterable {
+        /// The page's scripts run, as in any browser. The default.
+        case enabled
+
+        /// The page is loaded as a browser with JavaScript turned off renders
+        /// it: no `<script>`, no `on…` attribute handler, no `javascript:` URL
+        /// runs; `<noscript>` content renders; `@media (scripting: none)`
+        /// matches. A page that enhances itself is read as the server sent it
+        /// — the progressive-enhancement check
+        /// (`project/2026-08-30-sleepy-hollow-feedback.md`, item 1).
+        ///
+        /// WebKit's switch closes the page's own content world to this tool as
+        /// well, while the isolated world keeps working, so every verb either
+        /// answers or refuses with a teaching error:
+        ///
+        /// - **Work as usual:** query, dom, style, find, ax, shot (its CSS 3D
+        ///   caveat included), pdf, archive, cookies, resize, and the act
+        ///   primitives — a click or a submit lands, nothing of the page's
+        ///   listens, and a form posts natively.
+        /// - **Work from the isolated world:** contrast, overflow and the
+        ///   caveat call the `window.sleepy` helpers there (``SleepyHelpers``),
+        ///   so `eval` reaches them with ``InjectedScript/World/isolated``;
+        ///   `--wait-for idle` samples there (``WaitCondition/idle``); wire
+        ///   reads its inventory, and its fetch layer is empty because nothing
+        ///   could call `fetch()`.
+        /// - **Refuse:** `eval` in ``InjectedScript/World/page`` — the
+        ///   default world — and the console, which no script could write to;
+        ///   a `js:` or `message:` wait is refused before navigating.
+        ///
+        /// Event listeners do not fire either — WebKit invokes none, the
+        /// isolated world's included — so whether a click navigated is judged
+        /// from the host's side, at the cost of a short grace period per click
+        /// that does not.
+        case disabled
     }
 
     /// The budget hosts apply when ``budget`` is `nil`: every operation
@@ -55,6 +96,14 @@ public struct LoadOptions: Friendly {
     /// session rather than of a single capture: `sleepy open --transparent`
     /// opens a session whose every shot is transparent.
     public var backdrop: Backdrop
+
+    /// Whether the page's own scripts run. Default ``PageScripts/enabled``.
+    ///
+    /// Fixed when the host builds its web view, like ``backdrop``: it is a
+    /// property of the host rather than of a load, so `sleepy open --no-js`
+    /// opens a session whose every navigation runs without the page's
+    /// scripts.
+    public var pageScripts: PageScripts
 
     /// Cookie jar to attach; `nil` keeps cookies in memory for this load only.
     public var jar: JarName?
@@ -125,6 +174,7 @@ public struct LoadOptions: Friendly {
         size: ViewportSize = ViewportSize.default,
         theme: ColorTheme = .light,
         backdrop: Backdrop = .opaque,
+        pageScripts: PageScripts = .enabled,
         jar: JarName? = nil,
         fileAccessRoot: URL? = nil,
         scripts: [InjectedScript] = [],
@@ -137,6 +187,7 @@ public struct LoadOptions: Friendly {
         self.size = size
         self.theme = theme
         self.backdrop = backdrop
+        self.pageScripts = pageScripts
         self.jar = jar
         self.fileAccessRoot = fileAccessRoot
         self.scripts = scripts

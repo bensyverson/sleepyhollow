@@ -65,6 +65,22 @@ enum IdleWatch {
     return watch ? watch.sample() : { activity: 0, busy: 0 };
     """
 
+    /// The body that takes a ``Sample`` from the isolated world, for a page
+    /// whose own scripts are off (``LoadOptions/PageScripts/disabled``).
+    ///
+    /// Such a page cannot call `fetch` or `XMLHttpRequest`, so conditions 2
+    /// and 3 hold by construction; the other two read the same shared state
+    /// the watcher reads — the resource timeline (here, its length) and every
+    /// `<img>`'s `complete` — so "idle" keeps its meaning.
+    static let isolatedSampleBody: String = """
+    var loading = 0;
+    var images = document.images || [];
+    for (var i = 0; i < images.length; i += 1) {
+      if (!images[i].complete) { loading += 1; }
+    }
+    return { activity: performance.getEntriesByType('resource').length, busy: loading };
+    """
+
     private static let source: String = """
     (function () {
       if (window.\(stateGlobal)) { return; }
