@@ -1,0 +1,44 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Native controls fixture</title>
+<!-- appearance:auto controls, as AppKit draws them. The text input is
+     focused from script, so an active window draws its focus ring. The page
+     reports its own focus facts into #facts and data attributes. Shoot at
+     520x260. -->
+<style>
+  body { margin: 0; padding: 20px; font: 14px system-ui; background: #fff; }
+  .row { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+  input[type=text] { width: 180px; }
+  #facts { font: 11px ui-monospace, monospace; color: #555; white-space: pre; }
+</style>
+<div class="row"><input id="focused" type="text" value="focused input"><input type="text" value="plain input"></div>
+<div class="row">
+  <label><input type="checkbox" checked> checked</label>
+  <label><input type="checkbox"> unchecked</label>
+  <label><input type="radio" name="r" checked> on</label>
+  <label><input type="radio" name="r"> off</label>
+</div>
+<div class="row">
+  <select><option>A select</option><option>Two</option></select>
+  <button>A button</button>
+  <button type="submit">Default</button>
+  <input type="range" value="60">
+</div>
+<div id="facts"></div>
+<script>
+  const log = [];
+  const input = document.getElementById("focused");
+  input.addEventListener("focus", () => log.push("focus"));
+  input.addEventListener("blur", () => log.push("blur"));
+  window.addEventListener("focus", () => log.push("window-focus"));
+  window.addEventListener("blur", () => log.push("window-blur"));
+  input.focus();
+  window.focusFacts = () => ({
+    hasFocus: document.hasFocus(),
+    activeIsInput: document.activeElement === input,
+    focusVisible: input.matches(":focus-visible"),
+    focus: input.matches(":focus"),
+    visibility: document.visibilityState,
+    events: log.slice(),
+  });
+</script>

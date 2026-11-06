@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Media fixture</title>
+<!-- The content a compositor capture might miss, one cell each, each a
+     known color. Shoot at 900x420. The probe passes the generated video's
+     URL as ?video=… and waits for body[data-ready]. -->
+<style>
+  body { margin: 0; padding: 20px; display: grid; grid-template-columns: repeat(3, 260px); gap: 20px; font: 12px system-ui; background: #fff; }
+  .cell { width: 260px; height: 160px; position: relative; }
+  video, canvas { width: 240px; height: 140px; display: block; }
+  /* Backdrop: black and white stripes under an invert(1) backdrop filter.
+     Correct: the covered half shows the stripes inverted. Missing: the
+     stripes pass through unchanged. */
+  .stripes { width: 240px; height: 140px; background: repeating-linear-gradient(90deg, #000 0 20px, #fff 20px 40px); }
+  .glass { position: absolute; left: 0; top: 0; width: 240px; height: 70px; backdrop-filter: invert(1); -webkit-backdrop-filter: invert(1); }
+  #font { font-family: "Probe Block", monospace; font-size: 60px; line-height: 1; color: rgb(0, 0, 0); }
+</style>
+<div class="cell"><video id="video" muted autoplay loop playsinline></video>video (magenta)</div>
+<div class="cell"><canvas id="gl" width="480" height="280"></canvas>webgl (teal)</div>
+<div class="cell"><canvas id="c2d" width="480" height="280"></canvas>canvas 2d (orange)</div>
+<div class="cell"><div class="stripes"></div><div class="glass"></div>backdrop-filter</div>
+<div class="cell"><div id="font">HHH</div>late font (blocks)</div>
+<script>
+  const ready = new Set();
+  const mark = (what) => { ready.add(what); if (ready.size === 4) document.body.dataset.ready = "1"; };
+
+  const params = new URLSearchParams(location.search);
+  const video = document.getElementById("video");
+  if (params.get("video")) {
+    video.src = params.get("video");
+    video.addEventListener("timeupdate", () => { if (video.currentTime > 0.1) mark("video"); });
+    video.play().catch((e) => { document.body.dataset.videoError = String(e); mark("video"); });
+  } else { mark("video"); }
+
+  const gl = document.getElementById("gl").getContext("webgl", { preserveDrawingBuffer: true });
+  if (gl) { gl.clearColor(0, 200 / 255, 200 / 255, 1); gl.clear(gl.COLOR_BUFFER_BIT); }
+  document.body.dataset.webgl = gl ? "yes" : "no";
+
+  const c2d = document.getElementById("c2d").getContext("2d");
+  c2d.fillStyle = "rgb(255, 128, 0)"; c2d.fillRect(0, 0, 480, 280);
+  mark("canvas");
+
+  // The font arrives late on purpose: injected 300 ms after load.
+  setTimeout(() => {
+    const style = document.createElement("style");
+    style.textContent = '@font-face { font-family: "Probe Block"; src: url("../../../Tests/TestSupport/Fixtures/block-font.ttf"); }';
+    document.head.appendChild(style);
+    document.fonts.load('60px "Probe Block"').then(() => mark("font"), () => mark("font"));
+  }, 300);
+  mark("gl");
+</script>

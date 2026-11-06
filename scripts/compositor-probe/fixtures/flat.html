@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Flat fixture</title>
+<!-- No 3D, nothing composited on purpose: text, a gradient, rounded borders,
+     a shadow, an image and an opacity group — what an ordinary page is made
+     of. Shoot at 800x500 and compare the compositor capture with takeSnapshot. -->
+<style>
+  body { margin: 0; padding: 24px; font: 15px/1.4 system-ui; color: #222; background: #fafafa; }
+  h1 { font: 600 28px Georgia, serif; margin: 0 0 12px; }
+  .row { display: flex; gap: 16px; margin-top: 16px; }
+  .card { width: 220px; height: 120px; border-radius: 14px; border: 2px solid #345; box-shadow: 0 6px 18px rgba(0,0,0,.25); background: #fff; padding: 10px; box-sizing: border-box; }
+  .grad { background: linear-gradient(135deg, #f06 0%, #48f 100%); color: #fff; }
+  .faded { opacity: .55; background: #2a7; color: #fff; }
+  img { width: 64px; height: 64px; image-rendering: pixelated; border: 1px solid #999; }
+  p { max-width: 720px; }
+</style>
+<h1>Flat page, nothing composited</h1>
+<p>The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. 0123456789 — “quotes”, <b>bold</b>, <i>italic</i>, <code>monospace()</code>, and a <a href="#">link</a>.</p>
+<div class="row">
+  <div class="card">A white card with a border and a shadow.</div>
+  <div class="card grad">A gradient card.</div>
+  <div class="card faded">An opacity group.</div>
+</div>
+<div class="row"><img src="../../../Tests/TestSupport/Fixtures/pixel.png" alt="pixel"> <span>An image beside small text, 11px: <small style="font-size:11px">tiny text renders here</small></span></div>

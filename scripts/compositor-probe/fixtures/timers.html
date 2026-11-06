@@ -1,0 +1,66 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Timer cadence</title>
+<!-- Runs one loop for ?seconds=N (default 10) and reports its cadence:
+     ?loop=timeout   a self-rescheduling setTimeout(tick, 16)
+     ?loop=interval  setInterval(tick, 16)
+     ?loop=channel   a MessageChannel ping-pong that ticks when 16 ms have
+                     passed (the field report's workaround)
+     The report lands in #report as JSON and sets body[data-done]. The end is
+     detected inside the loop and by a backstop setTimeout, so a throttled
+     loop still finishes. -->
+<pre id="report">pending</pre>
+<script>
+  const params = new URLSearchParams(location.search);
+  const loop = params.get("loop") || "timeout";
+  const seconds = Number(params.get("seconds") || 10);
+  const stamps = [];
+  const start = performance.now();
+  let done = false;
+  let stop = () => {};
+  const finish = () => {
+    if (done) return;
+    done = true;
+    stop();
+    const gaps = stamps.slice(1).map((t, i) => t - stamps[i]);
+    const firstSlow = gaps.findIndex((g) => g > 100);
+    const sorted = gaps.slice().sort((a, b) => a - b);
+    const q = (p) => sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]) : null;
+    const elapsed = (performance.now() - start) / 1000;
+    document.getElementById("report").textContent = JSON.stringify({
+      loop, ticks: stamps.length, hz: +(stamps.length / elapsed).toFixed(2),
+      firstGapOver100msAtTick: firstSlow < 0 ? null : firstSlow + 1,
+      gapMs: { p10: q(0.1), median: q(0.5), p90: q(0.9), max: q(1) },
+      firstGaps: gaps.slice(0, 12).map(Math.round),
+      visibility: document.visibilityState,
+    });
+    document.body.dataset.done = "1";
+  };
+  const tick = () => {
+    stamps.push(performance.now());
+    if (performance.now() - start >= seconds * 1000) finish();
+  };
+  if (loop === "timeout") {
+    let id;
+    const step = () => { tick(); if (!done) id = setTimeout(step, 16); };
+    id = setTimeout(step, 16);
+    stop = () => clearTimeout(id);
+  } else if (loop === "interval") {
+    const id = setInterval(tick, 16);
+    stop = () => clearInterval(id);
+  } else {
+    const channel = new MessageChannel();
+    let last = performance.now();
+    channel.port1.onmessage = () => {
+      if (done) return;
+      const now = performance.now();
+      if (now - last >= 16) { last = now; tick(); }
+      channel.port2.postMessage(0);
+    };
+    channel.port2.postMessage(0);
+    stop = () => channel.port1.close();
+  }
+  // A backstop: one long, un-nested timer, which the 2026-08-20 probe found
+  // unthrottled. It ends the run even if the loop under test has stalled.
+  setTimeout(finish, seconds * 1000 + 1500);
+</script>

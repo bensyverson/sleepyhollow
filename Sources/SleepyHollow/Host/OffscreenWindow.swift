@@ -74,14 +74,16 @@ public final class OffscreenWindow {
         /// Tell the web view to stop deciding visibility from window
         /// occlusion, so the page renders as if on screen.
         ///
-        /// A live page keeps working — an infinite rAF chain is genuine
-        /// activity, so a `--wait-for idle` over one will not settle. That is
-        /// the caller's choice to make per operation.
+        /// A live page keeps working: rAF, CSS transitions and Web Animations
+        /// advance, and nested timers escape the hidden page's 1 Hz throttle.
+        /// `--wait-for idle` still settles over an infinite rAF chain, because
+        /// idle watches network activity, not frames (measured 2026-11-06,
+        /// `project/2026-11-06-compositor-capture.md`).
         ///
         /// This is the one case that touches private API
-        /// (`disableWindowOcclusionDetection(on:)`). No shipping operation
-        /// asks for it; it exists, measured and tested, for the parked
-        /// time-series capture.
+        /// (`disableWindowOcclusionDetection(on:)`), which is approved for
+        /// shipping use as of 2026-11-06. No shipping operation asks for it
+        /// yet; whether it becomes the default host is decision leaf `BJkByM`.
         case live
     }
 

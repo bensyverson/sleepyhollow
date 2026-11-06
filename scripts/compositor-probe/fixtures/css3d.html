@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>CSS3DRenderer-shaped fixture</title>
+<!-- The DOM three.js's CSS3DRenderer builds, written by hand: a viewport
+     div with `perspective`, a preserve-3d camera element whose transform is
+     translateZ(perspective) · camera-inverse matrix3d · translate(center),
+     and panels placed with translate(-50%,-50%) · matrix3d(world).
+     The camera sits 1000px back (camera-inverse translates z by -1000) and
+     perspective is 500px, so a panel at the world origin lands at z = -500
+     and is drawn at half size. Shoot at 1000x500.
+
+     Expected (CSS px):
+       blue panel, 400x200, facing the camera at the origin:
+         drawn 200x100 centered on (500, 250) → x 400–600, y 200–300.
+       green panel, 300x200, rotateY(40deg) at world x = +700:
+         center drawn at x 850, a trapezoid (right edge, turned away, shorter). -->
+<style>
+  body { margin: 0; background: #fff; }
+  #view { width: 1000px; height: 500px; perspective: 500px; overflow: hidden; position: relative; }
+  #camera { width: 1000px; height: 500px; transform-style: preserve-3d; pointer-events: none;
+    transform: translateZ(500px) matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-1000,1) translate(500px, 250px); }
+  .panel { position: absolute; left: 0; top: 0; }
+  #p1 { width: 400px; height: 200px; background: rgb(0, 150, 255);
+    transform: translate(-50%, -50%) matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1); }
+  #p2 { width: 300px; height: 200px; background: rgb(30, 180, 60);
+    transform: translate(-50%, -50%) matrix3d(0.766044,0,-0.642788,0, 0,1,0,0, 0.642788,0,0.766044,0, 700,0,0,1); }
+</style>
+<div id="view"><div id="camera"><div id="p1" class="panel"></div><div id="p2" class="panel"></div></div></div>

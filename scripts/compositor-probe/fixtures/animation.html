@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ND4YmR fixture</title>
+<!-- Verbatim from job issue ND4YmR: after one second, rAF should have run
+     ~60 times, the transition and the Web Animation should have finished. -->
+<style>
+  .box { width: 120px; height: 40px; background: #2a52a8; }
+  #trans { transition: transform 300ms linear; }
+  #trans.moved { transform: translateX(200px); }
+</style>
+<div id="raf">rAF frames: 0</div>
+<div id="trans" class="box"></div>
+<div id="waapi" class="box"></div>
+<pre id="report">pending</pre>
+<script>
+  let frames = 0;
+  const tick = () => { frames++; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  const trans = document.getElementById("trans");
+  setTimeout(() => trans.classList.add("moved"), 50);
+  const anim = document.getElementById("waapi").animate(
+    [{ transform: "translateX(0)" }, { transform: "translateX(200px)" }],
+    { duration: 300, fill: "forwards" });
+  setTimeout(() => {
+    document.getElementById("report").textContent = JSON.stringify({
+      rafFrames: frames,
+      transitionTransform: getComputedStyle(trans).transform,
+      waapiPlayState: anim.playState,
+      waapiCurrentTime: anim.currentTime,
+    });
+    document.body.dataset.done = "1";
+  }, 1000);
+</script>

@@ -19,7 +19,7 @@ All on macOS 27.0 (26A428), WebKit 22625.1.29.11.27, 8 cores, debug `sleepy` fro
 ## What does not work
 
 - `WKPreferences.inactiveSchedulingPolicy = .none` (public, macOS 14+; the default here reads `.suspend`). Set on the configuration, it leaves the drop to 4 exactly as before — measured with the same test. It decides whether an idle view is *suspended*, not whether it is throttled.
-- Hosting the view in the off-screen window with occlusion detection off would make WebKit call it visible and keep it foreground, but it also makes the page visible — rAF runs, `visibilityState` flips, `--wait-for idle` over a rAF chain never settles. That is the timing change `PageHost.ensureOffscreenWindow(ordering:rendering:)` refuses to make by default, and it needs the private selector.
+- Hosting the view in the off-screen window with occlusion detection off would make WebKit call it visible and keep it foreground, but it also makes the page visible — rAF runs, `visibilityState` flips, `--wait-for idle` over a rAF chain never settles. *(Corrected 2026-11-06: it does settle, since idle watches network activity, not frames; see `2026-11-06-compositor-capture.md`, question 6.)* That is the timing change `PageHost.ensureOffscreenWindow(ordering:rendering:)` refuses to make by default, and it needs the private selector.
 
 ## The fix
 

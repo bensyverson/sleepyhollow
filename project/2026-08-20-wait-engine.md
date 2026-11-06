@@ -84,6 +84,14 @@ WaitProbeTests`, sandbox off), each driving a real `PageHost` against
   nothing (401/1501 ms). The page reports `document.visibilityState ===
   "hidden"`, so hidden-page throttling is available and simply is not being
   applied here.
+  > **Corrected 2026-11-06: true only for single timers.** A *nested* timer
+  > chain on a hidden page is throttled: a self-rescheduling `setTimeout(16)`
+  > runs at 16 ms for 9 ticks, then every 1,000 ms; `setInterval` from tick 6
+  > or 7. `MessageChannel` is unaffected (62 Hz). This probe timed single
+  > timers, so it never saw it. It reaches the wait engine itself:
+  > `PredicateWatch`'s 16 ms backstop loop drops to 1 Hz after about 170 ms,
+  > and latency then rests on the 250 ms host backstop. A live host runs both
+  > loops at 50 Hz. Figures: `2026-11-06-compositor-capture.md`, question 8.
 - **`requestAnimationFrame` never fires**, pumped or not — there is no window
   to render into. Any fixture or page that schedules work through a rAF chain
   waits forever.

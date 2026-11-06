@@ -92,6 +92,8 @@ Byte-identical also says the useful thing: for a static page, hosting changes no
 - **`shot --scale`.** The window does not help. `contentsScale` is a dead end (measured); `_setOverrideDeviceScaleFactor:` moves the page's `devicePixelRatio` but not the snapshot raster on this host. Design `--scale` on the existing normalization plus, if the density must be forced, a second SPI decision — and keep the "refuse rather than fake it" fallback.
 - **The time-series spike.** Now possible: a hosted, live page animates on the wall clock at ~60Hz. Note the consequence — an infinite rAF chain is genuine activity, so `--wait-for idle` over a live hosted page will not settle. Hosting stays opt-in per operation for exactly this reason.
 
+  > **Corrected 2026-11-06:** that was wrong. `--wait-for idle` watches network activity, not frames, and settled over an infinite rAF chain on a live host in 598 ms (`project/2026-11-06-compositor-capture.md`, question 6). The reason for keeping hosting opt-in is gone; whether it becomes the default is decision leaf `BJkByM`.
+
 ## Nothing visible, proved
 
 `OffscreenWindowTests` asserts during a real load and snapshot: `window.screen == nil`; the window's frame intersects no `NSScreen.screens` frame; every *visible* `NSApp` window is off every screen; `NSApp.isActive == false`; `NSApp.activationPolicy() == .prohibited`, set before the first window exists. The policy is set once per process in `OffscreenWindow`, and no code path calls `makeKeyAndOrderFront` or `NSApp.activate`.

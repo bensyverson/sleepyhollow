@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Infinite rAF chain</title>
+<!-- A page that never stops drawing: a rAF chain that repaints a counter
+     every frame. `--wait-for idle` must still settle on it, because idle is
+     defined over network activity, not frames. -->
+<div id="n">0</div>
+<script>
+  window.frames = 0;
+  const tick = () => { window.frames++; document.getElementById("n").textContent = window.frames; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+</script>
