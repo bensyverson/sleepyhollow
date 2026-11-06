@@ -10,6 +10,8 @@
 
 This corrects, for the hosted case only, the standing `gotchas.md` claim that "`requestAnimationFrame` never fires in a headless `WKWebView`". The windowless claim is unchanged and still true.
 
+> **Superseded 2026-11-06 (leaf `GzK3Rl`, ruling `BJkByM`).** The windowless host this document calls "today's every verb" is no longer the default. Every `PageHost` — every one-shot verb's page and every session's — is now parked at init in an `OffscreenWindow` with `Rendering.live`, in a window that claims key status and paints in sRGB (`PageHost.Hosting.live`; `.windowless` remains as an opt-out). So rAF, CSS transitions, Web Animations and nested timers run by default, and a mid-animation shot can differ run to run (`--wait-for` is the answer). Ruling: `project/2026-11-06-true-3d-shots.md` § Ruling on the capture path; measurements: `project/2026-11-06-compositor-capture.md` questions 6–8. The figures below are unchanged as measurements of each host.
+
 ## (a) `requestAnimationFrame`
 
 | view | rAF ticks in 300ms |
@@ -71,6 +73,8 @@ Ordering moves `isVisible` and nothing else. Also measured and equally ineffecti
 It lives in exactly one place, `OffscreenWindow.disableWindowOcclusionDetection(on:)`, guarded by `responds(to:)` so a future macOS that drops the selector degrades to `Rendering.hidden` behaviour rather than crashing — and the rAF test goes red, which is the correct alarm. `NSWindow` has no equivalent: `_setWindowOcclusionDetectionEnabled:`, `_setOcclusionState:` and `_setAllowsWindowOcclusion:` are all absent from `NSWindow` on this OS (*probe*, `NSWindow.instancesRespond(to:)`).
 
 > **Ruling (2026-08-28, Ben):** keep the SPI in, unused. `Rendering.hidden` is now the default on both `OffscreenWindow.init` and `PageHost.ensureOffscreenWindow()`, so no shipping operation reaches `_setWindowOcclusionDetectionEnabled:`; `Rendering.live` stays in the code, measured and covered by `OffscreenWindowTests`, for the day the time-series capture is un-parked (`project/backlog.md`). A test pins that the default host reports `visibilityState === "hidden"`.
+>
+> **Superseded 2026-11-06.** The SPI is approved for shipping use, and `Rendering.live` is now the default of `OffscreenWindow.init`, of `PageHost.ensureOffscreenWindow()` and of every `PageHost` (leaf `GzK3Rl`). The test that pinned a hidden default now pins that a host asking for `Rendering.hidden` stays hidden; `LiveHostingTests` pins that the default host reports `"visible"`.
 
 > **Superseded 2026-11-06 (Ben):** private SPI is acceptable for `shot` ("This isn't going in the App Store"), so `Rendering.live` may now back shipping paths. The first candidate is a compositor capture for true CSS 3D; see `2026-11-06-true-3d-shots.md`. The isolation, the `responds(to:)` guard and the red-on-loss test above all still apply.
 

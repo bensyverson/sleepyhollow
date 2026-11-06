@@ -9,10 +9,16 @@ import WebKit
 /// view and its non-persistent data store, the fixed viewport, the named
 /// theme, the dialog policy, the injected scripts, and the baseline console
 /// capture. ``load(_:budget:)`` navigates and settles inside a budget the *host*
-/// keeps, never the page: a headless web view is free to throttle a hidden
-/// page's timers, and it never runs `requestAnimationFrame` at all (unless an
-/// operation opts into ``ensureOffscreenWindow()``), so a page-side deadline
-/// would lie.
+/// keeps, never the page: a page's clock is its own to throttle, so a
+/// page-side deadline could lie.
+///
+/// The web view is parked in a live ``OffscreenWindow`` by default
+/// (``Hosting/live``): WebKit treats the page as visible, so
+/// `requestAnimationFrame`, CSS transitions, Web Animations and nested timers
+/// run as on a display, and the window claims key status, so native controls
+/// draw active and the focused element matches `:focus`. A page that animates
+/// can therefore be captured mid-animation; wait for the settled state
+/// (``LoadOptions/wait``) rather than sleeping.
 ///
 /// Nothing hangs, and nothing is reported as the wrong kind of failure. A
 /// navigation that never finishes becomes a ``SleepyError`` of kind
@@ -170,7 +176,7 @@ public final class PageHost {
     /// A member's cookie store and jar bookkeeping belong to the group. Its
     /// *cache* does not: WebKit gives an ephemeral session no shared cache, so
     /// every member still fetches its own subresources — see ``HostGroup``,
-    /// which carries the measurement, and ``PageHost/member(of:options:)``.
+    /// which carries the measurement, and ``PageHost/member(of:options:hosting:)``.
     public let group: HostGroup?
 
     /// Where ``LoadOptions/jar`` is read from and written back to. Never
@@ -182,8 +188,9 @@ public final class PageHost {
     /// Unused in a group, where the flag belongs to the group.
     var hasImportedJar = false
 
-    /// The window ``PageHost/ensureOffscreenWindow()`` parked ``webView`` in;
-    /// `nil` until an operation asks for one.
+    /// The window ``webView`` is parked in: the live one ``Hosting/live``
+    /// opens at init, or whatever ``PageHost/ensureOffscreenWindow(ordering:rendering:)`` opened
+    /// for a ``Hosting/windowless`` host; `nil` until one exists.
     var offscreenWindow: OffscreenWindow?
 
     private var isLoading = false
@@ -205,8 +212,14 @@ public final class PageHost {
     ///   scripts, waiting, and the rest of ``LoadOptions``.
     /// - Parameter jars: where a named jar is read and written; the default
     ///   store honours `SLEEPYHOLLOW_HOME`, and tests inject a throwaway root.
-    public convenience init(options: LoadOptions = LoadOptions(), jars: JarStore = JarStore()) {
-        self.init(options: options, jars: jars, group: nil)
+    /// - Parameter hosting: where the web view lives; ``Hosting/live`` by
+    ///   default, which every verb uses.
+    public convenience init(
+        options: LoadOptions = LoadOptions(),
+        jars: JarStore = JarStore(),
+        hosting: Hosting = .live,
+    ) {
+        self.init(options: options, jars: jars, group: nil, hosting: hosting)
     }
 
     /// Creates a host that shares `group`'s browser: its data store, so its
@@ -223,24 +236,33 @@ public final class PageHost {
     /// - Parameter group: the browser to join.
     /// - Parameter options: the load's shape. ``LoadOptions/jar`` may name the
     ///   group's own jar or nothing; a member inherits the group's either way.
+    /// - Parameter hosting: where the member's web view lives;
+    ///   ``Hosting/live`` by default. Each member gets its own window.
     /// - Returns: a host indistinguishable from an ordinary one except that
     ///   the cookies it holds are the group's. Not its cache — see
     ///   ``HostGroup`` for what a shared data store does and does not share.
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/usage`` when
     ///   ``LoadOptions/jar`` names a jar that is not the group's.
-    public static func member(of group: HostGroup, options: LoadOptions = LoadOptions()) throws -> PageHost {
+    public static func member(
+        of group: HostGroup,
+        options: LoadOptions = LoadOptions(),
+        hosting: Hosting = .live,
+    ) throws -> PageHost {
         try group.requireJarAgrees(with: options.jar)
-        return PageHost(options: options, jars: group.jars, group: group)
+        return PageHost(options: options, jars: group.jars, group: group, hosting: hosting)
     }
 
     /// The designated initializer: everything a host is, plus the group whose
     /// browser it shares.
-    private init(options: LoadOptions, jars: JarStore, group: HostGroup?) {
+    private init(options: LoadOptions, jars: JarStore, group: HostGroup?, hosting: Hosting) {
         self.options = options
         self.jars = jars
         self.group = group
         viewport = options.size
         waiter = WaitEngine(condition: options.wait)
+        // Before the web view: WebKit reads the app accent into the page's
+        // creation parameters.
+        AccentPin.ensureApplied()
         let configuration = WKWebViewConfiguration()
         if let group {
             group.configure(configuration)
@@ -271,6 +293,21 @@ public final class PageHost {
         }
         for script in options.scripts {
             install(script)
+        }
+        if hosting == .live {
+            ensureOffscreenWindow(ordering: .back, rendering: .live)
+        }
+    }
+
+    /// Closes the host's window, if it has one.
+    ///
+    /// A window ordered into the window list is kept by AppKit after its last
+    /// reference goes, so without this every released host would leave a
+    /// live page animating in an invisible window for the rest of the process.
+    /// The close hops to the main actor because a deinit is not isolated.
+    deinit {
+        if let offscreenWindow {
+            Task { @MainActor in offscreenWindow.close() }
         }
     }
 

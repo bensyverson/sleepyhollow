@@ -71,11 +71,12 @@ struct CapturePDFOperationTests {
             let host = PageHost()
             _ = try await host.load(URL(string: "print-paginated.html", relativeTo: base)!)
             _ = try await host.execute(PDFOperation())
-            // Non-vacuous: the print pass really did park the view in a
-            // window, and that window is on no screen.
+            // Non-vacuous: the view really is parked in a window, and that
+            // window is on no screen. (It is in the window list — a live
+            // host's window is ordered to the back — so `isVisible` is true;
+            // what must hold is that no screen shows it.)
             let window = try #require(host.webView.window)
             #expect(window.screen == nil)
-            #expect(window.isVisible == false)
             for screen in NSScreen.screens {
                 #expect(!screen.frame.intersects(window.frame))
             }

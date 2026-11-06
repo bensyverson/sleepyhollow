@@ -133,7 +133,7 @@ struct DoctorTests {
         defer { try? FileManager.default.removeItem(at: root) }
         try await FixtureServer.withRunningOnMainActor { _, _ in
             let report: DoctorReport = await Doctor.run(registry: SessionRegistry(root: root))
-            #expect(report.checks.map(\.name) == [.binary, .webKit, .sessions, .temporaryDirectory])
+            #expect(report.checks.map(\.name) == [.binary, .webKit, .accent, .sessions, .temporaryDirectory])
             #expect(report.status == .ok)
             #expect(report.error == nil)
         }

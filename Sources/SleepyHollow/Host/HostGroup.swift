@@ -57,7 +57,7 @@ import WebKit
 /// is the group's: imported once, before any member's first navigation, and
 /// exported after every member's load. A member whose ``LoadOptions/jar``
 /// disagrees is refused at construction — see
-/// ``PageHost/member(of:options:)``.
+/// ``PageHost/member(of:options:hosting:)``.
 ///
 /// The store stays `nonPersistent()` for the same reason a host's does:
 /// `WKWebsiteDataStore(forIdentifier:)` is macOS 14 and this package's floor
@@ -80,7 +80,7 @@ public final class HostGroup {
     public let dataStore: WKWebsiteDataStore
 
     /// Where ``jar`` is read and written. Members use this store, not one of
-    /// their own — which is why ``PageHost/member(of:options:)`` takes no
+    /// their own — which is why ``PageHost/member(of:options:hosting:)`` takes no
     /// `jars` argument.
     let jars: JarStore
 

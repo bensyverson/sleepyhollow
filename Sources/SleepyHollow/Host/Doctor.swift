@@ -70,12 +70,34 @@ public enum Doctor {
         return DoctorReport(checks: [
             checkBinary(),
             webKit,
+            checkAccentPin(),
             checkSessions(registry: registry),
             checkTemporaryDirectory(temporaryDirectory),
         ])
     }
 
     // MARK: - The checks
+
+    /// Whether native controls draw in the pinned default accent rather than
+    /// this Mac's own, which rests on private AppKit API (see `AccentPin`).
+    ///
+    /// - Returns: ok when the app accent is pinned; failed when this macOS no
+    ///   longer has the selectors, in which case shots of active controls
+    ///   follow the accent chosen in System Settings.
+    @MainActor
+    public static func checkAccentPin() -> DoctorCheck {
+        AccentPin.ensureApplied()
+        guard AccentPin.isPinned else {
+            return .failed(
+                .accent,
+                "This macOS has no NSApplication._setAccentColor:, so native controls draw in this Mac's "
+                    + "accent color from System Settings and shots of them vary from Mac to Mac.",
+                nextMove: "Compare control colors only between shots taken on the same Mac, "
+                    + "or report this macOS version as a seam bug.",
+            )
+        }
+        return .passed(.accent, "Native controls draw in the system's default blue accent, whatever this Mac's setting.")
+    }
 
     /// Whether `executable` is a file this process could run — and therefore
     /// whether `sleepy open` could spawn a session helper from it.

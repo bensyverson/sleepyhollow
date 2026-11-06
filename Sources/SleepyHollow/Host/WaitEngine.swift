@@ -21,9 +21,14 @@ import Foundation
 /// remains host-side is a slow backstop for the pushes that cannot happen
 /// (a selector matching with no mutation record; an expression that does not
 /// parse) and ``WaitCondition/idle``, whose quiet window is deliberately the
-/// host's to measure. Page-side timers are never a deadline: `setTimeout`
-/// keeps wall time in this WebKit, but `requestAnimationFrame` never fires at
-/// all with no window to render into.
+/// host's to measure. Page-side timers are never a deadline: a page's clock is
+/// its own — a hidden page aligns nested timers to one second, and a windowless
+/// one never fires `requestAnimationFrame` at all.
+///
+/// Waiting is also how a caller gets a settled frame: a live host (the
+/// default) animates, so a capture taken mid-transition can differ from run
+/// to run. Wait for the state the animation ends in — a selector, a predicate
+/// on `animation.finished`, a page-posted message — rather than sleeping.
 @MainActor
 final class WaitEngine {
     /// One page-side answer to "is the condition met?".

@@ -8,7 +8,7 @@ import WebKit
 /// A snapshot, a print or an archive must reach the page at the priority an
 /// evaluate does, however long the host has sat idle.
 ///
-/// A host's web view has no window, so WebKit throttles its content process
+/// A windowless host's page is hidden, so WebKit throttles its content process
 /// once it goes idle: about a second after the last call that held a
 /// foreground activity, the process drops to the background band (measured
 /// 2026-09-26: priority 31 while called, 4 once idle). `evaluateJavaScript`
@@ -22,6 +22,11 @@ import WebKit
 /// priority while the call is pending. That is deterministic on a quiet Mac:
 /// no load has to be imitated and nothing races a threshold — an unheld call
 /// leaves the priority where the throttle put it for as long as it waits.
+///
+/// The hosts here are ``PageHost/Hosting/windowless``: a live host — every
+/// verb's default since 2026-11-06 — is visible to WebKit and was never
+/// throttled at all (measured: this suite's precondition failed on all three
+/// cases), so the hold only matters for a host that opted out of its window.
 @Suite("PageHost foreground hold", .serialized)
 struct PageHostSchedulingTests {
     /// The calls that take no foreground activity of their own.
@@ -65,7 +70,7 @@ struct PageHostSchedulingTests {
             var options = LoadOptions()
             options.budget = Self.callBudget
             options.callBudget = Self.callBudget
-            let host = PageHost(options: options)
+            let host = PageHost(options: options, hosting: .windowless)
             _ = try await host.load(#require(URL(string: FixturePage.staticText.fileName, relativeTo: base)))
             _ = try await host.evaluate("return 1;")
             let pid: pid_t = try #require(Self.contentProcessIdentifier(of: host.webView))

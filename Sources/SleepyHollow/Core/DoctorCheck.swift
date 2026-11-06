@@ -16,6 +16,9 @@ public struct DoctorCheck: Friendly {
         case binary
         /// WebKit's web content process can launch under the current sandbox.
         case webKit = "webkit"
+        /// Native controls draw in the system's default accent, not this
+        /// Mac's chosen one.
+        case accent
         /// The sessions directory resolves, is writable, and leaves room for
         /// a session's Unix socket path.
         case sessions

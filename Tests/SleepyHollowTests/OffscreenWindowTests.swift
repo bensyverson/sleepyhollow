@@ -119,7 +119,7 @@ struct OffscreenWindowTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let url = URL(string: "animation.html", relativeTo: base)!
 
-            let windowless = PageHost()
+            let windowless = PageHost(hosting: .windowless)
             _ = try await windowless.load(url)
             try await Task.sleep(nanoseconds: Self.probeNanoseconds)
             let windowlessCount = try await Self.number(windowless, "return window.rafCount;")
@@ -139,11 +139,11 @@ struct OffscreenWindowTests {
 
     @Test
     @MainActor
-    func `the default hosting leaves the page hidden, so the private API is never reached`() async throws {
+    func `a hidden window leaves the page hidden, so the private API is never reached`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let url = URL(string: "static.html", relativeTo: base)!
-            let hosted = PageHost()
-            _ = hosted.ensureOffscreenWindow()
+            let hosted = PageHost(hosting: .windowless)
+            _ = hosted.ensureOffscreenWindow(rendering: .hidden)
             _ = try await hosted.load(url)
             #expect(try await hosted.evaluate("return document.visibilityState;") == "\"hidden\"")
         }
@@ -155,7 +155,7 @@ struct OffscreenWindowTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let url = URL(string: "static.html", relativeTo: base)!
 
-            let windowless = PageHost()
+            let windowless = PageHost(hosting: .windowless)
             _ = try await windowless.load(url)
             #expect(try await windowless.evaluate("return document.visibilityState;") == "\"hidden\"")
 
@@ -172,7 +172,7 @@ struct OffscreenWindowTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let url = URL(string: "animation.html", relativeTo: base)!
 
-            let windowless = PageHost()
+            let windowless = PageHost(hosting: .windowless)
             _ = try await windowless.load(url)
             try await windowless.evaluate("window.startTransition();", in: .page)
             try await Task.sleep(nanoseconds: Self.probeNanoseconds)
@@ -206,14 +206,14 @@ struct OffscreenWindowTests {
             let url = URL(string: "animation.html", relativeTo: base)!
             var hiddenCounts: [OffscreenWindow.Ordering: Double] = [:]
             for ordering in OffscreenWindow.Ordering.allCases {
-                let host = PageHost()
+                let host = PageHost(hosting: .windowless)
                 let window = OffscreenWindow(hosting: host.webView, ordering: ordering, rendering: .hidden)
                 _ = try await host.load(url)
                 try await Task.sleep(nanoseconds: Self.probeNanoseconds)
                 hiddenCounts[ordering] = try await Self.number(host, "return window.rafCount;")
                 window.close()
             }
-            let live = PageHost()
+            let live = PageHost(hosting: .windowless)
             let liveWindow = OffscreenWindow(hosting: live.webView, ordering: .back, rendering: .live)
             _ = try await live.load(url)
             try await Task.sleep(nanoseconds: Self.probeNanoseconds)
@@ -234,7 +234,7 @@ struct OffscreenWindowTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let url = URL(string: "static.html", relativeTo: base)!
 
-            let windowless = PageHost()
+            let windowless = PageHost(hosting: .windowless)
             _ = try await windowless.load(url)
             let windowlessRatio = try await Self.number(windowless, "return window.devicePixelRatio;")
 

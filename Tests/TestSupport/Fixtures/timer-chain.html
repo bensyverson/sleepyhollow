@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Nested timer chain</title>
+  <!-- A self-rescheduling setTimeout(tick, 16) chain of 40 ticks, the shape
+       of the wait engine's page-side backstop. A hidden page aligns nested
+       timers to one second from about the tenth tick (job issue PFrL42);
+       a visible one keeps them at the 16-20 ms floor. `window.timerGaps`
+       holds each gap in ms; body[data-done] marks the end. -->
+</head>
+<body>
+  <script>
+    window.timerGaps = [];
+    let last = performance.now();
+    let ticks = 0;
+    function tick() {
+      const now = performance.now();
+      window.timerGaps.push(now - last);
+      last = now;
+      ticks += 1;
+      if (ticks < 40) {
+        setTimeout(tick, 16);
+      } else {
+        document.body.dataset.done = "1";
+      }
+    }
+    setTimeout(tick, 16);
+  </script>
+</body>
+</html>

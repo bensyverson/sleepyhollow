@@ -68,10 +68,11 @@ public struct PDFOperation: ExecutablePageOperation {
     ///   or wrote nothing.
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
-        // Measured: every ordering and both rendering modes print the same
-        // bytes, so this asks for the least intrusive pair — a window that
-        // never enters the window list, and no rendering updates, which also
-        // keeps `pdf` clear of the one piece of private API in the project.
+        // The modal print session needs a window to run for. A live host
+        // already has one; a windowless host gets the least intrusive pair —
+        // never in the window list, no rendering updates. Measured
+        // 2026-08-28: every ordering and both rendering modes print the same
+        // bytes.
         let offscreen = host.ensureOffscreenWindow(ordering: .unordered, rendering: .hidden)
 
         let destination: URL = FileManager.default.temporaryDirectory

@@ -4,18 +4,34 @@ import Foundation
 /// An `NSWindow` parked far off every screen, whose only job is to give a view
 /// a window without ever showing one.
 ///
-/// Two different needs bring a web view here, and they are not the same need:
+/// Every ``PageHost`` is parked in one by default (``PageHost/Hosting/live``),
+/// and three things about the window shape what a page does and draws:
 ///
-/// - **A window at all.** `NSPrintOperation.runModal(for:…)`, which `pdf`
-///   pagination drives, needs a window to run *for* — measured: the printed
-///   view itself need not be in one, but the modal session does.
-/// - **A page WebKit considers visible.** A windowless web view sits in
-///   WebKit's hidden-page state: it still renders on demand for
-///   `takeSnapshot`, but never runs a rendering update, so
-///   `requestAnimationFrame` never fires and CSS transitions never advance.
-///   A window alone does *not* fix that — measured, at every ordering, on- and
-///   off-screen (`project/2026-08-28-offscreen-window-host.md`). What fixes it
-///   is a window *plus* ``Rendering/live``.
+/// - **WebKit considers the page visible.** A windowless web view — and one
+///   in a window WebKit decides from occlusion — sits in WebKit's hidden-page
+///   state: it still renders on demand for `takeSnapshot`, but never runs a
+///   rendering update, so `requestAnimationFrame` never fires, CSS
+///   transitions and Web Animations never advance, and nested timers are
+///   aligned to one second. A window alone does *not* fix that — measured,
+///   at every ordering, on- and off-screen
+///   (`project/2026-08-28-offscreen-window-host.md`). What fixes it is a
+///   window *plus* ``Rendering/live``.
+/// - **The window claims to be key and main** without ever being made so.
+///   WebKit reads `isKeyWindow` when the view enters the window, so native
+///   controls draw active (accent-colored checkboxes, focus rings, default
+///   buttons), and `document.hasFocus()`, `:focus` and `:focus-visible` answer
+///   as in the frontmost browser window. No `focus` or `blur` event fires on
+///   `window`, because the window never *becomes* key — it only says it is
+///   (`project/2026-11-06-compositor-capture.md` question 7).
+/// - **The window's color space is sRGB.** WebKit paints its tiles in the
+///   window's color space, which otherwise is the main display's (Display P3
+///   on a recent Mac) even for a window on no screen; pinning it keeps a
+///   capture from depending on which display the Mac has (question 2 of the
+///   same doc).
+///
+/// `NSPrintOperation.runModal(for:…)`, which `pdf` pagination drives, also
+/// needs a window to run *for* — measured: the printed view itself need not
+/// be in one, but the modal session does.
 ///
 /// Nothing about this window is visible, and the proof is mechanical rather
 /// than a promise:
@@ -26,14 +42,21 @@ import Foundation
 /// - the window is borderless and parked at ``parkedOrigin``, twenty thousand
 ///   points below and to the left of any real display, so its frame intersects
 ///   no `NSScreen` and `NSWindow.screen` is `nil`;
-/// - it is never made key and the app is never activated.
+/// - it is never made key and the app is never activated — the key status it
+///   reports is an override, not a state AppKit granted.
 ///
 /// `OffscreenWindowTests` asserts all of that during a real render.
 ///
+/// Active controls draw in the accent color, which `AccentPin` pins to the
+/// system default blue before the first page exists, so a checked box or a
+/// focus ring looks the same on every Mac. The text-selection *highlight*
+/// color is not pinned: WebKit's content process reads it from the Mac's
+/// System Settings, and nothing in this process reaches it (measured
+/// 2026-11-06, `project/2026-11-06-compositor-capture.md` question 7).
+///
 /// ```swift
-/// let host = PageHost()
-/// _ = host.ensureOffscreenWindow()   // opt in, once, per host
-/// _ = try await host.load(url)       // now rAF fires and transitions run
+/// let host = PageHost()              // parked here, live, by default
+/// _ = try await host.load(url)       // rAF fires and transitions run
 /// ```
 @MainActor
 public final class OffscreenWindow {
@@ -80,16 +103,42 @@ public final class OffscreenWindow {
         /// idle watches network activity, not frames (measured 2026-11-06,
         /// `project/2026-11-06-compositor-capture.md`).
         ///
+        /// A live page animates, so a capture taken mid-animation can differ
+        /// from run to run; a caller that needs a settled frame waits for it
+        /// (`--wait-for`).
+        ///
         /// This is the one case that touches private API
-        /// (`disableWindowOcclusionDetection(on:)`), which is approved for
-        /// shipping use as of 2026-11-06. No shipping operation asks for it
-        /// yet; whether it becomes the default host is decision leaf `BJkByM`.
+        /// (`disableWindowOcclusionDetection(on:)`), approved for shipping use
+        /// on 2026-11-06; it is every ``PageHost``'s default hosting by the
+        /// ruling of that day (decision `BJkByM`,
+        /// `project/2026-11-06-true-3d-shots.md` § Ruling on the capture path).
         case live
     }
 
     /// The window itself. Read it for geometry and backing scale; do not
     /// order, key or show it.
+    ///
+    /// It reports itself key and main (see ``KeyClaimingWindow``) and paints
+    /// in sRGB.
     public let window: NSWindow
+
+    /// An `NSWindow` that answers `true` to `isKeyWindow` and `isMainWindow`
+    /// without AppKit ever making it so.
+    ///
+    /// The override has to be in place before the web view enters the window,
+    /// because that is when WebKit reads it; nothing sends a become-key
+    /// notification, and none is needed.
+    public final class KeyClaimingWindow: NSWindow {
+        /// Always `true`: the hosted page draws and focuses as if frontmost.
+        override public var isKeyWindow: Bool {
+            true
+        }
+
+        /// Always `true`, for the same reason as ``isKeyWindow``.
+        override public var isMainWindow: Bool {
+            true
+        }
+    }
 
     /// Whether the activation policy has already been prohibited — the call is
     /// idempotent, but `NSApplication.shared` is not free.
@@ -104,19 +153,19 @@ public final class OffscreenWindow {
     ///   view, and its frame size becomes the window's content size.
     /// - Parameter ordering: how far the window is ordered in.
     /// - Parameter rendering: whether the hosted page runs rendering updates;
-    ///   ``Rendering/hidden`` by default. ``Rendering/live`` is the only path
-    ///   that reaches private API, and it stays dormant until an operation
-    ///   asks for it by name — the ruling of 2026-08-28 (window doc, "The one
-    ///   piece of SPI"): keep it, unused, until time series is un-parked.
-    public init(hosting view: NSView, ordering: Ordering = .back, rendering: Rendering = .hidden) {
+    ///   ``Rendering/live`` by default, the one path that reaches private API.
+    public init(hosting view: NSView, ordering: Ordering = .back, rendering: Rendering = .live) {
         Self.prohibitActivation()
-        window = NSWindow(
+        window = KeyClaimingWindow(
             contentRect: CGRect(origin: Self.parkedOrigin, size: view.frame.size),
             styleMask: .borderless,
             backing: .buffered,
             defer: false,
         )
         window.isReleasedWhenClosed = false
+        // Before the view arrives: WebKit takes the window's color space for
+        // its tiles when the view enters it.
+        window.colorSpace = NSColorSpace.sRGB
         window.hasShadow = false
         window.ignoresMouseEvents = true
         window.contentView = view

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Animation end state</title>
+  <!-- Job issue ND4YmR's reproduction, verbatim in substance: after one
+       second on the page's clock, a rAF chain should have drawn many frames,
+       a 300 ms CSS transition and a 300 ms Web Animation should both be at
+       their end state. The report lands in #report and body[data-done]. -->
+  <style>
+    .box { width: 120px; height: 40px; background: #2a52a8; }
+    #trans { transition: transform 300ms linear; }
+    #trans.moved { transform: translateX(200px); }
+  </style>
+</head>
+<body>
+  <div id="raf">rAF frames: 0</div>
+  <div id="trans" class="box"></div>
+  <div id="waapi" class="box"></div>
+  <pre id="report">pending</pre>
+  <script>
+    let frames = 0;
+    const tick = () => { frames++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    const trans = document.getElementById("trans");
+    setTimeout(() => trans.classList.add("moved"), 50);
+    const anim = document.getElementById("waapi").animate(
+      [{ transform: "translateX(0)" }, { transform: "translateX(200px)" }],
+      { duration: 300, fill: "forwards" });
+    setTimeout(() => {
+      document.getElementById("report").textContent = JSON.stringify({
+        rafFrames: frames,
+        transitionTransform: getComputedStyle(trans).transform,
+        waapiPlayState: anim.playState,
+        waapiCurrentTime: anim.currentTime,
+      });
+      document.body.dataset.done = "1";
+    }, 1000);
+  </script>
+</body>
+</html>

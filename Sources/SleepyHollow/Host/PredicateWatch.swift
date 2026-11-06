@@ -23,8 +23,11 @@ import Foundation
 /// The load-time script runs in the **page world** — a wait predicate is a
 /// statement about the page's own globals, and an isolated world reads every
 /// one of them as `undefined`, a silently wrong answer rather than a slow one.
-/// `setTimeout` is the clock deliberately: page timers keep wall time in this
-/// WebKit, while `requestAnimationFrame` never fires in a windowless view.
+/// `setTimeout` is the clock deliberately: it runs on any host, while
+/// `requestAnimationFrame` never fires in a windowless view. On a hidden page
+/// (a ``PageHost/Hosting/windowless`` host) WebKit aligns this nested chain to
+/// one second from about its tenth tick; on a live host — the default — it
+/// keeps a 16–20 ms cadence (job issue `PFrL42`, `LiveHostingTests`).
 enum PredicateWatch {
     /// How often the page re-evaluates the expression, in milliseconds — a
     /// frame's worth, which is as often as anything it renders can change.

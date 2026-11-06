@@ -22,25 +22,23 @@ public extension PageHost {
     /// not a host one. When the layout must be built at the new width from
     /// scratch, load again instead.
     ///
-    /// When ``PageHost/ensureOffscreenWindow()`` has parked the web view in a
-    /// window, that window is resized with it: a hosted view that outgrows its
-    /// window is clipped by it, so leaving the window behind would silently
-    /// crop every capture past the old height. The window stays parked off
-    /// every screen.
+    /// The host's window, when it has one (every ``PageHost/Hosting/live``
+    /// host does), is resized with the view: a hosted view that outgrows its
+    /// window is clipped by it, so leaving the window behind could crop a
+    /// capture past the old height. The window stays parked off every screen.
     ///
     /// - Parameter size: the new viewport, in points; also the new
     ///   ``PageHost/viewport``.
     func resize(to size: ViewportSize) {
         let frame: CGRect = PageHost.frame(for: size)
-        webView.frame = frame
-        offscreenWindow?.resize(to: frame.size)
+        applyFrame(frame)
         webView.layoutSubtreeIfNeeded()
         viewport = size
     }
 
     /// The web view's frame for a viewport: origin at zero, size in points.
     ///
-    /// One place, so ``PageHost/init(options:jars:)`` and ``resize(to:)``
+    /// One place, so ``PageHost/init(options:jars:hosting:)`` and ``resize(to:)``
     /// cannot disagree about what a ``ViewportSize`` means in AppKit
     /// coordinates.
     internal static func frame(for size: ViewportSize) -> CGRect {

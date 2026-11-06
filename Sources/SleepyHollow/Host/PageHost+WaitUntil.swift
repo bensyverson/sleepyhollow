@@ -25,15 +25,16 @@ public extension PageHost {
     /// the main actor, and an embedding that keeps the main actor busy would
     /// then time out on a page that was ready long before — measured
     /// (`project/2026-08-29-woodcase-harness-feedback.md`, finding 1). The page
-    /// is held at foreground priority for the wait, since an idle windowless
-    /// page is otherwise throttled until a call lifts it.
+    /// is held at foreground priority for the wait, since an idle
+    /// ``Hosting/windowless`` page is otherwise throttled until a call lifts it.
     ///
     /// A check that throws counts as "not yet", exactly as for
     /// `--wait-for js:`; the first such failure is what a timeout reports.
     /// A timeout leaves the host reusable — nothing is abandoned, the page
-    /// simply stops checking soon after. On a hidden page, WebKit may slow a
-    /// long chain of page timers to about once a second, so a wait can end
-    /// up to a second after the condition first holds.
+    /// simply stops checking soon after. On a ``Hosting/windowless`` host,
+    /// WebKit slows a long chain of page timers to about once a second, so a
+    /// wait there can end up to a second after the condition first holds; a
+    /// live host (the default) keeps checking every frame.
     ///
     /// - Parameter expression: a JavaScript expression, evaluated as
     ///   `!!(expression)`.

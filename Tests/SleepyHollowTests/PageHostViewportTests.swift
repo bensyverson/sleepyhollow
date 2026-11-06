@@ -74,7 +74,7 @@ struct PageHostViewportTests {
     @MainActor
     func `resize without a window still moves the web view`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
-            let host = PageHost(options: LoadOptions(size: ViewportSize(width: 1280, height: 800)))
+            let host = PageHost(options: LoadOptions(size: ViewportSize(width: 1280, height: 800)), hosting: .windowless)
             _ = try await host.load(#require(URL(string: "capture-breakpoint.html", relativeTo: base)))
             host.resize(to: ViewportSize(width: 480, height: 640))
             #expect(Double(host.webView.frame.width) == 480)

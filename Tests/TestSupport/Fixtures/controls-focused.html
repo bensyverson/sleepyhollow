@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Native controls, one focused</title>
+  <!-- appearance:auto controls as AppKit draws them, with the text input
+       focused from script. In an active (key) window AppKit draws the
+       checked boxes and the focus ring in the accent color; in an inactive
+       one every control is gray. `window.focusFacts()` reports what the page
+       believes about focus. Shoot at 520x200. -->
+  <style>
+    body { margin: 0; padding: 20px; font: 14px system-ui; background: #fff; }
+    .row { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+    input[type=text] { width: 180px; }
+  </style>
+</head>
+<body>
+  <div class="row"><input id="focused" type="text" value="focused input"><input type="text" value="plain input"></div>
+  <div class="row">
+    <label><input type="checkbox" checked> checked</label>
+    <label><input type="radio" name="r" checked> on</label>
+    <input type="range" value="60">
+  </div>
+  <script>
+    const log = [];
+    const input = document.getElementById("focused");
+    window.addEventListener("focus", () => log.push("window-focus"));
+    window.addEventListener("blur", () => log.push("window-blur"));
+    input.focus();
+    window.focusFacts = () => ({
+      hasFocus: document.hasFocus(),
+      activeIsInput: document.activeElement === input,
+      focus: input.matches(":focus"),
+      focusVisible: input.matches(":focus-visible"),
+      windowEvents: log.slice(),
+    });
+  </script>
+</body>
+</html>

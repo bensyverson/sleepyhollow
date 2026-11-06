@@ -3,8 +3,8 @@ import WebKit
 
 /// Keeping an idle page at full priority for a call that would not lift it.
 ///
-/// A host's web view has no window, so WebKit throttles its content process
-/// once the view goes idle: about a second after the last call that held a
+/// A windowless host's page is hidden, so WebKit throttles its content
+/// process once the view goes idle: about a second after the last call that held a
 /// foreground activity, the process drops to the background priority band
 /// (measured 2026-09-26: task priority 31 while called, 4 once idle). A
 /// JavaScript call takes that activity for as long as it runs, so an
@@ -21,6 +21,11 @@ import WebKit
 /// made under a *hold*: an async JavaScript call, in a world of its own, that
 /// waits on a promise until the call has answered. WebKit keeps its
 /// foreground activity for exactly that long.
+///
+/// A ``PageHost/Hosting/live`` host — every verb's default since 2026-11-06 —
+/// is visible to WebKit and is not throttled (measured: `PageHostSchedulingTests`'
+/// precondition never held on one), so there the hold is a cheap no-op kept
+/// for the ``PageHost/Hosting/windowless`` case rather than retired.
 extension PageHost {
     /// Runs `body` with the page's content process held at the priority a
     /// JavaScript call runs at.

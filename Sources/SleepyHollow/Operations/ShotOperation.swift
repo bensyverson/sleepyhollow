@@ -174,11 +174,13 @@ public struct ShotOperation: ExecutablePageOperation {
         let webView = host.webView
         let originalFrame = webView.frame
         let needsFullHeight = region != .viewport
-        defer { if needsFullHeight { webView.frame = originalFrame } }
+        // Through the host, so a window it is parked in grows and shrinks
+        // with the view (job issue brc0C).
+        defer { if needsFullHeight { host.applyFrame(originalFrame) } }
 
         if needsFullHeight {
             let height = try await Self.documentHeight(on: host)
-            webView.frame = CGRect(x: 0, y: 0, width: originalFrame.width, height: max(originalFrame.height, height))
+            host.applyFrame(CGRect(x: 0, y: 0, width: originalFrame.width, height: max(originalFrame.height, height)))
             try await Self.resetScroll(on: host)
         }
 

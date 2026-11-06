@@ -116,9 +116,10 @@ struct CapturePaintAfterFontsReadyTests {
     /// A typed fact rather than a bool: it decides what WebKit does with time
     /// for the whole run, and both values are part of the finding.
     private enum Hosting {
-        /// Every verb's default, and the one Woodcase snapshots through.
+        /// No window: every verb's default until 2026-11-06.
         case windowless
-        /// `PageHost.ensureOffscreenWindow()` parked before the load.
+        /// Parked in a live off-screen window before the load: every verb's
+        /// default since 2026-11-06.
         case offscreenWindow
     }
 
@@ -182,8 +183,7 @@ struct CapturePaintAfterFontsReadyTests {
         server: FixtureServer,
         base: URL,
     ) async throws -> Run {
-        let host = PageHost(options: loadOptions)
-        if hosting == .offscreenWindow { host.ensureOffscreenWindow() }
+        let host = PageHost(options: loadOptions, hosting: hosting == .offscreenWindow ? .live : .windowless)
         let gate = FixtureGate()
         await gate.install(on: server)
         _ = try await host.load(URL(string: "webfont.html", relativeTo: base)!)

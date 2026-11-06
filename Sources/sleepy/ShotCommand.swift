@@ -60,6 +60,8 @@ struct ShotCommand: AsyncParsableCommand {
 
         --sheet adds a contact sheet of that sweep at --out itself — every render in one mosaic, each cell labeled with its parameters and fitted inside --max-size — while the full-size files keep their suffixes. It answers where something changed; the full-size file is where the detail is. Not combinable with --tile.
 
+        Pages animate as in a browser: requestAnimationFrame, CSS transitions and Web Animations all run, so a shot taken while something is still moving can differ from one run to the next. Wait for the state it ends in with --wait-for — a selector the page sets when done, or js:document.getAnimations().every(a => a.playState !== 'running') — rather than sleeping.
+
         CSS 3D: this renderer reduces every transform to 2D, so perspective foreshortening, preserve-3d depth order and backface-visibility: hidden are lost. When the captured area holds an element that changes because of it, the PNG is still written and the exit is still 0, but stderr says the shot draws CSS 3D flat, with how many elements and the first few by selector. It is a correctness caveat, not a tip: --quiet does not silence it. A plain 2D transform, or a 3D rotation with no perspective above it, draws correctly and is not reported. For a faithful 3D render, capture the page in Chrome.
 
         Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session or a --scale denser than this host renders.

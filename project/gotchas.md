@@ -84,3 +84,5 @@ Format: one dated H2 per entry, a bold headline, then what happened and what to 
 
 **With scripting off, WebKit invokes no event listener at all, the isolated world's included.** A page-side `submit`/`click` watcher hears nothing; judge from the host (`PageHost.navigationStarted(sinceMark:)`). Lazy images also load eagerly and the load event waits for webfonts, so a "still loading after load" fixture can't be built from either.
 
+
+**Native controls draw in the default blue on every Mac; text selection does not.** WebKit hands each new page the app's accent (`[NSApp _effectiveAccentColor]`), so `AccentPin` sets it once per process before the first web view (private API, checked by `sleepy doctor`). The selection highlight is read inside the web content process from System Settings and has no lever: never compare a selection's color across machines. An embedder's own UI picks up the pinned accent too. Source and figures: `project/2026-11-06-compositor-capture.md` question 7.

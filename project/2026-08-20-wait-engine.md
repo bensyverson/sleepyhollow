@@ -92,9 +92,18 @@ WaitProbeTests`, sandbox off), each driving a real `PageHost` against
   > `PredicateWatch`'s 16 ms backstop loop drops to 1 Hz after about 170 ms,
   > and latency then rests on the 250 ms host backstop. A live host runs both
   > loops at 50 Hz. Figures: `2026-11-06-compositor-capture.md`, question 8.
+  >
+  > **Resolved 2026-11-06 (leaf `GzK3Rl`, issue `PFrL42`):** every host is now
+  > live by default, and the backstop's chain keeps a 20 ms median cadence
+  > past its tenth tick (`LiveHostingTests`, `swift test --filter
+  > LiveHosting`). The 1 Hz throttle remains only on a host built
+  > `hosting: .windowless`.
 - **`requestAnimationFrame` never fires**, pumped or not — there is no window
   to render into. Any fixture or page that schedules work through a rAF chain
   waits forever.
+  > **Superseded 2026-11-06:** true of a windowless host only. Every host is
+  > now parked in a live off-screen window by default, where rAF runs at up
+  > to 60 Hz (`2026-11-06-compositor-capture.md`, question 6).
 - **Network completions arrive unpumped**: a `fetch` issued on `load` resolved
   and produced its resource-timing entry during a 2 s host sleep with no
   evaluation.
