@@ -1,5 +1,7 @@
 # Sleepy Hollow feedback from the viewer-polish session — 2026-08-30
 
+> **Triaged 2026-11-06** into job tree `TOxjmj`; the item-by-item routing is in `2026-11-06-woodcase-0830-triage.md`. Items 7 and 10b had already shipped when this was written.
+
 Compiled for the Sleepy Hollow project from one day of heavy real-world use in
 Woodcase: three agents authored or exercised ~50 browser tests against the
 SleepyHollow package (`PageHost`, `LoadOptions`, `evaluate`, `ViewportSize`), and

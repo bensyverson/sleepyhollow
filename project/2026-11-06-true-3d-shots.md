@@ -26,6 +26,18 @@ A hybrid of detection and a compositor capture, in that order:
 2. **Measure a compositor capture before building one.** Host the page in a live `OffscreenWindow` and render its layer tree with `CARenderer` into an off-screen Metal texture, which composites in true 3D. Unknowns: does WebKit's UI-process layer tree render that way at all, do flat pages match `takeSnapshot`, what does it cost, and does `--full-page` survive (the compositor paints only around the viewport).
 3. **Decide from the measurements**, then build. One preference recorded now: if the compositor path proves faithful and reliable, it should be the default for viewport, element and rect shots, rather than a fallback switched on by detection. Two renderers chosen by a heuristic mean that one tiny `translateZ` flips a whole shot's anti-aliasing and timing. Whichever renderer runs, the output names it.
 
+### Detection, as built (2026-11-06, leaf `YnX53e`)
+
+`window.sleepy.flattened3D` (`SleepyHelpers+Transforms.swift`) feeds `ShotOperation.Output.flattened3D`. The CLI prints a `Caveat` on stderr that `--quiet` does not silence. What decided the rules, measured with debug `sleepy shot` and `sleepy query` on scratch fixtures (load average about 30):
+
+- A bare `rotateY(60deg)` with no perspective paints at exactly its `getBoundingClientRect()` box (x 75–175 both). The flat paint is orthographic, so this case is not flagged. Chrome was not available to cross-check.
+- A parent's `perspective` reaches a child's transform, and nothing past a flat parent: a grandchild under a flat intermediate, positioned or static, measured orthographic. The ancestor walk continues only through `preserve-3d` parents.
+- `transform-style` still computes to `preserve-3d` under `overflow: hidden`, `opacity < 1`, `filter`, `isolation: isolate` and `clip-path`, but WebKit's geometry is flat under each one. The detector checks the used value.
+- `perspective(200px)` on its own sets only `m34` and paints the same as its box. The own-perspective test is `m14`/`m24`/`m44 ≠ 1`, which is where perspective ends up once something turns the plane or lifts it in z.
+- `backface-visibility: hidden` on `rotateY(180deg)` is painted by the flat render. A hidden back face that faces the viewer paints either way, so only a face turned away is flagged.
+
+The result names only the outermost flagged element: a three.js CSS3DRenderer scene is reported as its `preserve-3d` scene div, not once per panel.
+
 ### Rulings
 
 - **Private WebKit SPI is acceptable for `shot`** (Ben, 2026-11-06: "This isn't going in the App Store"). This lifts the 2026-08-28 ruling that kept `Rendering.live` — `_setWindowOcclusionDetectionEnabled:` — off every shipping path; see the correction in `2026-08-28-offscreen-window-host.md`. SPI stays isolated, guarded by `responds(to:)`, and covered by a test that goes red if it stops working.

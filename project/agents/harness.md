@@ -1,4 +1,4 @@
-<!-- agents:begin harness@dcdb6a -->
+<!-- agents:begin harness@b7b83e -->
 # Harness facts
 
 Facts about the tool an agent runs *inside*, not about this project — they are identical in every repo, which is why they are not in `project/gotchas.md`. One section per harness; today there is only Claude Code. Read this the first time a call fails with a permission error or a refusal you did not expect: none of these failures names the harness, which is exactly what makes them expensive.
@@ -7,7 +7,7 @@ Facts about the tool an agent runs *inside*, not about this project — they are
 
 ### The Bash sandbox
 
-Bash calls are sandboxed by default. The sandbox denies reads of the user's home outside a short allowlist, denies writes outside the repo and `$TMPDIR`, and refuses to listen on or connect to a local port. So these fail sandboxed: any toolchain whose caches live under `~/Library` or `~/go` (Go, SwiftPM), every `git` command that reads `~/.gitconfig`, `psql` over its unix socket, anything that binds a port, `curl localhost`, and a tool installed outside the allowlist (`sleepy` is on `$PATH` but its directory is unreadable).
+This section applies only when the Bash sandbox is on. It is off by default for new users (the `/sandbox` command turns it on), and with it off none of these failures happen. When it is on, the sandbox denies reads of the user's home outside a short allowlist, denies writes outside the repo and `$TMPDIR`, and refuses to listen on or connect to a local port. So these fail sandboxed: any toolchain whose caches live under `~/Library` or `~/go` (Go, SwiftPM), every `git` command that reads `~/.gitconfig`, `psql` over its unix socket, anything that binds a port, `curl localhost`, and a tool installed outside the allowlist (`sleepy` is on `$PATH` but its directory is unreadable).
 
 Recognize the messages — each reads like a broken install, a corrupt config or a dead server:
 
@@ -43,9 +43,5 @@ A backgrounded process is reaped when the session ends, so a server meant to out
 
 ### Your context fill
 
-Run `contextfill` ([bensyverson/contextfill](https://github.com/bensyverson/contextfill)) to read how full your context window is; `contextfill --agents` adds each subagent's own fill. That is the number the delegation guide's 40% line is measured in. A subagent's completion notification reports about the same figure, but only once the agent stops; watch a running agent with `contextfill --agents`. Where a PostToolUse hook runs `contextfill hook`, the reading also arrives after every commit, a subagent's included.
-
-### The shell
-
-When the shell is zsh, `$VAR` is not word-split, so `git commit -- $FILES` passes one path made of every name. Use an array, or list the paths.
+Run `contextfill` ([bensyverson/contextfill](https://github.com/bensyverson/contextfill)) to read how full your context window is; `contextfill --agents` adds each subagent's own fill. That is the number the delegation guide's 40% line is measured in. A subagent's completion notification reports about the same figure, but only once the agent stops; watch a running agent with `contextfill --agents`. Where a PostToolUse hook runs `contextfill hook`, the reading also arrives after every commit, a subagent's included. If `contextfill` isn't installed (`command -v contextfill` prints nothing), ask the user whether to install it with `brew install bensyverson/tap/contextfill`, and install it if they agree. Until then, don't block and don't estimate: ask the user for the fill Claude Code's `/context` command shows, and keep working.
 <!-- agents:end harness -->

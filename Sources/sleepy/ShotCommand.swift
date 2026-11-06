@@ -26,6 +26,10 @@ import SleepyHollow
 /// overlapping strips written as `<out>-01.png`, `<out>-02.png` … with a
 /// ``ShotIndex`` on stdout saying which document rows each file holds.
 ///
+/// A render whose area holds CSS 3D the flat snapshot draws wrong
+/// (``ShotOperation/Output/flattened3D``) earns a ``Caveat`` on stderr —
+/// once per render, never silenced by `--quiet`, exit still 0.
+///
 /// Exit 1 is `--selector`'s clean negative: the selector matched nothing, or
 /// matched something with no rendered area — either way there is no crop to
 /// take, so no PNG is written. Every other failure follows the shared scheme
@@ -55,6 +59,8 @@ struct ShotCommand: AsyncParsableCommand {
         --size, --scale and --theme each repeat, and a repeat sweeps: every combination renders, needs --out, and lands in a file suffixed with only the axes that actually vary, in the order size, scale, theme — header-480@2x-dark.png. A JSON index on stdout maps each file to its size, scale and theme, so nothing has to parse a name. --size also takes a width alone: --size 480 means 480x800. A sweep needs a URL: --session names one page a helper has already loaded.
 
         --sheet adds a contact sheet of that sweep at --out itself — every render in one mosaic, each cell labeled with its parameters and fitted inside --max-size — while the full-size files keep their suffixes. It answers where something changed; the full-size file is where the detail is. Not combinable with --tile.
+
+        CSS 3D: this renderer reduces every transform to 2D, so perspective foreshortening, preserve-3d depth order and backface-visibility: hidden are lost. When the captured area holds an element that changes because of it, the PNG is still written and the exit is still 0, but stderr says the shot draws CSS 3D flat, with how many elements and the first few by selector. It is a correctness caveat, not a tip: --quiet does not silence it. A plain 2D transform, or a 3D rotation with no perspective above it, draws correctly and is not reported. For a faithful 3D render, capture the page in Chrome.
 
         Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session or a --scale denser than this host renders.
         """,
@@ -213,6 +219,7 @@ struct ShotCommand: AsyncParsableCommand {
         } else {
             try out.sink.write(first.png)
         }
+        Caveat.emit(Caveat.forShot(flattened3D: output.flattened3D))
         Nudge.emit(
             Nudge.forShot(Nudge.ShotFacts(
                 captureHeight: Double(first.rect.height),

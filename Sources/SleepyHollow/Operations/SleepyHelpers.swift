@@ -6,7 +6,9 @@ import Foundation
 /// `sleepy contrast` and `sleepy overflow` are thin callers over
 /// `window.sleepy.contrast()` and `window.sleepy.overflow()`; an agent
 /// composing its own check calls the same functions through `sleepy eval`,
-/// which defaults to the page world for exactly this reason. One
+/// which defaults to the page world for exactly this reason. `shot` calls
+/// `window.sleepy.flattened3D()` to find the CSS 3D its flat snapshot draws
+/// wrong (``FlattenedElement``). One
 /// implementation, so a verb and an agent's own loop can never disagree.
 ///
 /// Like ``AXScript`` it is a Swift constant rather than a bundle resource, so
@@ -25,7 +27,7 @@ public enum SleepyHelpers {
 
     /// The whole library, in the order the parts depend on each other, wrapped
     /// in the IIFE that publishes exactly one global.
-    static let source: String = [prologue, colors, elements, contrast, overflow, epilogue]
+    static let source: String = [prologue, colors, elements, contrast, overflow, transforms, epilogue]
         .joined(separator: "\n\n")
 
     /// The user script that installs the library on every page.
@@ -54,6 +56,7 @@ public enum SleepyHelpers {
         effectiveBackground: sleepyEffectiveBackground,
         contrast: sleepyContrast,
         overflow: sleepyOverflow,
+        flattened3D: sleepyFlattened3D,
       };
     })();
     """

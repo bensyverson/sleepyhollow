@@ -35,11 +35,23 @@ public struct ShotCapture: Sendable {
     /// ``pixelsPerCSSPixel``.
     public let scale: Int
 
+    /// The elements in ``rect`` that this flat render draws wrong: CSS 3D
+    /// that `takeSnapshot` reduces to 2D (see ``FlattenedElement``). Empty
+    /// when the capture is faithful.
+    ///
+    /// Set by ``ShotOperation/render(on:)``. A readout stage that keeps the
+    /// rect keeps the finding (``ShotFit``, ``ShotGrid``); ``ShotTile`` keeps,
+    /// for each strip, only the elements whose boxes reach its rows. A
+    /// capture rebuilt from a ``ShotImage`` has none — the finding belongs to
+    /// the render, which is ``ShotOperation/Output/flattened3D``.
+    public let flattened3D: [FlattenedElement]
+
     /// Creates a capture.
-    public init(image: CGImage, rect: CGRect, scale: Int = 1) {
+    public init(image: CGImage, rect: CGRect, scale: Int = 1, flattened3D: [FlattenedElement] = []) {
         self.image = image
         self.rect = rect
         self.scale = scale
+        self.flattened3D = flattened3D
     }
 
     /// Decodes an encoded capture back into the pipeline's currency.

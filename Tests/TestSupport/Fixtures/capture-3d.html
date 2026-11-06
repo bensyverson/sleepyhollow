@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Capture fixture: CSS 3D that a flattened snapshot draws wrong, and 3D-looking CSS it draws right</title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body { background: #ffffff; height: 1900px; position: relative; }
+    .cell { position: absolute; width: 250px; height: 250px; }
+    .box { position: absolute; left: 25px; top: 75px; width: 200px; height: 100px; }
+    .layer { position: absolute; width: 150px; height: 100px; }
+  </style>
+</head>
+<body>
+  <!-- Row 1, y 0–250: each case changes under flattening. -->
+
+  <!-- A 3D rotation under a parent's `perspective`: foreshortened for real, a squeezed rectangle when flat. -->
+  <div class="cell" id="case-parent" style="left: 0; top: 0; perspective: 400px">
+    <div class="box" id="tilted" style="background: #e03030; transform: rotateY(50deg)"></div>
+  </div>
+
+  <!-- `perspective()` in the element's own transform. -->
+  <div class="cell" id="case-own" style="left: 250px; top: 0">
+    <div class="box" id="own" style="background: #3050e0; transform: perspective(400px) rotateY(50deg)"></div>
+  </div>
+
+  <!-- preserve-3d depth: the green layer is in front by z, behind by DOM order. -->
+  <div class="cell" id="case-stack" style="left: 500px; top: 0">
+    <div class="box" id="stack" style="transform-style: preserve-3d">
+      <div class="layer" style="left: 0; top: 0; background: #20a040; transform: translateZ(30px)"></div>
+      <div class="layer" style="left: 50px; top: 0; background: #a020a0; transform: translateZ(-30px)"></div>
+    </div>
+  </div>
+
+  <!-- A back face turned away: hidden for real, painted mirrored when flat. -->
+  <div class="cell" id="case-back" style="left: 750px; top: 0">
+    <div class="box" id="back" style="background: #e0a020; transform: rotateY(180deg); backface-visibility: hidden"></div>
+  </div>
+
+  <!-- Row 2, y 300–550: nothing here changes under flattening. -->
+
+  <!-- 2D transforms of every kind. -->
+  <div class="cell" id="flat-2d" style="left: 0; top: 300px">
+    <div class="box" id="twod" style="background: #606060; transform: rotate(20deg) scale(1.1) skewX(10deg) translate(5px, 5px)"></div>
+  </div>
+
+  <!-- A bare 3D rotation with no perspective anywhere above it: orthographic, which is what the flat paint draws. -->
+  <div class="cell" id="flat-ortho" style="left: 250px; top: 300px">
+    <div class="box" id="ortho" style="background: #808080; transform: rotateY(60deg)"></div>
+  </div>
+
+  <!-- A hidden back face that faces the viewer: drawn either way. -->
+  <div class="cell" id="flat-front" style="left: 500px; top: 300px">
+    <div class="box" id="front" style="background: #909090; transform: rotateY(30deg); backface-visibility: hidden"></div>
+  </div>
+
+  <!-- The usual GPU-promotion hacks, `perspective()` with nothing to project, and preserve-3d forced flat by overflow. -->
+  <div class="cell" id="flat-hacks" style="left: 750px; top: 300px">
+    <div class="layer" id="hack" style="left: 0; top: 0; background: #a0a0a0; transform: translateZ(0); backface-visibility: hidden; will-change: transform"></div>
+    <div class="layer" id="persp-only" style="left: 100px; top: 0; background: #b0b0b0; transform: perspective(400px)"></div>
+    <div class="layer" id="grouped" style="left: 0; top: 120px; transform-style: preserve-3d; overflow: hidden">
+      <div class="layer" style="left: 0; top: 0; background: #c0c0c0; transform: translateZ(30px)"></div>
+    </div>
+  </div>
+
+  <!-- Below the fold, y 1000: three.js CSS3DRenderer's shape — a perspective camera div (overflow hidden, as
+       the renderer sets it), a preserve-3d scene div with its own matrix3d (a turn plus z translation), then a
+       panel placed by a hand-written matrix3d. The scene is named; the panel is inside it. -->
+  <div class="cell" id="case-css3d" style="left: 0; top: 1000px; perspective: 600px; overflow: hidden">
+    <div id="css3d-scene" style="position: absolute; inset: 0; transform-style: preserve-3d; transform: matrix3d(0.906308, 0, -0.422618, 0, 0, 1, 0, 0, 0.422618, 0, 0.906308, 0, 0, 0, -150, 1)">
+      <div class="box" id="css3d-panel" style="background: #5070c0; transform: matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 20, 10, 80, 1)"></div>
+    </div>
+  </div>
+
+  <!-- Further below the fold, y 1600: only a full-page shot (or a rect reaching it) contains it. -->
+  <div class="cell" id="case-deep" style="left: 0; top: 1600px; perspective: 400px">
+    <div class="box" id="deep" style="background: #30a0a0; transform: rotateX(50deg)"></div>
+  </div>
+</body>
+</html>

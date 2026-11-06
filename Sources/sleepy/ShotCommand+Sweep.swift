@@ -16,6 +16,7 @@ extension ShotCommand {
     struct Render {
         let variant: ShotPlan.Variant
         let images: [ShotImage]
+        let flattened3D: [FlattenedElement]
     }
 
     /// Renders every combination and writes them, suffixed, with the index on
@@ -32,6 +33,11 @@ extension ShotCommand {
         try writeVariants(renders, base: base)
         if sheet { try writeSheet(renders, base: base) }
         try printIndex(plan, base: base)
+        // One caveat per render that earned one, each naming its combination:
+        // the sheet is a view of these renders, not a render of its own.
+        for render in renders {
+            Caveat.emit(Caveat.forShot(flattened3D: render.flattened3D, render: render.variant.label))
+        }
     }
 
     /// Renders the plan, one page load per distinct viewport-and-theme pair.
@@ -75,7 +81,11 @@ extension ShotCommand {
                             fit: fit,
                             grid: grid,
                         ))
-                        captures.append(Render(variant: variant, images: output.images))
+                        captures.append(Render(
+                            variant: variant,
+                            images: output.images,
+                            flattened3D: output.flattened3D,
+                        ))
                     }
                     return captures
                 },

@@ -24,6 +24,13 @@ import WebKit
 /// shot; if the page's *next* change is on a timer, that is a `--wait-for`
 /// condition, not a delay.
 ///
+/// The snapshot paints CSS 3D flat: `takeSnapshot` reduces each layer's
+/// transform to 2D affine, losing perspective, `preserve-3d` depth order and
+/// hidden back faces. The render stage therefore also asks the page which
+/// elements in the captured rect that changes, and carries them as
+/// ``Output/flattened3D`` (and ``ShotCapture/flattened3D``) — a fact on a
+/// successful result, never a failure (``FlattenedElement``).
+///
 /// Execution is a pipeline: **render** the region to a ``ShotCapture`` at
 /// ``scale`` device pixels per CSS px (the crop *is* the region), then
 /// **tile** it into strips, **fit** each strip to a pixel budget, and finally
@@ -41,9 +48,20 @@ public struct ShotOperation: ExecutablePageOperation {
         /// exactly one.
         public let images: [ShotImage]
 
-        /// Wraps the captures.
-        public init(images: [ShotImage]) {
+        /// The elements in the rendered area that the flat snapshot draws
+        /// wrong — CSS 3D whose perspective, depth or hidden back face
+        /// `takeSnapshot` drops (see ``FlattenedElement``). Empty when the
+        /// render is faithful.
+        ///
+        /// Once per render, not per image: a tiled shot's strips all come
+        /// from the one render this describes, so an embedder or the CLI
+        /// reports it once.
+        public let flattened3D: [FlattenedElement]
+
+        /// Wraps the captures and what the render could not draw faithfully.
+        public init(images: [ShotImage], flattened3D: [FlattenedElement] = []) {
             self.images = images
+            self.flattened3D = flattened3D
         }
     }
 
@@ -107,7 +125,7 @@ public struct ShotOperation: ExecutablePageOperation {
         let gridded = try fitted.map { capture in
             try grid.map { try ShotGrid.draw($0, on: capture, pixelsPerCSSPixel: capture.pixelsPerCSSPixel) } ?? capture
         }
-        return try Output(images: gridded.map { try $0.encoded() })
+        return try Output(images: gridded.map { try $0.encoded() }, flattened3D: capture.flattened3D)
     }
 
     /// The tile stage: the capture as itself when `--tile` wasn't asked for,
@@ -165,6 +183,7 @@ public struct ShotOperation: ExecutablePageOperation {
         }
 
         let rect: CGRect = try await resolvedRect(on: host, frame: webView.frame)
+        let flattened: [FlattenedElement] = try await Self.flattened3D(in: rect, on: host)
         let configuration = WKSnapshotConfiguration()
         configuration.rect = rect
         let image: NSImage = try await host.snapshot(configuration)
@@ -177,7 +196,23 @@ public struct ShotOperation: ExecutablePageOperation {
                 nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
             )
         }
-        return ShotCapture(image: rasterized, rect: rect, scale: scale.factor)
+        return ShotCapture(image: rasterized, rect: rect, scale: scale.factor, flattened3D: flattened)
+    }
+
+    /// The elements in `rect` that the flat snapshot will draw wrong, from
+    /// `window.sleepy.flattened3D` (``SleepyHelpers``).
+    ///
+    /// `rect` is the snapshot's own crop, in view coordinates — which is the
+    /// space `getBoundingClientRect()` answers in: the viewport for a
+    /// viewport shot, and the document for every other region, since those
+    /// have reset the scroll. Asked before the snapshot, against the same
+    /// layout it will paint.
+    private static func flattened3D(in rect: CGRect, on host: PageHost) async throws -> [FlattenedElement] {
+        let area: [String: Double] = [
+            "x": Double(rect.minX), "y": Double(rect.minY),
+            "width": Double(rect.width), "height": Double(rect.height),
+        ]
+        return try await SleepyHelpers.call("flattened3D", options: ["area": area], as: [FlattenedElement].self, on: host)
     }
 
     /// Refuses a `--scale` denser than the snapshot WebKit actually produced.

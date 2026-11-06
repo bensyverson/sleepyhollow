@@ -6,32 +6,18 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 
 ## Documentation
 
-- [project/](project/) — dated plans, findings and decisions
+This list holds only what every agent needs. Dated plans, findings and decisions live in [project/](project/) as `YYYY-MM-DD-title.md`; list the folder and read one when a task leads there.
+
 - [project/2026-08-20-vision.md](project/2026-08-20-vision.md) — the agreed direction: why, philosophy, required verbs, non-goals; read this first
-- [project/2026-08-20-implementation-plan.md](project/2026-08-20-implementation-plan.md) — the 1.0 plan: architecture decisions, file ownership, waves, and the imported task tree
-- [project/2026-08-20-ax-spike.md](project/2026-08-20-ax-spike.md) — findings: `sleepy ax` reads via injected JS computation; the native AX path is dead for a headless CLI
-- [project/2026-08-20-wire-spike.md](project/2026-08-20-wire-spike.md) — findings: inventory-layer field availability, the fetch-recorder shape, and the headless timer-throttling trap (that last claim corrected in place — see the wait-engine note)
-- [project/2026-08-20-wait-engine.md](project/2026-08-20-wait-engine.md) — findings: the settle phase, the exact `--wait-for idle` contract, and what a headless page's timers really do
-- [project/2026-08-29-woodcase-harness-feedback.md](project/2026-08-29-woodcase-harness-feedback.md) — findings from the first library embedding (Woodcase's test harness): host-side `WaitCondition` polling starves under a busy main actor, the ArgumentParser floor, and five smaller API gaps
-- [project/2026-08-29-woodcase-harness-plan.md](project/2026-08-29-woodcase-harness-plan.md) — plan: the rulings on those findings (page-side waiting, a `HostGroup` that owns the jar, the backdrop canary, no fixed delays) and the seven-leaf `job` tree
-- [project/2026-08-29-host-group-cache.md](project/2026-08-29-host-group-cache.md) — findings: a shared non-persistent `WKWebsiteDataStore` shares cookies but **no** HTTP cache, `WKProcessPool` is inert, and grouping buys no per-load time — so `HostGroup` is a shared identity, not a shared cache
-- [project/2026-08-29-paint-after-fonts-ready.md](project/2026-08-29-paint-after-fonts-ready.md) — findings: a shot flushes rendering, so nothing settles between `document.fonts.ready` and a capture; and why neither `document.fonts.status` nor `document.fonts.check` is a safe wait condition
-- [project/2026-08-24-first-agent-user-feedback.md](project/2026-08-24-first-agent-user-feedback.md) — field report: the first agent's two hours of production use — what is right, four bugs, paper cuts, and a `job import` block
-- [project/2026-08-28-shot-scale-flag.md](project/2026-08-28-shot-scale-flag.md) — recommendation: a `shot --scale` density flag; why the CSS-`zoom` workaround renders the wrong breakpoint, and how the existing snapshot normalization already holds the 2× pixels
-- [project/2026-08-28-agent-readout-and-checks.md](project/2026-08-28-agent-readout-and-checks.md) — recommendation: `shot --max-size/--tile/--rect` composed with `--scale`, plus `contrast` and `overflow` assertion verbs and three small fixes, from two agents' field use on 2026-08-28
-- [project/2026-08-28-agent-feedback-synthesis.md](project/2026-08-28-agent-feedback-synthesis.md) — agreed direction: the needs beneath the three field reports, rulings (Sleepy vs PixelPeeper, `eval` page-world default, never a plausible wrong answer), settled designs, and the `job import` block
-- [project/2026-08-28-offscreen-window-host.md](project/2026-08-28-offscreen-window-host.md) — findings: what an off-screen `NSWindow` buys a `WKWebView` and what it does not — rAF and CSS transitions need the window *plus* occlusion detection off, `layer.contentsScale` moves no pixels, ordering moves nothing
-- [project/2026-08-28-wait-test-timing.md](project/2026-08-28-wait-test-timing.md) — findings: why three wait tests flaked under parallel-agent load — the host stretches 20–50× and the page's timers do not — and the `FixtureGate` latch that replaces their margins with happens-before
-- [project/2026-09-26-old-sdk-inspection-notice.md](project/2026-09-26-old-sdk-inspection-notice.md) — findings: why a Swift Build debug `sleepy` claimed the macOS 12 SDK and made WebKit print an inspection notice on every load, and the `-isysroot` link flag that fixes it without touching the floor
-- [project/2026-09-26-idle-page-throttling.md](project/2026-09-26-idle-page-throttling.md) — findings: WebKit throttles an idle windowless page's content process to the background band and `takeSnapshot`/printing/`createWebArchiveData` never lift it, so on a loaded machine they starve; the foreground hold that fixes it, and why `inactiveSchedulingPolicy` does not
-- [project/2026-11-06-true-3d-shots.md](project/2026-11-06-true-3d-shots.md) — plan: `shot` draws CSS 3D flat (`takeSnapshot` repaints in software with transforms reduced to 2D); detect and say so now, measure a `CARenderer` compositor capture, then decide; private SPI is approved for `shot`
+- [project/2026-08-28-agent-feedback-synthesis.md](project/2026-08-28-agent-feedback-synthesis.md) § Rulings — standing rulings every change answers to: never a plausible wrong answer, Sleepy vs PixelPeeper, `eval` page-world default
+- [project/background.md](project/background.md) — who the work is for, and what they call things
 - [project/gotchas.md](project/gotchas.md) — project quirks and rule corrections
 - [project/recipes.md](project/recipes.md) — goal-to-verb routing for an agent that knows what it wants but not which verb does it; same content as `sleepy recipes` / `sleepy help recipes`
 - [project/backlog.md](project/backlog.md) — work decided against: what it is, why it's parked, what would un-park it
 - **API reference is DocC**, from doc comments in `Sources/` — build with `swift package generate-documentation` (archive lands in `.build/plugins/Swift-DocC/outputs/SleepyHollow.doccarchive`), browse with `swift package preview-documentation`
 - [README.md](README.md) — the project's front door: what it is, install, quick start
 
-<!-- agents:begin core@bb8246 -->
+<!-- agents:begin core@3cc73e -->
 ## Working rules
 
 **Understand the why.** If the goal behind a request isn't clear, ask before solving — beware the XY problem.
@@ -49,6 +35,8 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 **Don't tour the codebase.** Start from the README and the docs (an Explore agent is fine); dig only where the task leads — once you have a specific need, read as much as that need requires.
 
 **Scripts.** Analysis tooling goes in `scripts/` so it can be re-run — check there before writing one.
+
+**Shell variables.** Never store a command or a list of arguments in a plain shell variable. zsh doesn't split `$VAR` into words, so `git commit -- $FILES` passes one path made of every name. Use a function or an array, or write it out. This applies on remote machines too.
 
 **Critique before declaring done.** Re-read the original request: is the need actually met? Do lint and tests pass? Are docs updated? What would an expert flag? Fix serious flaws before reporting.
 
@@ -68,7 +56,7 @@ SleepyHollow is a headless WebKit browser for agents: it renders real pages with
 - **On the main thread, read `project/agents/delegation.md` in full before you begin, so whether to delegate is a choice, not a default.** A subagent skips this: its brief is its scope, and it doesn’t delegate further.
 - **Unless the user says they're around, assume they aren't.** Make the call yourself when it's safe and a two-way door, queue the rest, and report every decision at the end. While they're around, bring questions as they come up, including ones an agent raises mid-flight.
 - **Before starting, say what needs the user's eyes.**
-- **Keep working while there's work; once past your context line, start nothing new.** The main thread's line is 25%, a subagent's 40% (read with contextfill; never estimate). The line is where wrapping up begins: finishing what's in flight and handing off happen after it, however far past it that takes. A delegating main thread: delegation.md ▸ Carving the work.
+- **Keep working while there's work; once past your context line, start nothing new.** The main thread's line is 33%, a subagent's 40% (read with contextfill; never estimate). Those are defaults: when the contextfill hook names a line, its line wins. The line is where wrapping up begins: finishing what's in flight and handing off happen after it, however far past it that takes. It is not a cutoff, so until you reach it, keep taking on work; don't start wrapping up early. A delegating main thread: delegation.md ▸ Carving the work.
 
 ## Git
 
@@ -106,11 +94,11 @@ Defaults, not laws. When we break one, we do it consciously and say so in the re
 Pre-launch, zero users, no existing data. Never spend effort on backward compatibility — assume every use is green-field — but flag breaking changes and update the affected tests. Be ambitious: if a feature is important, build it fully now rather than an MVP; balance that against over-engineering and future-proofing.
 <!-- agents:end stage-build -->
 
-<!-- agents:begin swift@d751b4 -->
+<!-- agents:begin swift@4e03f7 -->
 ## Swift
 
 - Keep DocC coverage at 100% for any code you add or change.
-- Before committing: `swiftformat . --lint` (then `swiftformat .` if needed) and the full suite (`swift test --quiet`, or the project's `xcodebuild` invocation named in the head). Both should be pre-commit hooks; if the repo has none, run them yourself.
+- Before committing: `swiftformat . --lint` (then `swiftformat .` if needed) and the full suite (`swift test --quiet`, or the project's `xcodebuild` invocation named in the head). The pre-commit hook `agents hooks install` writes runs both, the suite only for a package; an app adds its `xcodebuild` line below the hook's generated region. If the repo has no hook, run them yourself.
 - Swift 6 strict concurrency; resolve warnings as you go. No `nonisolated(unsafe)` without permission. Prefer async/await.
 - Prefer `struct` for data; `final class` for durable shared-reference objects; `actor` for shared mutable state or a single access point (DB connection, queue).
 - New types conform to `Friendly` (`Codable & Hashable & Equatable & Sendable`) even without current plans to serialize or compare.
@@ -122,7 +110,7 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - **A new combined library + CLI package** `FooBar` = library target `FooBarCore` + CLI target `FooBarCommand`.
 <!-- agents:end swift -->
 
-<!-- agents:begin docs@7ba2fd -->
+<!-- agents:begin docs@426033 -->
 ## Documentation practice
 
 - **Plans, findings, designs and decisions go in `project/` as dated documents** (`YYYY-MM-DD-title.md`) — the written history of the project. They are point-in-time records: correct an earlier one *in place*, as a marked block quote, rather than silently editing a number or leaving a stale claim standing.
@@ -132,7 +120,7 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - **A wrong documented cause is worse than none** — it stops the next reader looking. Correcting one means saying it was wrong, not quietly rewording.
 - **Open the note before you cite it**, and check whether a recorded ruling has been superseded before passing it on.
 - **Every repo has a README; if none exists, write one (delegate it if you can).** It is tight: the project's name and a one-line description a non-technical reader understands (6th-grade reading level); one short paragraph of what it is; how to install or consume it; a crisp Quick Start with an example or two; links out to the specific docs for anything more; authorship and license at the end.
-- **The head of `AGENTS.md` lists where the docs live; keep that list current.**
+- **The head of `AGENTS.md` lists where the docs live; keep that list current with documentation, but exclude project/ docs such as plans and research.**
 <!-- agents:end docs -->
 
 <!-- agents:begin background@882e19 -->

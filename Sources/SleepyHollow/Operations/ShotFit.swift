@@ -62,7 +62,7 @@ public struct ShotFit: Friendly {
                 nextMove: "Retry; if this persists, it is a seam bug against CoreGraphics.",
             )
         }
-        return ShotCapture(image: smaller, rect: capture.rect, scale: capture.scale)
+        return ShotCapture(image: smaller, rect: capture.rect, scale: capture.scale, flattened3D: capture.flattened3D)
     }
 
     /// One side, scaled and rounded, never smaller than a single pixel.

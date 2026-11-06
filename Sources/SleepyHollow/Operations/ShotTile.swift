@@ -108,15 +108,23 @@ public struct ShotTile: Friendly {
                     nextMove: "Retry; if this persists, it is a seam bug against CGImage.cropping.",
                 )
             }
+            let stripRect = CGRect(x: capture.rect.minX, y: top, width: capture.rect.width, height: stripHeight)
             strips.append(ShotCapture(
                 image: cropped,
-                rect: CGRect(x: capture.rect.minX, y: top, width: capture.rect.width, height: stripHeight),
+                rect: stripRect,
                 scale: capture.scale,
+                flattened3D: capture.flattened3D.filter { Self.reaches($0.rect, into: stripRect) },
             ))
             if top + stripHeight >= bottom { break }
             top += height - overlap
         }
         return strips
+    }
+
+    /// Whether a flagged element's box reaches into a strip's rows, so each
+    /// strip keeps only the findings it actually shows.
+    private static func reaches(_ box: DocumentRect, into strip: CGRect) -> Bool {
+        CGRect(x: box.x, y: box.y, width: box.width, height: box.height).intersects(strip)
     }
 
     /// Refuses a strip the overlap would swallow: at `height <= overlap` the
