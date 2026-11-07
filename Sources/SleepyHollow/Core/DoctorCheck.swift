@@ -19,6 +19,9 @@ public struct DoctorCheck: Friendly {
         /// Native controls draw in the system's default accent, not this
         /// Mac's chosen one.
         case accent
+        /// A page's copy lands in a pasteboard private to this process, not
+        /// the user's clipboard.
+        case pasteboard
         /// The sessions directory resolves, is writable, and leaves room for
         /// a session's Unix socket path.
         case sessions

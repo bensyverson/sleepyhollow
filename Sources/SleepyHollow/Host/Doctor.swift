@@ -71,6 +71,7 @@ public enum Doctor {
             checkBinary(),
             webKit,
             checkAccentPin(),
+            checkPasteboardIsolation(),
             checkSessions(registry: registry),
             checkTemporaryDirectory(temporaryDirectory),
         ])
@@ -97,6 +98,30 @@ public enum Doctor {
             )
         }
         return .passed(.accent, "Native controls draw in the system's default blue accent, whatever this Mac's setting.")
+    }
+
+    /// Whether a page's copy is redirected to a pasteboard private to this
+    /// process rather than the user's clipboard (see `PasteboardIsolation`).
+    ///
+    /// - Returns: ok when the redirect is installed, or the embedder chose
+    ///   ``ClipboardIsolation/shared``; failed when AppKit's
+    ///   pasteboard class methods could not be replaced, in which case a page
+    ///   that copies overwrites the clipboard of whoever runs `sleepy`.
+    @MainActor
+    public static func checkPasteboardIsolation() -> DoctorCheck {
+        PasteboardIsolation.ensureApplied()
+        if PageHost.clipboardIsolation == .shared {
+            return .passed(.pasteboard, "Clipboard isolation is off by choice (shared): pages use the system clipboard.")
+        }
+        guard PasteboardIsolation.isIsolated else {
+            return .failed(
+                .pasteboard,
+                "This macOS no longer lets sleepy redirect NSPasteboard, so a page that copies writes to "
+                    + "your real clipboard and a page that pastes reads it.",
+                nextMove: "Avoid pages that copy or paste, or report this macOS version as a seam bug.",
+            )
+        }
+        return .passed(.pasteboard, "A page's copy and paste use a pasteboard private to this process, not your clipboard.")
     }
 
     /// Whether `executable` is a file this process could run — and therefore

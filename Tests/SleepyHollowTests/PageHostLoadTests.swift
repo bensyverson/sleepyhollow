@@ -33,9 +33,14 @@ struct PageHostLoadTests {
     @Test
     @MainActor
     func `an unroutable port is a load failure with a next move`() async throws {
+        // Port 9 (discard) is below the ephemeral range (49152-65535), so no
+        // outgoing connection or fixture server in a parallel suite can be
+        // handed it; it is privileged, so only root could listen on it, and
+        // macOS ships the discard service disabled. A port inside the ephemeral
+        // range can be held by another process, making the load succeed.
         let host = PageHost()
         do {
-            _ = try await host.load(#require(URL(string: "http://127.0.0.1:65533/nothing")))
+            _ = try await host.load(#require(URL(string: "http://127.0.0.1:9/nothing")))
             Issue.record("expected a load failure")
         } catch let error as SleepyError {
             #expect(error.kind == .loadFailure)

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Copy fixture</title>
+</head>
+<body>
+  <input id="t" value="PAGE-COPY-SENTINEL-42">
+  <button id="b" onclick="var t = document.getElementById('t'); t.select(); document.title = 'copied:' + document.execCommand('copy')">copy</button>
+</body>
+</html>

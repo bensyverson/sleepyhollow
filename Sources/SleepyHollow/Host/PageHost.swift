@@ -263,6 +263,7 @@ public final class PageHost {
         // Before the web view: WebKit reads the app accent into the page's
         // creation parameters.
         AccentPin.ensureApplied()
+        PasteboardIsolation.ensureApplied()
         let configuration = WKWebViewConfiguration()
         if let group {
             group.configure(configuration)

@@ -129,6 +129,12 @@ off-screen window, so pages animate and focus works as in a browser (pass
 to upsample, so it fails loudly on a non-Retina host instead of quietly
 rendering soft.
 
+Creating a `PageHost` also changes two process-wide things: it pins the app
+accent color (`AccentPin`) and redirects the general pasteboard to a private
+one, so a page's copy never lands on your clipboard. If your app has its own
+UI and wants pages to use the real clipboard, set
+`PageHost.clipboardIsolation = .shared`.
+
 ```swift
 import SleepyHollow
 

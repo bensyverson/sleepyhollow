@@ -21,7 +21,7 @@ struct DoctorCommand: AsyncParsableCommand {
         commandName: "doctor",
         abstract: "Diagnose the environment: the binary, WebKit's sandbox, the sessions directory, temp.",
         discussion: """
-        Runs five checks in order — binary, webkit, accent (native controls drawn in the default blue accent, not this Mac's), sessions, temp — and reports each as ok or failed with a next move. The first failure is usually the cause of any that follow, so that is the one on stderr.
+        Runs six checks in order — binary, webkit, accent (native controls drawn in the default blue accent, not this Mac's), pasteboard (a page's copy kept off your clipboard), sessions, temp — and reports each as ok or failed with a next move. The first failure is usually the cause of any that follow, so that is the one on stderr.
 
         `webkit` loads about:blank: WebKit needs its web content process to render even nothing, so a denial shows up here without a network or a server.
 
