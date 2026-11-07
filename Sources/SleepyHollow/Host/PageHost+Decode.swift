@@ -15,6 +15,24 @@ public extension PageHost {
     /// let title = try await host.evaluate("return document.title;", as: String.self)
     /// ```
     ///
+    /// **Return a diagnostic, not a bool.** A probe that answers
+    /// `'front-truncated'` or `'scale 0.05, wanted 1.8'` makes a red test say
+    /// what the page actually did; a bare `false` says only that something is
+    /// wrong. One round trip can compose the whole sentence page-side:
+    ///
+    /// ```swift
+    /// let verdict = try await host.evaluate(
+    ///     """
+    ///     const el = document.querySelector('.title');
+    ///     if (!el) return 'no .title';
+    ///     return el.scrollWidth > el.clientWidth ? 'truncated' : 'fits';
+    ///     """,
+    ///     as: String.self,
+    ///     in: .page,
+    /// )
+    /// #expect(verdict == "fits")
+    /// ```
+    ///
     /// `as:` is required on purpose: an inferred `String` result would pick
     /// the JSON-text overload, which is the very trap this one exists to
     /// remove.

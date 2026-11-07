@@ -15,7 +15,9 @@ public extension PageHost {
     /// without an answer.
     ///
     /// JSON *text*: a string comes back quoted (`"\"ok\""`). To get a Swift
-    /// value, use ``evaluate(_:as:arguments:in:budget:)``, which decodes it.
+    /// value, use ``evaluate(_:as:arguments:in:budget:)``, which decodes it —
+    /// and which shows the house pattern of returning a diagnostic sentence
+    /// rather than a bool.
     ///
     /// The value is stringified *page-side* (`JSON.stringify`), which is the
     /// honest transport: what the page can serialize is what crosses, and

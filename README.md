@@ -79,6 +79,10 @@ Take a screenshot:
 sleepy shot https://example.com/ --out shot.png
 ```
 
+For a sharp Retina image add `--scale 2` (or 3): layout and breakpoints stay
+at `--size`, only the pixels get denser, and it works on a `--selector` crop
+too. `sleepy resize` changes an open session's viewport without reloading.
+
 Assert the page reads and fits — each exits 1 when it finds something, so it
 drops straight into a script:
 
@@ -103,6 +107,12 @@ public contract (0 success, 1 clean negative, 2 usage error, 3 timeout, 4 load
 failure, 5 environment error) — see `Sources/SleepyHollow/Core/ExitStatus.swift`
 for the full table.
 
+`eval` runs your script in the page's own world by default, so page globals
+and upgraded custom elements are visible. `--world isolated` runs it in
+Sleepy's world instead: it shares the DOM (nodes, attributes, shadow roots)
+but none of the page's JavaScript, so page classes and globals read as
+`undefined`. `sleepy eval --help` has the details.
+
 Need a page to outlive one invocation? `sleepy open <url> --name <n>` starts a
 named session; every verb then takes `--session <n>` to act on that same live
 page, `sleepy sessions list` shows what's open, and `sleepy close <n>` ends
@@ -112,18 +122,40 @@ you attach a `--jar` for cookies that should outlive it.
 ## Embedding the library
 
 `PageHost` is the same headless browser the CLI drives, usable directly from
-Swift. Two of its defaults are worth knowing if you're coming from a raw
-`WKWebView`: a host never follows the Mac's Dark Mode setting (see
-`ColorTheme`), and a pinned `--scale`/`ShotScale` refuses to upsample, so it
-fails loudly on a non-Retina host instead of quietly rendering soft.
+Swift. Defaults worth knowing if you're coming from a raw `WKWebView`: a host
+never follows the Mac's Dark Mode setting (see `ColorTheme`); it lives in an
+off-screen window, so pages animate and focus works as in a browser (pass
+`hosting: .windowless` to opt out); and a pinned `--scale`/`ShotScale` refuses
+to upsample, so it fails loudly on a non-Retina host instead of quietly
+rendering soft.
 
 ```swift
 import SleepyHollow
 
 let host = PageHost(options: LoadOptions(size: ViewportSize(width: 1280, height: 800)))
 let facts = try await host.load(url)
+
+// Ask the page a question and get a typed answer. Return a sentence rather
+// than a bool, so a failing test says what was actually there.
+let verdict = try await host.evaluate(
+    "const h = document.querySelector('h1'); return h ? 'h1 reads ' + h.textContent : 'no h1';",
+    as: String.self,
+    in: .page,
+)
+
+// After a click or a submit, wait inside the page for what should follow.
+try await host.waitUntil("document.querySelector('.result') !== null")
+
+// Check another breakpoint without reloading, then capture at 2x.
+host.resize(to: ViewportSize(width: 390, height: 844))
 let shot = try await ShotOperation(scale: try ShotScale(factor: 2)).execute(on: host)
 ```
+
+A script that throws surfaces as `EvaluationError` carrying the page's own
+message; `host.navigationCount` and `waitForNavigation(after:)` tell a real
+navigation from a same-document change; and
+`LoadOptions(pageScripts: .disabled)` (the CLI's `--no-js`) loads a page with
+its JavaScript off.
 
 Hosts that need one identity — sign in once, then render many pages — are
 built as members of a `HostGroup`, which owns the cookie store and the jar

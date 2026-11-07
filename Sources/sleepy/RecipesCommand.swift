@@ -63,6 +63,13 @@ struct RecipesCommand: ParsableCommand {
       sleepy resize --session app 390x844
       sleepy shot --session app --out narrow.png
 
+    Make a screenshot Retina-sharp, whole page or one element → shot --scale
+    2 (or 3). Layout, breakpoints and --size are unchanged; only the raster is
+    denser. A full-page bitmap is width x height x scale squared x 4 bytes
+    before PNG encoding, so 1280 x 9,000 points at 2x is about 184 MB
+      sleepy shot http://localhost:3000/ --size 1280x800 --scale 2 --out retina.png
+      sleepy shot http://localhost:3000/ --selector '.card' --scale 2 --out card.png
+
     Compare a screenshot against a baseline → peep compare (PixelPeeper, a
     sibling tool: it works on any PNG in pixel space; Sleepy owns the page
     and its CSS-px coordinates)
@@ -104,8 +111,13 @@ struct RecipesCommand: ParsableCommand {
       sleepy load http://localhost:3000/app
       sleepy console http://localhost:3000/app --format text
 
-    Get a value out of the page → eval
+    Get a value out of the page → eval. The script runs in the page's own
+    world by default, so page globals and upgraded custom elements are there;
+    --world isolated shares the DOM but none of the page's JavaScript. For a
+    check, return a sentence that says what was found rather than a bool: a
+    failing run then explains itself
       sleepy eval http://localhost:3000/ --js 'return document.title;'
+      sleepy eval http://localhost:3000/ --js "const h = document.querySelector('h1'); return h ? 'h1 reads ' + h.textContent.trim() : 'no h1 on the page';"
 
     Something failed and you don't know why → doctor
       sleepy doctor
