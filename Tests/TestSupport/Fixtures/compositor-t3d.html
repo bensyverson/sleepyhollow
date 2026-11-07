@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>True-3D fixture</title>
+<!-- Four cases, one solid color each, so a test can find every shape by
+     color. Shoot at 1000x260. Expected geometry: § 2 of
+     project/2026-11-06-compositor-capture.md, asserted by
+     CaptureShotCompositorTests. -->
+<style>
+  body { margin: 0; padding: 24px; display: flex; gap: 24px; font: 16px system-ui; background: #fff; }
+  .cell { width: 220px; height: 160px; position: relative; }
+  /* A. perspective on the parent, rotateY on the child: a trapezoid whose
+     right (near) edge is taller than its left (far) edge. */
+  .stage { perspective: 600px; width: 220px; height: 160px; }
+  #a { height: 160px; background: rgb(42, 82, 168); transform: rotateY(-50deg); }
+  /* B. backface-visibility: the flipper shows its green front; the orange
+     back face is turned away and must not paint. */
+  .flipper { display: grid; transform-style: preserve-3d; height: 160px; }
+  .face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  #b-front { background: rgb(21, 102, 79); }
+  #b-back { background: rgb(194, 70, 28); transform: rotateY(180deg); }
+  /* C. perspective() in the element's own transform, rotateX: the top edge
+     (tilted away) is narrower than the bottom edge. */
+  #c { width: 220px; height: 160px; background: rgb(140, 40, 160); transform: perspective(400px) rotateX(45deg); }
+  /* D. preserve-3d depth: red is first in the DOM but nearer (translateZ
+     +60px); yellow is later but farther (-60px). Where they overlap, red
+     must win. Flattened, DOM order wins and yellow paints on top. */
+  .depth { perspective: 600px; width: 220px; height: 160px; }
+  .depth-inner { position: relative; width: 220px; height: 160px; transform-style: preserve-3d; }
+  #d-near { position: absolute; left: 20px; top: 20px; width: 120px; height: 100px; background: rgb(220, 20, 20); transform: translateZ(60px); }
+  #d-far { position: absolute; left: 80px; top: 40px; width: 120px; height: 100px; background: rgb(240, 200, 0); transform: translateZ(-60px); }
+</style>
+<div class="cell"><div class="stage"><div id="a"></div></div></div>
+<div class="cell"><div class="stage"><div class="flipper"><div id="b-front" class="face"></div><div id="b-back" class="face"></div></div></div></div>
+<div class="cell"><div id="c"></div></div>
+<div class="cell"><div class="depth"><div class="depth-inner"><div id="d-near"></div><div id="d-far"></div></div></div></div>

@@ -91,7 +91,13 @@ extension ShotGrid {
                 nextMove: "Retry; if this persists, it is a seam bug against CGContext.makeImage.",
             )
         }
-        return ShotCapture(image: image, rect: capture.rect, scale: capture.scale, flattened3D: capture.flattened3D)
+        return ShotCapture(
+            image: image,
+            rect: capture.rect,
+            scale: capture.scale,
+            flattened3D: capture.flattened3D,
+            renderer: capture.renderer,
+        )
     }
 
     // MARK: - Drawing

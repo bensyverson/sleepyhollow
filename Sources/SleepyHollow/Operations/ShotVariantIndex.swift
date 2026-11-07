@@ -24,23 +24,30 @@ public struct ShotVariantIndex: Friendly {
         /// The appearance it rendered under.
         public let theme: ColorTheme
 
+        /// Which renderer drew it (``ShotRenderer``): each combination is
+        /// its own render, so one can fall back while another does not.
+        public let renderer: ShotRenderer
+
         /// Creates an entry.
-        public init(file: String, width: Int, height: Int, scale: Int, theme: ColorTheme) {
+        public init(file: String, width: Int, height: Int, scale: Int, theme: ColorTheme, renderer: ShotRenderer) {
             self.file = file
             self.width = width
             self.height = height
             self.scale = scale
             self.theme = theme
+            self.renderer = renderer
         }
 
-        /// Describes `variant` as the file `base` names it.
-        public init(variant: ShotPlan.Variant, base: String) {
+        /// Describes `variant`, drawn by `renderer`, as the file `base`
+        /// names it.
+        public init(variant: ShotPlan.Variant, base: String, renderer: ShotRenderer) {
             self.init(
                 file: variant.file(base: base),
                 width: variant.size.width,
                 height: variant.size.height,
                 scale: variant.scale.factor,
                 theme: variant.theme,
+                renderer: renderer,
             )
         }
     }
@@ -53,8 +60,11 @@ public struct ShotVariantIndex: Friendly {
         self.variants = variants
     }
 
-    /// Describes every render `plan` produces, written off `base`.
-    public init(plan: ShotPlan, base: String) {
-        self.init(variants: plan.variants.map { Entry(variant: $0, base: base) })
+    /// Describes every render of a sweep, in order, written off `base`.
+    ///
+    /// Built after rendering rather than from the plan alone, because which
+    /// renderer drew a combination is only known once it has been drawn.
+    public init(base: String, renders: [(variant: ShotPlan.Variant, renderer: ShotRenderer)]) {
+        self.init(variants: renders.map { Entry(variant: $0.variant, base: base, renderer: $0.renderer) })
     }
 }

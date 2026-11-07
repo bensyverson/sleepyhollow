@@ -112,13 +112,23 @@ struct PageScriptsTests {
         }
     }
 
+    /// The compositor draws the fallback's CSS 3D faithfully — its page-side
+    /// `<video>` check runs in the isolated world, which scripts-off leaves
+    /// open — and a windowless host's `takeSnapshot` fallback still flags it.
     @Test
     @MainActor
-    func `a shot keeps its CSS 3D caveat`() async throws {
+    func `a shot renders through the compositor, and the flat fallback keeps its CSS 3D caveat`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let host = try await host(loading: "no-js.html", base: base)
             let output: ShotOperation.Output = try await host.execute(ShotOperation())
-            #expect(output.flattened3D.map(\.path) == ["div#tilt"])
+            #expect(output.renderer == .compositor)
+            #expect(output.flattened3D.isEmpty)
+
+            let windowless = PageHost(options: LoadOptions(pageScripts: .disabled), hosting: .windowless)
+            _ = try await windowless.load(#require(URL(string: "no-js.html", relativeTo: base)))
+            let flat: ShotOperation.Output = try await windowless.execute(ShotOperation())
+            #expect(flat.renderer == .snapshot(.windowless))
+            #expect(flat.flattened3D.map(\.path) == ["div#tilt"])
         }
     }
 

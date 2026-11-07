@@ -24,7 +24,10 @@ struct NoJSGoldenTests {
         }
     }
 
-    @Test func `a shot draws the fallback and keeps its 3D caveat`() async throws {
+    /// The noscript fallback's CSS 3D goes through the compositor like any
+    /// other page's, so it draws faithfully and earns no caveat
+    /// (`ShotFlattened3DGoldenTests` covers the flat fallback's caveat).
+    @Test func `a shot draws the fallback through the compositor, without a caveat`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let url = baseURL.appendingPathComponent(Self.fixture).absoluteString
             let out: URL = FileManager.default.temporaryDirectory
@@ -35,8 +38,7 @@ struct NoJSGoldenTests {
             ])
             #expect(result.exitCode == 0, "stderr: \(result.standardError)")
             #expect(FileManager.default.fileExists(atPath: out.path))
-            #expect(result.standardError.contains("draws CSS 3D flat"), "\(result.standardError)")
-            #expect(result.standardError.contains("div#tilt"), "\(result.standardError)")
+            #expect(result.standardError.isEmpty, "\(result.standardError)")
         }
     }
 

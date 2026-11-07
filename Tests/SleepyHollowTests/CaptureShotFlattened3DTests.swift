@@ -12,12 +12,17 @@ import TestSupport
 /// `capture-3d.html` lays the four flagged cases out in its first row, the
 /// look-alikes that flatten faithfully in its second, and one more flagged
 /// case below the fold.
+///
+/// Every host here is windowless, so the shot falls back to `takeSnapshot`
+/// (``ShotRenderer/Fallback/windowless``): the finding belongs to that flat
+/// renderer, and a live host's compositor draws the same page in true 3D
+/// with nothing to report (`CaptureShotRendererTests`).
 @Suite("ShotOperation flattened 3D")
 struct CaptureShotFlattened3DTests {
     /// Loads the fixture and runs `operation` against it.
     @MainActor
     private func shoot(_ operation: ShotOperation, base: URL) async throws -> ShotOperation.Output {
-        let host = PageHost()
+        let host = PageHost(hosting: .windowless)
         _ = try await host.load(URL(string: "capture-3d.html", relativeTo: base)!)
         return try await host.execute(operation)
     }
@@ -119,7 +124,7 @@ struct CaptureShotFlattened3DTests {
     @MainActor
     func `the render stage carries the finding for an in-process embedder`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
-            let host = PageHost()
+            let host = PageHost(hosting: .windowless)
             _ = try await host.load(URL(string: "capture-3d.html", relativeTo: base)!)
             let capture: ShotCapture = try await ShotOperation(region: .element("#case-own")).render(on: host)
             #expect(capture.flattened3D.map(\.path) == ["div#own"])
@@ -140,7 +145,7 @@ struct CaptureShotFlattened3DTests {
     @MainActor
     func `a page with no 3D flags nothing`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
-            let host = PageHost()
+            let host = PageHost(hosting: .windowless)
             _ = try await host.load(URL(string: "capture-tall.html", relativeTo: base)!)
             let output = try await host.execute(ShotOperation(region: .fullPage))
             #expect(output.flattened3D.isEmpty)

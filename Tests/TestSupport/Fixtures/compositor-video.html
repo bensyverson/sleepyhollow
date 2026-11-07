@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Video beside 3D</title>
+<!-- A <video> the compositor draws blank (a remote-hosted layer), a CSS 3D
+     tile the snapshot draws flat, and a plain swatch with neither. Shoot at
+     800x300.
+
+       #video  240x140 at (20, 20)   — magenta when ?video=<movie URL> plays
+       #tilted 220x140 at (300, 20)  — perspective: 600px, rotateY(-50deg)
+       #plain  200x140 at (560, 20)  — flat teal, no video, no 3D
+
+     With ?video= the page sets body[data-ready] once the movie has played
+     past 0.1 s; without it, at once (the element still has a box, which is
+     what a shot's fallback keys on). -->
+<style>
+  body { margin: 0; padding: 20px; display: flex; gap: 40px; background: #fff; }
+  #video { width: 240px; height: 140px; display: block; background: #ddd; }
+  .stage { perspective: 600px; width: 220px; height: 140px; }
+  #tilted { height: 140px; background: rgb(42, 82, 168); transform: rotateY(-50deg); }
+  #plain { width: 200px; height: 140px; background: rgb(0, 160, 160); }
+</style>
+<video id="video" muted autoplay loop playsinline></video>
+<div class="stage"><div id="tilted"></div></div>
+<div id="plain"></div>
+<script>
+  const video = document.getElementById("video");
+  const source = new URLSearchParams(location.search).get("video");
+  if (source) {
+    video.src = source;
+    video.addEventListener("timeupdate", () => { if (video.currentTime > 0.1) document.body.dataset.ready = "1"; });
+    video.play().catch((error) => { document.body.dataset.videoError = String(error); document.body.dataset.ready = "1"; });
+  } else {
+    document.body.dataset.ready = "1";
+  }
+</script>

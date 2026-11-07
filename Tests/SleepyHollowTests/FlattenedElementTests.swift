@@ -32,9 +32,10 @@ struct FlattenedElementTests {
     }
 
     @Test func `a shot's output carries the finding across the wire`() throws {
-        let output = ShotOperation.Output(images: [], flattened3D: [Self.back])
+        let output = ShotOperation.Output(images: [], renderer: .snapshot(.video), flattened3D: [Self.back])
         let decoded = try JSONDecoder().decode(ShotOperation.Output.self, from: JSONEncoder().encode(output))
         #expect(decoded.flattened3D == [Self.back])
+        #expect(decoded.renderer == .snapshot(.video))
     }
 
     @Test func `fitting and gridding keep the finding, since the rect is unchanged`() throws {

@@ -24,10 +24,16 @@ import WebKit
 /// shot; if the page's *next* change is on a timer, that is a `--wait-for`
 /// condition, not a delay.
 ///
-/// The snapshot paints CSS 3D flat: `takeSnapshot` reduces each layer's
-/// transform to 2D affine, losing perspective, `preserve-3d` depth order and
-/// hidden back faces. The render stage therefore also asks the page which
-/// elements in the captured rect that changes, and carries them as
+/// The render goes through the compositor by default: `CARenderer` draws the
+/// page's live Core Animation layer tree, so CSS 3D — perspective,
+/// `preserve-3d` depth order, hidden back faces — and `backdrop-filter` come
+/// out as a browser draws them, and a flat page matches `takeSnapshot` to
+/// anti-aliasing. The compositor draws a `<video>` blank, so a shot whose
+/// area holds one falls back to `takeSnapshot`, as does a host it cannot run
+/// on; ``Output/renderer`` names which drew the shot and why
+/// (``ShotRenderer``). The fallback paints CSS 3D flat, reducing each
+/// layer's transform to 2D affine, so a fallback render also asks the page
+/// which elements in the captured rect that changes, and carries them as
 /// ``Output/flattened3D`` (and ``ShotCapture/flattened3D``) — a fact on a
 /// successful result, never a failure (``FlattenedElement``).
 ///
@@ -51,16 +57,24 @@ public struct ShotOperation: ExecutablePageOperation {
         /// The elements in the rendered area that the flat snapshot draws
         /// wrong — CSS 3D whose perspective, depth or hidden back face
         /// `takeSnapshot` drops (see ``FlattenedElement``). Empty when the
-        /// render is faithful.
+        /// render is faithful, which a ``ShotRenderer/compositor`` render
+        /// always is.
         ///
         /// Once per render, not per image: a tiled shot's strips all come
         /// from the one render this describes, so an embedder or the CLI
         /// reports it once.
         public let flattened3D: [FlattenedElement]
 
-        /// Wraps the captures and what the render could not draw faithfully.
-        public init(images: [ShotImage], flattened3D: [FlattenedElement] = []) {
+        /// Which renderer drew the images — the compositor, or the
+        /// `takeSnapshot` fallback and why (``ShotRenderer``). Once per
+        /// render, like ``flattened3D``.
+        public let renderer: ShotRenderer
+
+        /// Wraps the captures, the renderer that drew them, and what that
+        /// render could not draw faithfully.
+        public init(images: [ShotImage], renderer: ShotRenderer, flattened3D: [FlattenedElement] = []) {
             self.images = images
+            self.renderer = renderer
             self.flattened3D = flattened3D
         }
     }
@@ -119,13 +133,17 @@ public struct ShotOperation: ExecutablePageOperation {
     @MainActor
     public func execute(on host: PageHost) async throws -> Output {
         let viewportHeight = CGFloat(host.viewport.height)
-        let capture = try await render(on: host)
+        let (capture, renderer) = try await rendered(on: host)
         let strips = try tiled(capture, viewportHeight: viewportHeight)
         let fitted = try strips.map { try fit?.applied(to: $0) ?? $0 }
         let gridded = try fitted.map { capture in
             try grid.map { try ShotGrid.draw($0, on: capture, pixelsPerCSSPixel: capture.pixelsPerCSSPixel) } ?? capture
         }
-        return try Output(images: gridded.map { try $0.encoded() }, flattened3D: capture.flattened3D)
+        return try Output(
+            images: gridded.map { try $0.encoded() },
+            renderer: renderer,
+            flattened3D: capture.flattened3D,
+        )
     }
 
     /// The tile stage: the capture as itself when `--tile` wasn't asked for,
@@ -140,8 +158,9 @@ public struct ShotOperation: ExecutablePageOperation {
         return try ShotTile(height: height).applied(to: capture)
     }
 
-    /// The render stage: resolves the region to a document rect and
-    /// snapshots exactly that, at ``scale`` device pixels per CSS px.
+    /// The render stage: resolves the region to a document rect, chooses the
+    /// renderer (``ShotRenderer``), and draws exactly that rect at ``scale``
+    /// device pixels per CSS px.
     ///
     /// This is the `CGImage` path. ``execute(on:)`` is the encoded one — it
     /// runs this and then tiles, fits, grids and PNG-encodes, because PNG
@@ -153,7 +172,8 @@ public struct ShotOperation: ExecutablePageOperation {
     ///
     /// The returned ``ShotCapture`` is self-describing: ``ShotCapture/rect``
     /// is the document rect in CSS px, ``ShotCapture/scale`` the density it
-    /// was rasterized at, and ``ShotCapture/encoded()`` is still available for
+    /// was rasterized at, ``ShotCapture/renderer`` what drew it, and
+    /// ``ShotCapture/encoded()`` is still available for
     /// a caller that wants both. The readout stages — ``ShotTile``,
     /// ``ShotFit``, ``ShotGrid`` — are functions over captures, so an embedder
     /// composing its own pipeline starts here.
@@ -165,12 +185,20 @@ public struct ShotOperation: ExecutablePageOperation {
     ///   ``execute(on:)`` reports: ``SleepyError/Kind/negative`` for an
     ///   element region that matches nothing or has no rendered area, and
     ///   ``SleepyError/Kind/environment`` when the page's geometry or the
-    ///   snapshot cannot be read, or ``scale`` is denser than the host's own
-    ///   raster; ``SleepyError/Kind/timeout`` when the page does not answer the
-    ///   snapshot, or a geometry read, within ``PageHost/callBudget`` (see
-    ///   ``PageHost/snapshot(_:budget:)``).
+    ///   snapshot cannot be read, the compositor cannot render, or ``scale``
+    ///   is denser than the host's own raster; ``SleepyError/Kind/timeout``
+    ///   when the page does not answer the snapshot, the compositor's
+    ///   presentation update, or a geometry read, within
+    ///   ``PageHost/callBudget`` (see ``PageHost/snapshot(_:budget:)``).
     @MainActor
     public func render(on host: PageHost) async throws -> ShotCapture {
+        try await rendered(on: host).capture
+    }
+
+    /// ``render(on:)``, with the renderer it chose kept non-optional for
+    /// ``Output/renderer``.
+    @MainActor
+    private func rendered(on host: PageHost) async throws -> (capture: ShotCapture, renderer: ShotRenderer) {
         let webView = host.webView
         let originalFrame = webView.frame
         let needsFullHeight = region != .viewport
@@ -185,20 +213,13 @@ public struct ShotOperation: ExecutablePageOperation {
         }
 
         let rect: CGRect = try await resolvedRect(on: host, frame: webView.frame)
-        let flattened: [FlattenedElement] = try await Self.flattened3D(in: rect, on: host)
-        let configuration = WKSnapshotConfiguration()
-        configuration.rect = rect
-        let image: NSImage = try await host.snapshot(configuration)
-        try requireDensity(of: image)
-        let pixels = CGSize(width: rect.width * CGFloat(scale.factor), height: rect.height * CGFloat(scale.factor))
-        guard let rasterized = ShotCapture.rasterize(image, atPixelSize: pixels) else {
-            throw SleepyError(
-                kind: .environment,
-                message: "Could not rasterize the snapshot.",
-                nextMove: "Retry; if this persists, it is a seam bug against WKWebView.takeSnapshot.",
-            )
+        let renderer: ShotRenderer = try await chooseRenderer(for: rect, on: host)
+        switch renderer {
+        case .compositor:
+            return try await (compositorCapture(of: rect, on: host), renderer)
+        case let .snapshot(fallback):
+            return try await (snapshotCapture(of: rect, on: host, because: fallback), renderer)
         }
-        return ShotCapture(image: rasterized, rect: rect, scale: scale.factor, flattened3D: flattened)
     }
 
     /// The elements in `rect` that the flat snapshot will draw wrong, from
@@ -209,7 +230,7 @@ public struct ShotOperation: ExecutablePageOperation {
     /// viewport shot, and the document for every other region, since those
     /// have reset the scroll. Asked before the snapshot, against the same
     /// layout it will paint.
-    private static func flattened3D(in rect: CGRect, on host: PageHost) async throws -> [FlattenedElement] {
+    static func flattened3D(in rect: CGRect, on host: PageHost) async throws -> [FlattenedElement] {
         let area: [String: Double] = [
             "x": Double(rect.minX), "y": Double(rect.minY),
             "width": Double(rect.width), "height": Double(rect.height),
@@ -217,9 +238,11 @@ public struct ShotOperation: ExecutablePageOperation {
         return try await SleepyHelpers.call("flattened3D", options: ["area": area], as: [FlattenedElement].self, on: host)
     }
 
-    /// Refuses a `--scale` denser than the snapshot WebKit actually produced.
+    /// Refuses a `--scale` denser than `available`, the density the renderer's
+    /// source actually holds: the snapshot's own raster, or the backing scale
+    /// WebKit painted the compositor's tiles at.
     ///
-    /// The source raster's density is the *host's* screen backing scale, and
+    /// Either is the *host's* screen backing scale, and
     /// nothing in a headless view moves it (measured:
     /// `project/2026-08-28-offscreen-window-host.md` § Density). Above it the
     /// only way to fill the requested pixels is to upscale, which would hand
@@ -228,8 +251,7 @@ public struct ShotOperation: ExecutablePageOperation {
     ///
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/environment``
     ///   naming the host's density and the flag that exceeded it.
-    private func requireDensity(of image: NSImage) throws {
-        let available: CGFloat = ShotCapture.density(of: image)
+    func requireDensity(available: CGFloat) throws {
         // A hair of tolerance: the density is a ratio of measured numbers.
         guard CGFloat(scale.factor) > available + 0.01 else { return }
         throw SleepyError(

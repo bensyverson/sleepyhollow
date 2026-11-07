@@ -26,9 +26,13 @@ import SleepyHollow
 /// overlapping strips written as `<out>-01.png`, `<out>-02.png` … with a
 /// ``ShotIndex`` on stdout saying which document rows each file holds.
 ///
-/// A render whose area holds CSS 3D the flat snapshot draws wrong
-/// (``ShotOperation/Output/flattened3D``) earns a ``Caveat`` on stderr —
-/// once per render, never silenced by `--quiet`, exit still 0.
+/// A shot renders through the compositor, which draws CSS 3D as a browser
+/// does. One whose area holds a `<video>` falls back to `takeSnapshot`
+/// (``ShotOperation/Output/renderer``), and that earns a ``Caveat`` on
+/// stderr naming the renderer and why — followed by a second for any CSS 3D
+/// the flat snapshot draws wrong (``ShotOperation/Output/flattened3D``).
+/// Once per render, never silenced by `--quiet`, exit still 0. The tile and
+/// sweep indexes on stdout name the renderer too.
 ///
 /// Exit 1 is `--selector`'s clean negative: the selector matched nothing, or
 /// matched something with no rendered area — either way there is no crop to
@@ -62,7 +66,7 @@ struct ShotCommand: AsyncParsableCommand {
 
         Pages animate as in a browser: requestAnimationFrame, CSS transitions and Web Animations all run, so a shot taken while something is still moving can differ from one run to the next. Wait for the state it ends in with --wait-for — a selector the page sets when done, or js:document.getAnimations().every(a => a.playState !== 'running') — rather than sleeping.
 
-        CSS 3D: this renderer reduces every transform to 2D, so perspective foreshortening, preserve-3d depth order and backface-visibility: hidden are lost. When the captured area holds an element that changes because of it, the PNG is still written and the exit is still 0, but stderr says the shot draws CSS 3D flat, with how many elements and the first few by selector. It is a correctness caveat, not a tip: --quiet does not silence it. A plain 2D transform, or a 3D rotation with no perspective above it, draws correctly and is not reported. For a faithful 3D render, capture the page in Chrome.
+        Renderer: a shot is drawn by the compositor, as a browser draws the page — CSS 3D perspective, preserve-3d depth order, backface-visibility and backdrop-filter included. The compositor draws a <video> blank, so a shot whose area holds one falls back to WebKit's takeSnapshot, which draws the video but flattens CSS 3D and drops backdrop-filter. A fallback still writes the PNG and exits 0, but stderr says the shot was drawn by takeSnapshot and why, then, if the area holds CSS 3D, that the shot draws CSS 3D flat, with how many elements and the first few by selector. These are correctness caveats, not tips: --quiet does not silence them. To keep a shot on the compositor, crop the video out with --selector or --rect. The --tile and sweep indexes on stdout carry the renderer as {"name": "compositor"} or {"name": "snapshot", "fallback": "video"}.
 
         Exit codes: 0 success, 1 --selector matched nothing or matched an element with no rendered area (no PNG written; the reason and the element's rect are on stderr), 2 usage, 3 budget ran out, 4 load failure, 5 no such session or a --scale denser than this host renders.
         """,
@@ -217,10 +221,11 @@ struct ShotCommand: AsyncParsableCommand {
             )
         }
         if let strips {
-            try writeStrips(output.images, named: strips.base)
+            try writeStrips(output.images, named: strips.base, renderer: output.renderer)
         } else {
             try out.sink.write(first.png)
         }
+        Caveat.emit(Caveat.forRenderer(output.renderer))
         Caveat.emit(Caveat.forShot(flattened3D: output.flattened3D))
         Nudge.emit(
             Nudge.forShot(Nudge.ShotFacts(
@@ -258,12 +263,12 @@ struct ShotCommand: AsyncParsableCommand {
     /// even for a page that fits in a single strip: what a caller has to
     /// parse should follow from the flags it passed, not from how tall the
     /// page turned out to be.
-    private func writeStrips(_ images: [ShotImage], named base: String) throws {
+    private func writeStrips(_ images: [ShotImage], named base: String, renderer: ShotRenderer) throws {
         let files: [String] = images.indices.map { Self.numbered(base, strip: $0 + 1) }
         for (image, file) in zip(images, files) {
             try OutputSink(path: file).write(image.png)
         }
-        let index = ShotIndex(tiles: zip(files, images).map(ShotIndex.Tile.init(file:image:)))
+        let index = ShotIndex(tiles: zip(files, images).map(ShotIndex.Tile.init(file:image:)), renderer: renderer)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try OutputSink(path: nil).write(encoder.encode(index))

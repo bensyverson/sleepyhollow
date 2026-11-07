@@ -34,7 +34,7 @@ struct ShotIndexTests {
     }
 
     @Test func `the index round-trips and prints the documented keys`() throws {
-        let index = ShotIndex(tiles: [ShotIndex.Tile(file: "strips-01.png", image: Self.image)])
+        let index = ShotIndex(tiles: [ShotIndex.Tile(file: "strips-01.png", image: Self.image)], renderer: .compositor)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(index)
@@ -43,6 +43,7 @@ struct ShotIndexTests {
         #expect(text.contains("\"file\":\"strips-01.png\""))
         #expect(text.contains("\"y\":960"))
         #expect(text.contains("\"height\":2000"))
+        #expect(text.contains("\"renderer\":{\"name\":\"compositor\"}"))
         #expect(try JSONDecoder().decode(ShotIndex.self, from: data) == index)
     }
 }

@@ -114,6 +114,7 @@ public struct ShotTile: Friendly {
                 rect: stripRect,
                 scale: capture.scale,
                 flattened3D: capture.flattened3D.filter { Self.reaches($0.rect, into: stripRect) },
+                renderer: capture.renderer,
             ))
             if top + stripHeight >= bottom { break }
             top += height - overlap

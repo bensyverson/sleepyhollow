@@ -122,6 +122,13 @@ public final class OffscreenWindow {
     /// in sRGB.
     public let window: NSWindow
 
+    /// Whether the hosted page really is live: ``Rendering/live`` was asked
+    /// for *and* WebKit accepted the occlusion override. `false` for
+    /// ``Rendering/hidden``, and for ``Rendering/live`` on a WebKit that no
+    /// longer has the private selector — the case a compositor shot must
+    /// not trust, since a hidden page commits no frames to draw.
+    public let isLive: Bool
+
     /// An `NSWindow` that answers `true` to `isKeyWindow` and `isMainWindow`
     /// without AppKit ever making it so.
     ///
@@ -180,9 +187,7 @@ public final class OffscreenWindow {
         // Parking is asserted, not assumed: `contentRect` is honoured, but a
         // borderless window can still be nudged by AppKit's constrain pass.
         window.setFrameOrigin(Self.parkedOrigin)
-        if rendering == .live {
-            Self.disableWindowOcclusionDetection(on: view)
-        }
+        isLive = rendering == .live && Self.disableWindowOcclusionDetection(on: view)
     }
 
     /// Resizes the window and its content view together, keeping the window
@@ -235,11 +240,14 @@ public final class OffscreenWindow {
     /// The call is guarded by `responds(to:)`: on an OS where the selector is
     /// gone this is a no-op and the page falls back to ``Rendering/hidden``
     /// behaviour, which the rAF test will catch as a red rather than a lie.
-    private static func disableWindowOcclusionDetection(on view: NSView) {
+    ///
+    /// - Returns: whether the override was applied.
+    private static func disableWindowOcclusionDetection(on view: NSView) -> Bool {
         let selector = NSSelectorFromString("_setWindowOcclusionDetectionEnabled:")
-        guard view.responds(to: selector) else { return }
+        guard view.responds(to: selector) else { return false }
         typealias Setter = @convention(c) (AnyObject, Selector, ObjCBool) -> Void
         let setter = unsafeBitCast(view.method(for: selector), to: Setter.self)
         setter(view, selector, ObjCBool(false))
+        return true
     }
 }

@@ -36,6 +36,26 @@ struct CaveatTests {
         #expect(caveat.text.hasPrefix("sleepy: the 480@2x render draws CSS 3D flat"))
     }
 
+    @Test func `a fallback names takeSnapshot and why, on one line; the compositor earns none`() throws {
+        #expect(Caveat.forRenderer(.compositor) == nil)
+        let caveat = try #require(Caveat.forRenderer(.snapshot(.video)))
+        #expect(caveat.text.hasPrefix("sleepy: this shot was drawn by takeSnapshot, not the compositor"))
+        #expect(caveat.text.contains("<video>"))
+        #expect(caveat.text.contains("CSS 3D"))
+        #expect(!caveat.text.contains("\n"))
+    }
+
+    @Test(arguments: ShotRenderer.Fallback.allCases)
+    func `every fallback reason is spelled out`(fallback: ShotRenderer.Fallback) throws {
+        let caveat = try #require(Caveat.forRenderer(.snapshot(fallback)))
+        #expect(caveat.text.contains("because"))
+    }
+
+    @Test func `a sweep's renderer caveat names the render it belongs to`() throws {
+        let caveat = try #require(Caveat.forRenderer(.snapshot(.video), render: "480@2x"))
+        #expect(caveat.text.hasPrefix("sleepy: the 480@2x render was drawn by takeSnapshot"))
+    }
+
     @Test func `emit writes one line and takes no quiet switch`() throws {
         let pipe = Pipe()
         Caveat.emit(Caveat.forShot(flattened3D: [Self.element("div#card")]), to: pipe.fileHandleForWriting)

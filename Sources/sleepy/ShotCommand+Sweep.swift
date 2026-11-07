@@ -16,6 +16,7 @@ extension ShotCommand {
     struct Render {
         let variant: ShotPlan.Variant
         let images: [ShotImage]
+        let renderer: ShotRenderer
         let flattened3D: [FlattenedElement]
     }
 
@@ -32,10 +33,11 @@ extension ShotCommand {
         let renders: [Render] = try await capture(plan, region: region, fit: fit, grid: grid)
         try writeVariants(renders, base: base)
         if sheet { try writeSheet(renders, base: base) }
-        try printIndex(plan, base: base)
-        // One caveat per render that earned one, each naming its combination:
-        // the sheet is a view of these renders, not a render of its own.
+        try printIndex(renders, base: base)
+        // The caveats each render earned, each naming its combination: the
+        // sheet is a view of these renders, not a render of its own.
         for render in renders {
+            Caveat.emit(Caveat.forRenderer(render.renderer, render: render.variant.label))
             Caveat.emit(Caveat.forShot(flattened3D: render.flattened3D, render: render.variant.label))
         }
     }
@@ -84,6 +86,7 @@ extension ShotCommand {
                         captures.append(Render(
                             variant: variant,
                             images: output.images,
+                            renderer: output.renderer,
                             flattened3D: output.flattened3D,
                         ))
                     }
@@ -117,8 +120,8 @@ extension ShotCommand {
     }
 
     /// Prints the JSON index that maps each file to the render it holds.
-    private func printIndex(_ plan: ShotPlan, base: String) throws {
-        let index = ShotVariantIndex(plan: plan, base: base)
+    private func printIndex(_ renders: [Render], base: String) throws {
+        let index = ShotVariantIndex(base: base, renders: renders.map { ($0.variant, $0.renderer) })
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try OutputSink(path: nil).write(encoder.encode(index))

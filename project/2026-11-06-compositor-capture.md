@@ -149,6 +149,8 @@ Pinning the window's color space also moves `takeSnapshot` on a hosted view. On 
 
 The render itself costs 8–9 ms quiet at either scale. Nearly all the gap at 2× is the readback, which an optimized build would shrink: a blit to a buffer, and a flip done by drawing rather than by copying rows. The first capture in a process is slow: 359 ms render at load ~100 (`t3d`, first line). That is the Metal and Core Animation renderer cold-starting, so a session amortizes it and a one-shot `sleepy shot` pays it once. The footprint grows by about 10 MB at 2× for the texture and the readback buffers, and does not grow across 20 captures. A 1× full-page capture of 12,982 px peaked at 189 MB.
 
+> **Built 2026-11-06 (leaf `8F71rl`).** The shipped readback (`CompositorReadback`) reads each strip straight into its rows of one output buffer and flips them in place with `memcpy` swaps. `scripts/measure-shot-renderers.sh 20` (debug build, 1280×800 `compositor-t3d.html`, medians of 20 after a warm-up, both arm orders, load 52–64): the compositor render stage costs 16.7–17.0 ms at 1× and 20.0–21.8 ms at 2×, against `takeSnapshot`'s render stage at 15.5–16.4 ms and 9.9–10.7 ms. So 2× is about twice `takeSnapshot`, not the ~6× above. Strips are cut at 32 MB of texture each (`CompositorRenderer.stripByteBudget`), so a 2× full page past one texture is stitched rather than refused (`CaptureShotCompositorTests`, 25,964 px).
+
 ## 6. Live-hosting side effects
 
 `anim` mode: `ND4YmR`'s fixture verbatim, read after `body[data-done]` (1 s on the page's clock).

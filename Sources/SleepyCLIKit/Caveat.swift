@@ -15,12 +15,19 @@ import SleepyHollow
 /// - **Never silenced.** ``emit(_:to:)`` takes no `quiet`: `--quiet`
 ///   silences advice, and this is not advice.
 /// - **Once per render.** A tiled shot is one render cut into files; a sweep
-///   is several renders, and each that earns a caveat names itself.
+///   is several renders, and each that earns a caveat names itself. A render
+///   can earn two: the fallback renderer it was drawn by, then the CSS 3D
+///   that renderer flattened.
 public enum Caveat: Friendly {
     /// The shot drew CSS 3D flat (``FlattenedElement``): `count` elements in
     /// its area, the first few by path. `render` names the sweep combination,
     /// or is `nil` for a single shot.
     case flattened3D(count: Int, paths: [String], render: String?)
+
+    /// The shot was drawn by `takeSnapshot` rather than the compositor
+    /// (``ShotRenderer/snapshot(_:)``), for `fallback`'s reason. `render`
+    /// names the sweep combination, or is `nil` for a single shot.
+    case fallbackRenderer(ShotRenderer.Fallback, render: String?)
 
     /// How many paths a caveat lists before counting the rest.
     public static let listedPaths: Int = 3
@@ -36,6 +43,23 @@ public enum Caveat: Friendly {
             return "sleepy: \(subject) draws CSS 3D flat — \(elements) perspective, preserve-3d or "
                 + "backface-visibility, which this renderer drops: \(named). "
                 + "For a faithful render, capture it in Chrome."
+        case let .fallbackRenderer(fallback, render):
+            let subject: String = render.map { "the \($0) render" } ?? "this shot"
+            return "sleepy: \(subject) was drawn by takeSnapshot, not the compositor, because "
+                + "\(Self.reason(fallback)). takeSnapshot "
+                + (fallback == .video ? "draws the video but " : "")
+                + "flattens CSS 3D and drops backdrop-filter."
+        }
+    }
+
+    /// Why the compositor could not draw the shot, as the clause after
+    /// "because".
+    private static func reason(_ fallback: ShotRenderer.Fallback) -> String {
+        switch fallback {
+        case .video: "its area holds a <video>, which the compositor draws blank"
+        case .windowless: "the page has no live window for the compositor to draw"
+        case .unavailable: "this Mac lacks a Metal device or WebKit's presentation-update hook"
+        case .tooWide: "it is wider than one GPU texture (\(ShotRenderer.maximumWidth) px)"
         }
     }
 
@@ -51,6 +75,17 @@ public enum Caveat: Friendly {
             paths: flattened3D.prefix(listedPaths).map(\.path),
             render: render,
         )
+    }
+
+    /// The caveat a shot's renderer earns: one for the `takeSnapshot`
+    /// fallback, naming why, and `nil` for the compositor.
+    ///
+    /// - Parameters:
+    ///   - renderer: ``ShotOperation/Output/renderer``.
+    ///   - render: the sweep combination's label, or `nil` for a single shot.
+    public static func forRenderer(_ renderer: ShotRenderer, render: String? = nil) -> Caveat? {
+        guard let fallback = renderer.fallback else { return nil }
+        return .fallbackRenderer(fallback, render: render)
     }
 
     /// Writes `caveat` to `handle` as one line, unless there is none.

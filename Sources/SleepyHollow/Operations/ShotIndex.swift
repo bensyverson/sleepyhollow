@@ -58,8 +58,13 @@ public struct ShotIndex: Friendly {
     /// The strips, top to bottom.
     public let tiles: [Tile]
 
+    /// Which renderer drew the capture the strips were cut from — one
+    /// render, so one renderer for every strip (``ShotRenderer``).
+    public let renderer: ShotRenderer
+
     /// Creates an index.
-    public init(tiles: [Tile]) {
+    public init(tiles: [Tile], renderer: ShotRenderer) {
         self.tiles = tiles
+        self.renderer = renderer
     }
 }
