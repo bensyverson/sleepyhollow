@@ -18,18 +18,22 @@ extension WaitEngine {
         lastFailure = nil
         // The load event's own check: a predicate already true settles without
         // waiting for the page's next tick.
-        if await check(expression, in: host) { return }
-        let settled: Bool = await race(
-            by: deadline,
-            accepting: { [weak self] text in await self?.accept(push: text) ?? true },
-            checking: { [weak self] in await self?.check(expression, in: host) ?? false },
-        )
-        guard settled else {
+        let sighting: Sighting = if await check(expression, in: host) {
+            Self.sighting(at: .now(), by: deadline)
+        } else {
+            await race(
+                by: deadline,
+                accepting: { [weak self] text in await self?.accept(push: text) ?? true },
+                checking: { [weak self] in await self?.check(expression, in: host) ?? false },
+            )
+        }
+        guard sighting == .inTime else {
+            let failure: String? = lastFailure.map { "The predicate threw every time it ran: \($0)." }
             throw timeout(
                 url: url,
                 budget: budget,
                 what: "did not satisfy --wait-for 'js:\(expression)'",
-                detail: lastFailure.map { "The predicate threw every time it ran: \($0)." },
+                detail: sighting == .late ? Self.heldLateDetail : failure,
                 nextMove: "Raise --budget, or fix the expression — it is evaluated in the page's own world and must become truthy.",
             )
         }

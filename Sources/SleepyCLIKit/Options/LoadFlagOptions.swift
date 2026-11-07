@@ -25,7 +25,8 @@ import SleepyHollow
 /// are repeatable *everywhere* and ``resolveLoadOptions(steps:)`` refuses a
 /// repeat on behalf of every verb that renders one page; `shot` skips that
 /// refusal by calling ``resolveLoadOptions(steps:size:theme:)`` with the pair
-/// for each combination.
+/// for each combination, and `overflow`, which sweeps `--size` alone, calls
+/// ``resolveSizeSweepOptions(steps:)``.
 public struct LoadFlagOptions: ParsableArguments {
     /// How a `confirm()`/`prompt()` dialog is answered.
     public enum DialogChoice: String, ExpressibleByArgument, Friendly {
@@ -38,7 +39,7 @@ public struct LoadFlagOptions: ParsableArguments {
     @Option(
         name: [.long, .customLong("viewport")],
         parsing: .singleValue,
-        help: "Viewport size WxH (--viewport is the same flag), e.g. 1280x800, or a width alone (480 means 480x800). Default 1280x800. Repeatable on `shot`, which renders each size.",
+        help: "Viewport size WxH (--viewport is the same flag), e.g. 1280x800, or a width alone (480 means 480x800). Default 1280x800. Repeatable on `shot`, which renders each size, and on `overflow`, which checks each.",
     )
     public var size: [String] = []
 
@@ -225,13 +226,15 @@ public struct LoadFlagOptions: ParsableArguments {
         if theme.count > 1 { throw Self.repeatedAxis("--theme", count: theme.count) }
     }
 
-    /// The refusal a repeated axis earns outside `shot`.
-    private static func repeatedAxis(_ flag: String, count: Int) -> SleepyError {
-        SleepyError(
+    /// The refusal a repeated axis earns on a verb that does not sweep it,
+    /// naming the verbs that do.
+    static func repeatedAxis(_ flag: String, count: Int) -> SleepyError {
+        let overflow: String = flag == "--size" ? " `sleepy overflow` checks each size it is given." : ""
+        return SleepyError(
             kind: .usage,
             message: "'\(flag)' was given \(count) times, and this verb renders one page.",
             nextMove: "Pass a single \(flag) here. `sleepy shot` is the verb that sweeps sizes, "
-                + "scales and themes, writing one file per combination.",
+                + "scales and themes, writing one file per combination.\(overflow)",
         )
     }
 

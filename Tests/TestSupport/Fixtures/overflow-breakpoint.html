@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Overflow fixture (spills only at a narrow breakpoint)</title>
+  <style>
+    body { margin: 0; }
+    /* Fits a 1280px viewport, spills a 390px one: the page that passes at one
+       breakpoint and fails at another, which is why overflow sweeps --size. */
+    #hero { width: 800px; height: 40px; background: #3b5bdb; }
+  </style>
+</head>
+<body>
+  <h1>Fixed-width hero</h1>
+  <div id="hero"></div>
+  <p>Everything else fits any viewport.</p>
+</body>
+</html>

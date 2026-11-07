@@ -13,7 +13,8 @@ import Foundation
 /// **The host owns every clock, and the page does every check it can.** A
 /// condition already true when the load event fires settles immediately; one
 /// that never becomes true ends as a ``SleepyError/Kind/timeout`` naming the
-/// condition, never as a hang. A selector, a predicate and a page-posted
+/// condition, never as a hang — and one first seen holding only after the
+/// deadline is a timeout too, however it got there (``Sighting``). A selector, a predicate and a page-posted
 /// message all reach the host as a *push*, because the host's own re-check
 /// runs on the main actor and an embedding that saturates it never schedules
 /// one — measured as a 10s timeout on a page ready at 200 ms
@@ -84,7 +85,11 @@ final class WaitEngine {
     let condition: WaitCondition
 
     /// What the page pushes for the load in flight.
-    private var pushes: AsyncStream<String>?
+    ///
+    /// Internal rather than private so a test can hand the engine a stream
+    /// whose timing it controls; only ``startWatching(in:)`` sets it in
+    /// production.
+    var pushes: AsyncStream<String>?
 
     /// The last JavaScript failure a predicate check reported, from either
     /// side, so an exhausted budget can say *why* nothing ever became true.
@@ -191,23 +196,25 @@ final class WaitEngine {
                 nextMove: "Give --wait-for a valid CSS selector, or 'js:<expression>' for anything else.",
             )
         }
-        if first.truthy { return }
-
-        let matched: Bool = await race(
-            by: deadline,
-            accepting: { _ in true },
-            checking: { [weak self] in
-                guard let self else { return false }
-                let probe: Probe? = try? await probe(selector: selector, in: host)
-                return probe?.truthy == true
-            },
-        )
-        guard matched else {
+        let sighting: Sighting = if first.truthy {
+            Self.sighting(at: .now(), by: deadline)
+        } else {
+            await race(
+                by: deadline,
+                accepting: { _ in true },
+                checking: { [weak self] in
+                    guard let self else { return false }
+                    let probe: Probe? = try? await probe(selector: selector, in: host)
+                    return probe?.truthy == true
+                },
+            )
+        }
+        guard sighting == .inTime else {
             throw timeout(
                 url: url,
                 budget: budget,
                 what: "did not match --wait-for '\(selector)'",
-                detail: nil,
+                detail: sighting == .late ? Self.heldLateDetail : nil,
                 nextMove: "Raise --budget, or check the selector against the page you get with --wait-for load.",
             )
         }
@@ -250,13 +257,13 @@ final class WaitEngine {
         }
         // Nothing to check host-side: only the page knows, and it says so by
         // posting. The race carries the deadline alone.
-        let posted: Bool = await race(by: deadline, accepting: { _ in true })
-        guard posted else {
+        let sighting: Sighting = await race(by: deadline, accepting: { _ in true })
+        guard sighting == .inTime else {
             throw timeout(
                 url: url,
                 budget: budget,
                 what: "never posted to --wait-for 'message:\(name)'",
-                detail: nil,
+                detail: sighting == .late ? Self.heldLateDetail : nil,
                 nextMove: "Raise --budget, or have the page call "
                     + "window.webkit.messageHandlers.\(name).postMessage(...) when it is ready.",
             )
@@ -264,61 +271,6 @@ final class WaitEngine {
     }
 
     // MARK: - Shared
-
-    /// Races what the page pushes against a host-side re-check, ending at
-    /// `deadline` either way.
-    ///
-    /// - Parameter accept: whether a pushed message ends the wait.
-    /// - Parameter check: the backstop, run every ``backstopInterval``; `nil`
-    ///   for a condition only the page can answer, which leaves the deadline
-    ///   as the race's other half.
-    /// - Returns: whether the condition held before `deadline`.
-    func race(
-        by deadline: DispatchTime,
-        accepting accept: @escaping @Sendable (String) async -> Bool,
-        checking check: (@Sendable () async -> Bool)? = nil,
-    ) async -> Bool {
-        let interval: TimeInterval = backstopInterval
-        var settled = false
-        await withTaskGroup(of: Bool.self) { group in
-            if let stream = pushes {
-                group.addTask {
-                    for await text in stream {
-                        if await accept(text) { return true }
-                    }
-                    return false
-                }
-            }
-            if let check {
-                group.addTask {
-                    while DispatchTime.now() < deadline {
-                        // Never sleep past the deadline: the backstop is the
-                        // slow half of this race, and a settle phase that
-                        // outlives its budget is the hang the whole engine
-                        // exists to rule out.
-                        try? await Task.sleep(nanoseconds: Self.nanoseconds(interval, notPast: deadline))
-                        guard !Task.isCancelled, DispatchTime.now() < deadline else { return false }
-                        if await check() { return true }
-                    }
-                    return false
-                }
-            } else {
-                group.addTask {
-                    try? await Task.sleep(nanoseconds: Self.nanoseconds(.infinity, notPast: deadline))
-                    return false
-                }
-            }
-            while let result = await group.next() {
-                if result {
-                    settled = true
-                    break
-                }
-                if DispatchTime.now() >= deadline { break }
-            }
-            group.cancelAll()
-        }
-        return settled
-    }
 
     /// The ``SleepyError/Kind/timeout`` a spent budget earns: what the page
     /// did not do, and whatever detail the last check gathered.

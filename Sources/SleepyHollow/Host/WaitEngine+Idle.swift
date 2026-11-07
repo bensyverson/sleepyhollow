@@ -30,7 +30,13 @@ extension WaitEngine {
             last = sample ?? last
             let current: IdleWatch.Sample = sample ?? IdleWatch.Sample.unknown
             if current.busy == 0, previous?.activity == current.activity {
-                if DispatchTime.now() >= quietSince + IdleWatch.quietWindow { return }
+                // The window must have closed by the deadline, not merely been
+                // confirmed: a sample that comes back late proves only that the
+                // quiet held until it was taken.
+                if DispatchTime.now() >= quietSince + IdleWatch.quietWindow {
+                    if Self.quietWindowClosed(quietSince: quietSince, by: deadline) { return }
+                    break
+                }
             } else {
                 if previous != nil { quietResets += 1 }
                 quietSince = DispatchTime.now()

@@ -87,6 +87,45 @@ struct RenderAxisOptionTests {
         #expect(options.budget == 5)
     }
 
+    // MARK: - Sweeping --size alone (`overflow`)
+
+    @Test func `the size sweep parses every --size in order`() throws {
+        let flags: LoadFlagOptions = try Self.flags(["--size", "390x800", "--size", "1280"])
+        #expect(try flags.viewportSizes() == [
+            ViewportSize(width: 390, height: 800),
+            ViewportSize(width: 1280, height: 800),
+        ])
+    }
+
+    @Test func `the size sweep resolves every other flag and leaves the viewport to each load`() throws {
+        let flags: LoadFlagOptions = try Self.flags(["--size", "390", "--size", "1280", "--theme", "dark", "--budget", "5000"])
+        let options: LoadOptions = try flags.resolveSizeSweepOptions(steps: [])
+        #expect(options.size == ViewportSize.default)
+        #expect(options.theme == .dark)
+        #expect(options.budget == 5)
+    }
+
+    @Test func `the size sweep still refuses a repeated --theme`() throws {
+        let flags: LoadFlagOptions = try Self.flags(["--size", "390", "--size", "1280", "--theme", "light", "--theme", "dark"])
+        do {
+            _ = try flags.resolveSizeSweepOptions(steps: [])
+            Issue.record("expected a usage error")
+        } catch let error as SleepyError {
+            #expect(error.kind == .usage)
+            #expect(error.message.contains("--theme"))
+        }
+    }
+
+    @Test func `the single-page refusal of a repeated --size names overflow as well as shot`() throws {
+        let flags: LoadFlagOptions = try Self.flags(["--size", "480", "--size", "1280"])
+        do {
+            _ = try flags.resolveLoadOptions(steps: [])
+            Issue.record("expected a usage error")
+        } catch let error as SleepyError {
+            #expect(error.nextMove?.contains("overflow") == true)
+        }
+    }
+
     // MARK: - The session refusal still sees them
 
     @Test func `a repeated --size is still a load-shaping flag a session refuses`() throws {

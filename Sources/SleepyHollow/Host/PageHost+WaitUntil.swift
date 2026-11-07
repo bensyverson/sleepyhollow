@@ -70,13 +70,26 @@ public extension PageHost {
                 in: world,
                 budget: applied,
             )
-            if first.truthy { return WatchOutcome(satisfied: true, failure: nil) }
+            if first.truthy {
+                // Stamped at the arming call's answer: one that came back
+                // after the deadline is a late sighting, not a success.
+                let inTime: Bool = DispatchTime.now() <= deadline
+                return WatchOutcome(satisfied: inTime, failure: nil, heldLate: !inTime)
+            }
             let later: WatchOutcome = await Self.awaitPush(on: pushes, for: watch, by: deadline)
-            return WatchOutcome(satisfied: later.satisfied, failure: later.failure ?? first.failure)
+            return WatchOutcome(
+                satisfied: later.satisfied,
+                failure: later.failure ?? first.failure,
+                heldLate: later.heldLate,
+            )
         }
         if outcome.satisfied { return }
         try Task.checkCancellation()
-        let reason: String = outcome.failure.map { " The check threw every time it ran: \($0)." } ?? ""
+        let reason: String = if outcome.heldLate {
+            " \(WaitEngine.heldLateDetail)"
+        } else {
+            outcome.failure.map { " The check threw every time it ran: \($0)." } ?? ""
+        }
         throw SleepyError(
             kind: .timeout,
             message: "The page did not satisfy '\(expression)' within \(applied)s.\(reason)",
@@ -93,10 +106,17 @@ extension PageHost {
         var satisfied: Bool
         /// The first failure the page's check reported, if any.
         var failure: String?
+        /// Whether the condition was seen holding only after the deadline —
+        /// which is not ``satisfied``, but is worth saying in the timeout.
+        var heldLate: Bool = false
     }
 
     /// Waits for `watch`'s truthy push, or for `deadline` — the only clock
     /// the host keeps. Nothing here re-checks the page.
+    ///
+    /// A truthy push is stamped when this wait reads it, and one read after
+    /// `deadline` comes back as ``WatchOutcome/heldLate``, never as
+    /// satisfied — the same rule as ``WaitEngine/race(by:accepting:checking:)``.
     static func awaitPush(
         on pushes: AsyncStream<String>,
         for watch: String,
@@ -109,7 +129,10 @@ extension PageHost {
                     guard let probe = try? JSONDecoder().decode(WaitEngine.Probe.self, from: Data(text.utf8)),
                           probe.watch == watch
                     else { continue }
-                    if probe.truthy { return WatchOutcome(satisfied: true, failure: failure) }
+                    if probe.truthy {
+                        let inTime: Bool = DispatchTime.now() <= deadline
+                        return WatchOutcome(satisfied: inTime, failure: failure, heldLate: !inTime)
+                    }
                     failure = failure ?? probe.failure
                 }
                 return WatchOutcome(satisfied: false, failure: failure)

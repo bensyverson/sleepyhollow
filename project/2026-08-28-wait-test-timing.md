@@ -121,6 +121,19 @@ it was. A sleep can only fire *late*, so a loaded machine can only push the
 release past both deadlines and make the test prove less; it can never end the
 wait early and turn the test red.
 
+> **Corrected 2026-11-06 (job leaf `V1aV1`).** The last sentence was wrong: the
+> test went red on a quiet machine the same evening. The release sleeping late
+> was never the risk; the *host's* side running late was. The product counted
+> any match it saw as success, whenever it saw it — the first probe after a
+> late `.finished` (the mechanism above), and also a backstop check issued
+> before the deadline whose answer came back after it, behind a stalled main
+> actor. Widening the margin to 15 s (2026-09-27) made that rarer without
+> removing it. The fix is in the product: `WaitEngine.race` and every first
+> probe stamp the moment they see the condition and count it only at or before
+> the deadline (`WaitEngine.Sighting`), so an element that cannot exist until
+> after the deadline is a timeout by program order. `WaitDeadlineObservedTests`
+> pins each path causally, and the budget test's margin is back to 1 s.
+
 ## What was considered and not done
 
 **An injectable clock in the engine (route 2).** The fragile quantity is not

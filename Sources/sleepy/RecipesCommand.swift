@@ -45,8 +45,8 @@ struct RecipesCommand: ParsableCommand {
     Check that every label is legible against what it sits on → contrast
       sleepy contrast http://localhost:3000/report --min wcag-aa
 
-    Check that nothing spills the viewport sideways → overflow
-      sleepy overflow http://localhost:3000/report --size 390x800
+    Check that nothing spills the viewport sideways, at every breakpoint → overflow
+      sleepy overflow http://localhost:3000/report --size 390x800 --size 1280x900
 
     Drive an interaction and see the result → open, then click/fill/submit,
     then shot --session

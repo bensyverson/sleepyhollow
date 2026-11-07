@@ -15,12 +15,18 @@ struct WaitBudgetTests {
     /// and the wait together.
     private static let headroom: TimeInterval = 5
 
-    /// How long after the one shared deadline the page's element arrives: the
-    /// lateness the host's own deadline may show on a loaded machine and still
-    /// end the wait first. "Not hung" scale, since a sleep in this suite has
-    /// resumed twelve seconds late; it must stay under ``navigationDelay`` or
-    /// the element would beat a regression's fresh deadline too.
-    private static let lateness: TimeInterval = 15
+    /// How long after the one shared deadline, at the earliest, the page's
+    /// element arrives.
+    ///
+    /// Not a margin the host's clock has to win: the element exists only
+    /// after the deadline, and the host checks the deadline when it sees an
+    /// answer (``WaitEngine/race(by:accepting:checking:)``), so a correct host
+    /// reports a timeout however late its own timer fires. This used to be 15 s
+    /// for exactly that race, and still failed once (job leaf `V1aV1`). Kept
+    /// small so it stays far under ``navigationDelay``: a regression's fresh
+    /// deadline sits a whole `navigationDelay` past the request, and the
+    /// element must arrive well before it for this test to catch one.
+    private static let lateness: TimeInterval = 1
 
     /// The slow page: the server holds the document back by `delay` seconds,
     /// so the navigation spends that much of whatever budget the test sets
@@ -44,13 +50,14 @@ struct WaitBudgetTests {
             // The release is anchored to the page's own request, not to this
             // test's clock. The page reaches the gate as it parses, after the
             // server's delay, so the one shared deadline is at most `headroom`
-            // past that request and the gate opens `lateness` after it — a
-            // margin a host deadline running late under load cannot close.
-            // A regression's fresh deadline would sit a whole
+            // past that request and the gate opens `lateness` after it, so the
+            // element provably does not exist until the deadline has passed —
+            // program order, which a host deadline running late under load
+            // cannot change, because the host checks the deadline when it
+            // sees the match. A regression's fresh deadline would sit a whole
             // `navigationDelay` past the request, well after the gate opens.
-            // Both sleeps can only fire late: a late server makes the margin
-            // wider, and a late opener can only make this test prove less,
-            // never fail on a correct host.
+            // Both sleeps can only fire late: a late server or opener can only
+            // make this test prove less, never fail on a correct host.
             let opener = Task {
                 while await gate.requestCount == 0 {
                     if Task.isCancelled { return }
