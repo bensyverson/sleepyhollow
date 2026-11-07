@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>A form whose target never answers until the test says so</title>
+  <!-- The form submits to /gate, which a FixtureGate holds: the navigation
+       starts and cannot finish until the test opens the gate, so "a navigation
+       started" is a fact in program order, not a race with its end. #stay is a
+       button that does nothing, for the negative. -->
+</head>
+<body>
+  <form id="gated" action="/gate" method="get">
+    <input id="field" name="field" type="text" value="">
+    <button id="send" type="submit">Send</button>
+    <button id="stay" type="button">Stay</button>
+  </form>
+</body>
+</html>

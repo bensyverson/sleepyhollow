@@ -1,10 +1,11 @@
 import Foundation
 
-/// The environment diagnosis behind `sleepy doctor`: four questions asked in
+/// The environment diagnosis behind `sleepy doctor`: questions asked in
 /// order, each answering with a ``DoctorCheck`` that teaches on failure.
 ///
 /// The order is deliberate — the running binary, then WebKit under the
-/// current sandbox, then the sessions directory, then the temp directory. It
+/// current sandbox, then the private API the accent pin and real input rest
+/// on, then the sessions directory, then the temp directory. It
 /// runs cheapest and most fundamental first, so the *first* failure is nearly
 /// always the cause and the rest are symptoms; the CLI throws that one.
 ///
@@ -72,6 +73,7 @@ public enum Doctor {
             webKit,
             checkAccentPin(),
             checkPasteboardIsolation(),
+            checkInput(),
             checkSessions(registry: registry),
             checkTemporaryDirectory(temporaryDirectory),
         ])

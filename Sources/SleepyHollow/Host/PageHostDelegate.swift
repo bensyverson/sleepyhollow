@@ -20,6 +20,39 @@ final class PageHostDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKSc
 
     // MARK: - Navigation
 
+    /// Main-frame navigation requests WebKit has asked to decide, behind
+    /// ``PageHost/navigationRequestCount``.
+    private(set) var navigationRequests: Int = 0
+
+    /// The earliest the host hears of a main-frame navigation: the web
+    /// process asks before it starts loading, in the same message order as
+    /// everything else the page sends — which is what lets
+    /// ``PageHost/navigationStarted(sinceRequests:)`` answer by ordering
+    /// rather than by a grace period. A same-document change (a fragment)
+    /// is not a navigation the verb's read must wait for, so it is not
+    /// counted. Every request is allowed, as WebKit does with no delegate.
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void,
+    ) {
+        if navigationAction.targetFrame?.isMainFrame == true,
+           !Self.isFragmentChange(from: webView.url, to: navigationAction.request.url)
+        {
+            navigationRequests += 1
+        }
+        decisionHandler(.allow)
+    }
+
+    /// Whether `target` differs from `current` only by its fragment.
+    private static func isFragmentChange(from current: URL?, to target: URL?) -> Bool {
+        guard let current, let target, target.fragment != nil else { return false }
+        func withoutFragment(_ url: URL) -> String {
+            url.absoluteString.split(separator: "#", maxSplits: 1).first.map(String.init) ?? url.absoluteString
+        }
+        return withoutFragment(current) == withoutFragment(target)
+    }
+
     func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
         host?.noteNavigationStarted()
     }

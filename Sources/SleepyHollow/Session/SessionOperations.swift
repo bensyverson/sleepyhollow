@@ -32,6 +32,7 @@ public enum SessionOperations {
         registry.register(ClickOperation.self)
         registry.register(FillOperation.self)
         registry.register(SubmitOperation.self)
+        registry.register(PressOperation.self)
         return registry
     }
 }

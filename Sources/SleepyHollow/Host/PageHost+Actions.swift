@@ -1,8 +1,9 @@
 import Foundation
 
 /// The load pipeline's action-step phase: the ordered one-shot
-/// `--click`/`--fill`/`--submit` steps, executed after the load event and
-/// before ``LoadOptions/wait`` gates the verb's read.
+/// `--click`/`--fill`/`--submit`/`--focus`/`--hover`/`--type`/`--press`
+/// steps, executed after the load event and before ``LoadOptions/wait``
+/// gates the verb's read.
 ///
 /// This is what makes `sleepy dom <url> --fill '#title=Hello' --click '#save'`
 /// read the page the click produced. Steps run in flag order, each through
@@ -60,8 +61,9 @@ extension PageHost {
             guard DispatchTime.now() < deadline else {
                 throw stepTimeout(at: index, step: step, detail: "before it could run")
             }
-            // Only a click or a submit can navigate, and the mark has to be
-            // written before the step it detects — so a fill pays nothing.
+            // Only a click, a submit or a key can navigate, and the mark has
+            // to be written before the step it detects — so a fill, a focus
+            // or a hover pays nothing.
             let mark: String? = Self.mayNavigate(step) ? await markDocument() : nil
             let outcome: ActionOutcome = try await performWaiting(step, at: index, by: deadline)
             if outcome.startedNavigation {
@@ -94,8 +96,8 @@ extension PageHost {
     /// Whether this kind of step can start a navigation at all.
     private static func mayNavigate(_ step: ActionStep) -> Bool {
         switch step {
-        case .click, .submit: true
-        case .fill: false
+        case .click, .submit, .type, .press: true
+        case .fill, .focus, .hover: false
         }
     }
 
@@ -109,6 +111,14 @@ extension PageHost {
             try await execute(FillOperation(selector: selector, value: value))
         case let .submit(selector):
             try await execute(SubmitOperation(selector: selector))
+        case let .focus(selector):
+            try await execute(FocusOperation(selector: selector))
+        case let .hover(selector):
+            try await execute(HoverOperation(selector: selector))
+        case let .type(text):
+            try await execute(PressOperation(text: text))
+        case let .press(chord):
+            try await execute(PressOperation(keys: [chord]))
         }
     }
 
@@ -154,9 +164,16 @@ extension PageHost {
         return written == "true" ? mark : nil
     }
 
-    /// Whether a navigation began after `mark` was written, judged from the
-    /// host's side: the web view loading, or the marked document gone, within
-    /// the start grace.
+    /// How many main-frame navigations WebKit has asked this host to decide
+    /// — counted at the policy decision, the earliest point the host hears
+    /// of one, before anything loads. Read it before an action and pass it to
+    /// ``navigationStarted(sinceRequests:)`` after.
+    var navigationRequestCount: Int {
+        delegate.navigationRequests
+    }
+
+    /// Whether the page asked to navigate its main frame after the host read
+    /// `count` from ``navigationRequestCount``, judged from the host's side.
     ///
     /// The act primitives' own answer comes from a page-side `submit`
     /// listener, and with the page's scripts off WebKit invokes no event
@@ -164,16 +181,33 @@ extension PageHost {
     /// a form submitted by `requestSubmit()`, `submit()` and a button click
     /// all navigated, and a capture-phase listener heard none of them). So
     /// ``ActionScript`` asks this instead when ``LoadOptions/pageScripts`` is
-    /// ``LoadOptions/PageScripts/disabled``; it costs a click that does not
-    /// navigate the grace period.
-    func navigationStarted(sinceMark mark: String) async -> Bool {
-        let graceEnd = DispatchTime.now() + Self.navigationStartGrace
-        repeat {
-            if webView.isLoading { return true }
-            if await documentIsStillMarked(mark) == false { return true }
-            await pause()
-        } while DispatchTime.now() < graceEnd
-        return false
+    /// ``LoadOptions/PageScripts/disabled``, and ``PressOperation`` always
+    /// does, since a key's default action runs in no listener either.
+    ///
+    /// **Ordered, not polled.** The web process asks the navigation delegate
+    /// to decide a main-frame navigation before it loads anything, on the
+    /// same connection the action's own answer comes back on. Measured
+    /// 2026-11-06, a button click that submits, Enter in a form field and a
+    /// keydown handler setting `location.href` all had their decision counted
+    /// before the action returned — no wait at all. For a navigation WebKit
+    /// defers to a zero-delay timer instead, the host then sets one more
+    /// zero-delay timer in the isolated world and waits for it, so whatever
+    /// the page scheduled first has asked by the time it answers (unmeasured:
+    /// no fixture yet reaches that path). A loaded machine makes this slower,
+    /// never wrong; the poll it replaced gave the start half a second and
+    /// reported a real submission as none under load (issue `OI4gWa`).
+    func navigationStarted(sinceRequests count: Int) async -> Bool {
+        if navigationRequestCount > count { return true }
+        // A page torn down mid-barrier is a page being replaced; the count
+        // below says so either way, so the barrier's own failure is moot.
+        _ = try? await evaluate(Self.orderingBarrier, in: .isolated)
+        return navigationRequestCount > count
+    }
+
+    /// One zero-delay timer, awaited: everything the page scheduled before
+    /// it has run by the time it answers.
+    private static var orderingBarrier: String {
+        "await new Promise((resolve) => setTimeout(resolve, 0)); return true;"
     }
 
     /// Whether the marked document is still the one loaded. A page that
@@ -217,6 +251,14 @@ extension PageHost {
             "--fill '\(selector)=\(value)'"
         case let .submit(selector):
             "--submit '\(selector)'"
+        case let .focus(selector):
+            "--focus '\(selector)'"
+        case let .hover(selector):
+            "--hover '\(selector)'"
+        case let .type(text):
+            "--type '\(text)'"
+        case let .press(chord):
+            "--press '\(chord.description)'"
         }
     }
 }

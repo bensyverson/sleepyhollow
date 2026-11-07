@@ -4,12 +4,14 @@ import Foundation
 /// page-side, decode what the page reports, and turn a refusal into a
 /// ``SleepyError`` that teaches the next move.
 ///
-/// Honest about mechanism (vision doc §3): these are real DOM events
-/// dispatched at the element — `pointerdown`/`mousedown`/`pointerup`/
+/// Honest about mechanism (vision doc §3): for `click`, `fill` and `submit`
+/// these are real DOM events dispatched at the element — `pointerdown`/`mousedown`/`pointerup`/
 /// `mouseup`/`click`, `input`/`change`, a cancellable `submit` — not OS-level
 /// hit-testing. `isTrusted` is `false` and the page can see that; a page that
 /// refuses untrusted events refuses these, which is the truth an agent needs
-/// rather than a pretence.
+/// rather than a pretence. `press` and the hover step are the exception:
+/// their events come from the host's window (``TrustedInput``), and this
+/// seam only resolves and checks what they act on.
 ///
 /// Actions run in the tool's isolated ``InjectedScript/World``: the DOM is
 /// shared across worlds, so the page's listeners receive every event, while
@@ -32,6 +34,10 @@ enum ActionScript {
         var navigating: Bool?
         /// What a coordinate click's hit test found.
         var hit: HitElement?
+        /// Where a hover puts the pointer: viewport CSS px, horizontal.
+        var x: Double?
+        /// Where a hover puts the pointer: viewport CSS px, vertical.
+        var y: Double?
     }
 
     /// Runs one action body and shapes the page's report into an outcome.
@@ -61,11 +67,41 @@ enum ActionScript {
             named["point"] = ["x": point.x, "y": point.y]
         }
         // With the page's scripts off the page-side submit watcher hears
-        // nothing, so the host judges a navigation itself — not for a fill,
-        // which cannot start one.
-        let mark: String? = host.options.pageScripts == .disabled && action != .fill
-            ? await host.markDocument()
+        // nothing, so the host judges a navigation itself — only for a click
+        // or a submit, the two that can start one without a page script.
+        let requests: Int? = host.options.pageScripts == .disabled && (action == .click || action == .submit)
+            ? host.navigationRequestCount
             : nil
+        let report: Report = try await report(for: action, target: target, body: body, arguments: named, on: host)
+        var navigating: Bool = report.navigating ?? false
+        if !navigating, let requests {
+            navigating = await host.navigationStarted(sinceRequests: requests)
+        }
+        return ActionOutcome(
+            action: action,
+            selector: target.selector,
+            tagName: report.tagName ?? "",
+            value: report.value,
+            startedNavigation: navigating,
+            hit: report.hit,
+        )
+    }
+
+    /// Runs one action body and returns the page's report, a refusal thrown
+    /// as the ``SleepyError`` that teaches it — the half of
+    /// ``outcome(for:target:body:arguments:on:)`` an action that does more
+    /// than one page-side step (a hover, a press) builds on.
+    ///
+    /// - Parameter arguments: every named value the body needs, the target's
+    ///   `selector` or `point` included.
+    @MainActor
+    static func report(
+        for action: ActionOutcome.Action,
+        target: ActionTarget,
+        body: String,
+        arguments named: [String: Any],
+        on host: PageHost,
+    ) async throws -> Report {
         let text: String
         do {
             text = try await host.evaluate(helpers + "\n" + body, arguments: named, in: .isolated)
@@ -82,18 +118,7 @@ enum ActionScript {
         if let code = report.error {
             throw failure(code, action: action, target: target, report: report, arguments: named)
         }
-        var navigating: Bool = report.navigating ?? false
-        if !navigating, let mark {
-            navigating = await host.navigationStarted(sinceMark: mark)
-        }
-        return ActionOutcome(
-            action: action,
-            selector: target.selector,
-            tagName: report.tagName ?? "",
-            value: report.value,
-            startedNavigation: navigating,
-            hit: report.hit,
-        )
+        return report
     }
 
     private static func decode(_ text: String, action: ActionOutcome.Action) throws -> Report {

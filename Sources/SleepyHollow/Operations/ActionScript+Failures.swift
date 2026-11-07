@@ -86,6 +86,32 @@ extension ActionScript {
                     + "so the browser refused to submit it.",
                 nextMove: "Fill the field first with --fill, or submit a form that validates.",
             )
+        case "not-focusable":
+            return SleepyError(
+                kind: .usage,
+                message: "\(opening) is a \(tag), which does not take focus, so nothing was focused.",
+                nextMove: "Focus a form control, a link, a button, or an element with a tabindex attribute.",
+            )
+        case "not-visible":
+            return SleepyError(
+                kind: .negative,
+                message: "\(opening) is a \(tag) with no box on the page, so there is nowhere to put the pointer.",
+                nextMove: "Wait for it to render with --wait-for, or hover the element that reveals it first.",
+            )
+        case "covered":
+            let cover: String = report.detail.map { "a <\($0)>" } ?? "another element"
+            return SleepyError(
+                kind: .negative,
+                message: "\(opening) is covered at its center by \(cover), so the pointer would land on that.",
+                nextMove: "Hover what is on top, or dismiss it first (--click, --press Escape).",
+            )
+        case "not-hovered":
+            let hovered: String = report.detail.map { "the pointer is over a <\($0)>" } ?? "nothing is hovered"
+            return SleepyError(
+                kind: .negative,
+                message: "The pointer was moved to \(named), but it does not match :hover — \(hovered).",
+                nextMove: "Check what covers it with `sleepy shot`, or hover an element that takes the pointer.",
+            )
         default:
             return SleepyError(
                 kind: .environment,

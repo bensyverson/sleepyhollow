@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hover and focus staging</title>
+  <!-- Flat colors that only a real pointer or real focus can produce: #card is
+       gray until the pointer is over it (:hover turns it green); #action is
+       gray until focused (:focus turns it orange, :focus-visible blue — a
+       keyboard focus shows blue, a pointer focus orange). No transitions, so
+       a capture never catches a color mid-change. `window.stageFacts()` reports
+       what the page believes. Shoot at 400x240. -->
+  <style>
+    html, body { margin: 0; background: #fff; }
+    #card { position: absolute; left: 20px; top: 20px; width: 160px; height: 100px; background: #888; }
+    #card:hover { background: #0a0; }
+    #action { position: absolute; left: 220px; top: 20px; width: 160px; height: 100px;
+              border: 0; outline: none; background: #888; font: 14px system-ui; }
+    #action:focus { background: #f80; }
+    #action:focus-visible { background: #00f; }
+  </style>
+</head>
+<body>
+  <div id="card"></div>
+  <button id="action" type="button">Action</button>
+  <script>
+    const log = [];
+    for (const type of ["mouseover", "mouseenter", "mousemove", "focus", "click"]) {
+      document.addEventListener(type, (event) => log.push({ type, isTrusted: event.isTrusted,
+        target: event.target.id || (event.target.tagName || "").toLowerCase() }), true);
+    }
+    window.stageFacts = () => ({
+      hover: document.getElementById("card").matches(":hover"),
+      focus: document.getElementById("action").matches(":focus"),
+      focusVisible: document.getElementById("action").matches(":focus-visible"),
+      log: log.slice(),
+    });
+  </script>
+</body>
+</html>

@@ -12,7 +12,8 @@ import SleepyHollow
 /// `sleepy open --transparent`, and one declaration serves both. `--no-js`
 /// (``LoadOptions/PageScripts/disabled``) is here for the same reason.
 ///
-/// `--click`/`--fill`/`--submit` are declared here only so `--help` renders
+/// The step flags (`--click`, `--fill`, `--submit`, `--focus`, `--hover`,
+/// `--type`, `--press`) are declared here only so `--help` renders
 /// them; ArgumentParser loses interleave order across separate array
 /// options, so the ordered truth comes from ``ActionStepParser`` scanning
 /// the raw argument vector instead. Pass its result to
@@ -114,6 +115,34 @@ public struct LoadFlagOptions: ParsableArguments {
 
     @Option(name: .long, parsing: .singleValue, help: "Submit the form for selector, in order (repeatable).")
     public var submit: [String] = []
+
+    @Option(
+        name: .long,
+        parsing: .singleValue,
+        help: "Focus the selector as by keyboard, so :focus-visible matches, in order (repeatable).",
+    )
+    public var focus: [String] = []
+
+    @Option(
+        name: .long,
+        parsing: .singleValue,
+        help: "Move a real pointer over the selector's center, so :hover matches, in order (repeatable).",
+    )
+    public var hover: [String] = []
+
+    @Option(
+        name: .long,
+        parsing: .singleValue,
+        help: "Type text into what has focus as real keystrokes, in order (repeatable).",
+    )
+    public var type: [String] = []
+
+    @Option(
+        name: .long,
+        parsing: .singleValue,
+        help: "Press a key chord (Enter, Tab, Meta+K) on what has focus, in order (repeatable).",
+    )
+    public var press: [String] = []
 
     /// Creates an empty option group for ArgumentParser to populate.
     public init() {}

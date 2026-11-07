@@ -1,12 +1,13 @@
 import Foundation
 import SleepyHollow
 
-/// Scans a raw argument vector for `--click`, `--fill`, and `--submit`
-/// (both `--flag value` and `--flag=value` forms) and returns the
-/// `ActionStep`s they describe in the order they appeared.
+/// Scans a raw argument vector for the step flags — `--click`, `--fill`,
+/// `--submit`, `--focus`, `--hover`, `--type` and `--press` (both
+/// `--flag value` and `--flag=value` forms) — and returns the `ActionStep`s
+/// they describe in the order they appeared.
 ///
 /// ArgumentParser collects each flag into its own array, losing the
-/// interleave order across `--click`/`--fill`/`--submit` — ``LoadFlagOptions``
+/// interleave order across the step flags — ``LoadFlagOptions``
 /// still declares them so `--help` renders correctly, but this scanner is
 /// the order-of-truth for one-shot flows (see the vision doc's "one-shot
 /// flows compose by flags").
@@ -26,6 +27,10 @@ public enum ActionStepParser {
         case click = "--click"
         case fill = "--fill"
         case submit = "--submit"
+        case focus = "--focus"
+        case hover = "--hover"
+        case type = "--type"
+        case press = "--press"
     }
 
     /// Every value-taking long option the tool declares, so the scan never
@@ -56,7 +61,8 @@ public enum ActionStepParser {
     /// - Parameter valueTakingOptions: value-taking long options beyond
     ///   ``knownValueTakingOptions``, whose values must not be read as steps.
     /// - Throws: a teaching `SleepyError` when a recognized flag has no
-    ///   value, or when a `--fill` value is missing its `=`.
+    ///   value, when a `--fill` value is missing its `=`, or when a `--press`
+    ///   value is not a key chord (``KeyChord/init(parsing:)``).
     public static func parse(
         _ arguments: [String],
         valueTakingOptions: Set<String> = [],
@@ -111,6 +117,14 @@ public enum ActionStepParser {
             return .click(selector: value)
         case .submit:
             return .submit(selector: value)
+        case .focus:
+            return .focus(selector: value)
+        case .hover:
+            return .hover(selector: value)
+        case .type:
+            return .type(text: value)
+        case .press:
+            return try .press(KeyChord(parsing: value))
         case .fill:
             guard let separator = value.firstIndex(of: "=") else {
                 throw SleepyError(

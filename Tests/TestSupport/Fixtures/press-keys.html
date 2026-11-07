@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keyboard input</title>
+  <!-- A form for real keystrokes. Every keydown/keyup reaching the document is
+       logged with its key, code, modifiers and isTrusted, so a test can tell a
+       real keystroke from a dispatched one. Enter in #name submits the form
+       (a GET back to this page, so the submitted value lands in the URL);
+       #guarded only accepts trusted keys; any key in #jump navigates from a
+       page script (`location.href`), which WebKit schedules rather than starts. `window.keyFacts()` reports it all. -->
+  <style>
+    body { margin: 0; padding: 20px; font: 14px system-ui; background: #fff; }
+    input { display: block; margin-bottom: 10px; width: 200px; }
+  </style>
+</head>
+<body>
+  <form id="form" action="press-keys.html" method="get">
+    <input id="name" name="name" type="text" autocomplete="off">
+    <input id="second" name="second" type="text" autocomplete="off">
+    <button id="send" type="submit">Send</button>
+  </form>
+  <input id="guarded" type="text" autocomplete="off">
+  <input id="jump" type="text" autocomplete="off">
+  <script>
+    const log = [];
+    const record = (event) => log.push({
+      type: event.type, key: event.key, code: event.code, isTrusted: event.isTrusted,
+      shift: event.shiftKey, meta: event.metaKey, alt: event.altKey, ctrl: event.ctrlKey,
+      target: event.target.id || event.target.tagName.toLowerCase(),
+    });
+    document.addEventListener("keydown", record, true);
+    document.addEventListener("keyup", record, true);
+    document.getElementById("jump").addEventListener("keydown", () => {
+      location.href = "press-keys.html?jumped=1";
+    });
+    document.getElementById("guarded").addEventListener("keydown", (event) => {
+      if (!event.isTrusted) event.preventDefault();
+    });
+    window.keyFacts = () => ({
+      log: log.slice(),
+      active: document.activeElement ? (document.activeElement.id || document.activeElement.tagName.toLowerCase()) : null,
+      name: document.getElementById("name").value,
+      second: document.getElementById("second").value,
+      guarded: document.getElementById("guarded").value,
+      search: location.search,
+    });
+  </script>
+</body>
+</html>

@@ -108,4 +108,43 @@ struct ActionStepParserTests {
             try ActionStepParser.parse(["--click", "--", "#go"])
         }
     }
+
+    // MARK: - Keyboard and pointer steps
+
+    @Test func `focus, type, press and hover interleave with the other steps in order`() throws {
+        let steps = try ActionStepParser.parse([
+            "shot", "http://example.com",
+            "--hover", "#menu",
+            "--focus", "#q",
+            "--type", "webkit",
+            "--press", "Enter",
+            "--click", "#go",
+        ])
+        #expect(try steps == [
+            .hover(selector: "#menu"),
+            .focus(selector: "#q"),
+            .type(text: "webkit"),
+            .press(KeyChord(parsing: "Enter")),
+            .click(selector: "#go"),
+        ])
+    }
+
+    @Test func `a --press chord that is not a key is a usage error before anything loads`() {
+        do {
+            _ = try ActionStepParser.parse(["--press", "Enterr"])
+            Issue.record("parsed")
+        } catch let error as SleepyError {
+            #expect(error.kind == .usage)
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
+
+    @Test func `--type keeps its text verbatim, = and all`() throws {
+        #expect(try ActionStepParser.parse(["--type=a=b c"]) == [.type(text: "a=b c")])
+    }
+
+    @Test func `the press verb's --text value is never read as a step`() throws {
+        #expect(try ActionStepParser.parse(["press", "--text", "--hover", "Enter"]).isEmpty)
+    }
 }

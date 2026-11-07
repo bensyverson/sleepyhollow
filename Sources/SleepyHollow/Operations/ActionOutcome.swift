@@ -1,4 +1,5 @@
-/// What one act primitive did: the answer `click`, `fill` and `submit` share.
+/// What one act primitive did: the answer `click`, `fill`, `submit` and
+/// `press` share, and the `--focus` and `--hover` steps too.
 ///
 /// Deliberately small and factual. It reports what was acted on and whether
 /// the page reacted by starting a navigation — the fact the load pipeline
@@ -13,6 +14,13 @@ public struct ActionOutcome: Friendly {
         case fill
         /// A form submitted through a real, cancellable `submit` event.
         case submit
+        /// Real keystrokes — typed text, key chords — sent through the
+        /// host's window.
+        case press
+        /// An element focused as by keyboard.
+        case focus
+        /// A real pointer moved over an element.
+        case hover
     }
 
     /// The primitive that ran.
@@ -23,11 +31,14 @@ public struct ActionOutcome: Friendly {
     public var selector: String?
 
     /// The acted-on element's tag name, lowercased — the form's tag for
-    /// ``Action/submit``.
+    /// ``Action/submit``, and for ``Action/press`` the element that had focus
+    /// when the first key went down (`body` when nothing did).
     public var tagName: String
 
     /// The value the action settled on: what a ``Action/fill`` left in the
-    /// field, the form's `id` for a ``Action/submit``, `nil` for a click.
+    /// field, the form's `id` for a ``Action/submit``, what a
+    /// ``Action/press`` left in the field that had focus (`nil` when that
+    /// element holds no value or is gone), `nil` for a click, focus or hover.
     public var value: String?
 
     /// Whether the action set the page navigating — a link followed, or a

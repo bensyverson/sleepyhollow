@@ -42,7 +42,7 @@ struct DoctorGoldenTests {
             #expect(run.standardError.isEmpty)
             let report: DoctorReport = try Self.decode(run)
             #expect(report.status == .ok)
-            #expect(report.checks.map(\.name) == [.binary, .webKit, .accent, .pasteboard, .sessions, .temporaryDirectory])
+            #expect(report.checks.map(\.name) == [.binary, .webKit, .accent, .pasteboard, .input, .sessions, .temporaryDirectory])
             #expect(report.checks.allSatisfy { $0.status == .ok && $0.nextMove == nil })
         }
     }
@@ -58,7 +58,7 @@ struct DoctorGoldenTests {
             )
             #expect(run.exitCode == 0)
             let lines: [String] = run.standardOutput.split(separator: "\n").map(String.init)
-            #expect(lines.count == 6)
+            #expect(lines.count == 7)
             #expect(lines.allSatisfy { $0.hasPrefix("ok") })
             #expect(lines[1].contains("webkit"))
         }

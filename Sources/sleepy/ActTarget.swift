@@ -19,21 +19,31 @@ enum ActTarget {
     /// - Throws: `SleepyError` of kind `SleepyError.Kind.usage` when no
     ///   session was named, or a URL was given instead.
     static func session(from source: PageSourceOptions, verb: String, example: String) throws -> SessionName {
-        guard source.url == nil else {
+        try session(url: source.url, session: source.session, verb: verb, example: example)
+    }
+
+    /// Resolves an act verb's session from the raw `url` and `--session`
+    /// values, for a verb whose positionals are not a URL (`press` takes
+    /// keys there, and passes the one that looks like a URL).
+    ///
+    /// - Throws: the same teaching usage errors as
+    ///   ``session(from:verb:example:)``.
+    static func session(url: String?, session: String?, verb: String, example: String) throws -> SessionName {
+        guard url == nil else {
             throw SleepyError(
                 kind: .usage,
                 message: "'\(verb)' acts on a live session, not a URL: a page that exits can't show the result.",
                 nextMove: oneShotAdvice(verb: verb, example: example),
             )
         }
-        guard source.session != nil else {
+        guard session != nil else {
             throw SleepyError(
                 kind: .usage,
                 message: "'\(verb)' needs a live session.",
                 nextMove: oneShotAdvice(verb: verb, example: example),
             )
         }
-        switch try source.resolve() {
+        switch try PageSourceOptions.resolve(url: url, session: session) {
         case let .session(name):
             return name
         case .url:

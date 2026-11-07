@@ -22,6 +22,9 @@ public struct DoctorCheck: Friendly {
         /// A page's copy lands in a pasteboard private to this process, not
         /// the user's clipboard.
         case pasteboard
+        /// WebKit has the private selectors real keyboard and pointer input
+        /// rest on (`press`, `--type`, `--press`, `--hover`).
+        case input
         /// The sessions directory resolves, is writable, and leaves room for
         /// a session's Unix socket path.
         case sessions

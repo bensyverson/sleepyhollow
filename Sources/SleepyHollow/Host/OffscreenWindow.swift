@@ -227,8 +227,8 @@ public final class OffscreenWindow {
     /// Stops a `WKWebView` deciding its page's visibility from window
     /// occlusion, so an off-screen window still renders.
     ///
-    /// **This is the one piece of private API in the project.**
-    /// `-[WKWebView _setWindowOcclusionDetectionEnabled:]` is what WebKit's own
+    /// **Private API, approved for this project**, like the accent pin, the
+    /// compositor's presentation hook and the input calls. `-[WKWebView _setWindowOcclusionDetectionEnabled:]` is what WebKit's own
     /// test runner uses to host a web view in an off-screen window, and there
     /// is no public equivalent: `WKWebView` derives page visibility from the
     /// window's `occlusionState`, which the window server will never report as
