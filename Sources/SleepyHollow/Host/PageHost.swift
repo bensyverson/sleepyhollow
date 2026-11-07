@@ -70,8 +70,12 @@ public final class PageHost {
     /// How a navigation ended. The failure itself is held in
     /// ``navigationFailure`` so the outcome stays `Sendable`.
     enum NavigationOutcome {
-        /// The navigation reached its load event.
+        /// The navigation reached its load event, seen by the deadline.
         case finished
+        /// The navigation reached its load event, but the host first learned
+        /// of it after the deadline — a timeout, like every answer the wait
+        /// engine sees late (``WaitEngine/Sighting/late``).
+        case finishedLate
         /// The navigation failed; see ``PageHost/navigationFailure``.
         case failed
         /// The host's budget ran out first.
@@ -198,6 +202,13 @@ public final class PageHost {
     private var pendingNavigation: CheckedContinuation<NavigationOutcome, Never>?
     private var navigationFailure: (any Error)?
     private var budgetTask: Task<Void, Never>?
+    private var navigationDeadline: DispatchTime?
+
+    /// Whether a navigation is waiting for its outcome — the moment a test
+    /// can stand in for WebKit's late `didFinish`.
+    var isNavigationPending: Bool {
+        pendingNavigation != nil
+    }
 
     /// Creates a headless host: a web view with a non-persistent data store,
     /// the options' viewport and theme, the console capture, and the options'
@@ -359,7 +370,9 @@ public final class PageHost {
     /// - Throws: ``SleepyError`` of kind ``SleepyError/Kind/timeout`` when the
     ///   budget runs out, whether navigating or waiting (the page's last state
     ///   stays in ``facts``, and the page itself is left alone so it stays
-    ///   readable), ``SleepyError/Kind/loadFailure`` when the navigation fails
+    ///   readable) — including a navigation, or a settle-phase condition,
+    ///   that did come about but that the host first saw only after the
+    ///   deadline, whose message says so — ``SleepyError/Kind/loadFailure`` when the navigation fails
     ///   or the web content process ends (including
     ///   ``WebContentProcessFailure/neverLaunched``, the sandbox denial that
     ///   used to read as a timeout), ``SleepyError/Kind/environment`` when the options ask for
@@ -424,7 +437,7 @@ public final class PageHost {
         // settle phase does not get again.
         let deadline = DispatchTime.now() + budget
         waiter?.startWatching(in: self)
-        let outcome: NavigationOutcome = await navigate(to: url, within: budget)
+        let outcome: NavigationOutcome = await navigate(to: url, by: deadline)
         facts.finalURL = webView.url
         switch outcome {
         case .finished:
@@ -461,6 +474,10 @@ public final class PageHost {
         case .timedOut:
             webView.stopLoading()
             throw timeout(url: url, budget: budget)
+        case .finishedLate:
+            // The page did load, so it is left as it is and stays readable;
+            // only the claim that it loaded in time is refused.
+            throw timeout(url: url, budget: budget, detail: WaitEngine.heldLateDetail)
         case let .contentProcessEnded(failure):
             throw failure.error(url: url)
         }
@@ -469,11 +486,26 @@ public final class PageHost {
     // MARK: - Delegate callbacks
 
     /// Ends the pending navigation with `outcome`; later callbacks are ignored.
+    ///
+    /// **The deadline is checked here, where the host learns the outcome**, not
+    /// only by the budget timer that races it. A host whose main actor stalls
+    /// across the deadline can run WebKit's `didFinish` before the overdue
+    /// timer, and a load event first seen then was never seen inside the
+    /// budget: it becomes ``NavigationOutcome/finishedLate``. The stamp can
+    /// only be later than WebKit's own moment, so the error runs toward an
+    /// honest timeout, never toward a late success. A failure seen late stays
+    /// a failure — it claims nothing the budget has to cover.
     func finishNavigation(_ outcome: NavigationOutcome, failure: (any Error)? = nil) {
         guard let continuation = pendingNavigation else { return }
         pendingNavigation = nil
         navigationFailure = failure
-        continuation.resume(returning: outcome)
+        var seen: NavigationOutcome = outcome
+        if case .finished = outcome, let deadline = navigationDeadline,
+           WaitEngine.sighting(at: .now(), by: deadline) == .late
+        {
+            seen = .finishedLate
+        }
+        continuation.resume(returning: seen)
     }
 
     /// Notes that WebKit has begun the navigation — its provisional load
@@ -518,11 +550,16 @@ public final class PageHost {
 
     // MARK: - Navigation
 
-    private func navigate(to url: URL, within budget: TimeInterval) async -> NavigationOutcome {
+    /// Navigates to `url` and reports how the navigation ended, with
+    /// `deadline` both racing it (the budget timer) and judging the finish
+    /// when it arrives (``finishNavigation(_:failure:)``).
+    private func navigate(to url: URL, by deadline: DispatchTime) async -> NavigationOutcome {
+        navigationDeadline = deadline
+        defer { navigationDeadline = nil }
         let outcome: NavigationOutcome = await withCheckedContinuation { continuation in
             pendingNavigation = continuation
             budgetTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: UInt64(max(0, budget) * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: WaitEngine.nanoseconds(.infinity, notPast: deadline))
                 guard !Task.isCancelled else { return }
                 self?.finishNavigation(.timedOut)
             }
@@ -567,11 +604,14 @@ public final class PageHost {
 
     // MARK: - Failures
 
-    private func timeout(url: URL, budget: TimeInterval) -> SleepyError {
+    /// The timeout a navigation that did not finish within `budget` reports;
+    /// `detail`, when given, is a sentence appended to the message.
+    private func timeout(url: URL, budget: TimeInterval, detail: String? = nil) -> SleepyError {
         let reached: String = facts.finalURL.map { " Last known page: \($0.absoluteString)." } ?? ""
+        let extra: String = detail.map { " \($0)" } ?? ""
         return SleepyError(
             kind: .timeout,
-            message: "\(url.absoluteString) did not finish loading within \(budget)s.\(reached)",
+            message: "\(url.absoluteString) did not finish loading within \(budget)s.\(reached)\(extra)",
             nextMove: "Raise the budget, or state the condition you are waiting for with --wait-for.",
         )
     }

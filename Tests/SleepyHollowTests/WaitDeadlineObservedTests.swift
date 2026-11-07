@@ -110,6 +110,41 @@ struct WaitDeadlineObservedTests {
 
     @Test
     @MainActor
+    func `a navigation whose finish is seen after the deadline is a timeout`() async throws {
+        try await FixtureServer.withRunningOnMainActor { server, base in
+            // The document itself is held, so WebKit cannot finish it: the
+            // only finish this navigation gets is the one the test delivers.
+            let gate = FixtureGate()
+            await gate.install(on: server)
+            let host = PageHost(options: LoadOptions())
+            let url: URL = try await #require(URL(string: gate.path, relativeTo: base))
+            let budget: TimeInterval = 1
+            let loading = Task { try await host.load(url, budget: budget) }
+            let liveness: DispatchTime = .now() + TestSupport.livenessBudget
+            while !host.isNavigationPending, DispatchTime.now() < liveness {
+                await Task.yield()
+            }
+            // The deadline was fixed before the navigation went pending, so it
+            // is no later than this plus the budget.
+            let latestDeadline: DispatchTime = .now() + budget
+            // Hold the main actor past it without suspending — a stalled host —
+            // so the budget timer cannot run, then let the finish arrive.
+            while DispatchTime.now() <= latestDeadline {}
+            try #require(host.isNavigationPending, "the navigation must still be waiting when its late finish arrives")
+            host.finishNavigation(.finished)
+            do {
+                _ = try await loading.value
+                Issue.record("a navigation first seen finished after the deadline must not count as loaded")
+            } catch let error as SleepyError {
+                #expect(error.kind == .timeout)
+                #expect(error.message.contains("after the budget ran out"), "\(error.message)")
+            }
+            await gate.open()
+        }
+    }
+
+    @Test
+    @MainActor
     func `a quiet window counts only when it closed by the deadline`() {
         let deadline: DispatchTime = .now() + 10
         let window: UInt64 = WaitEngine.nanoseconds(IdleWatch.quietWindow)
