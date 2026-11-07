@@ -5,8 +5,8 @@
 /// These are the flag forms (`--click`, `--fill`, `--submit`, `--focus`,
 /// `--hover`, `--type`, `--press`) that let a two-step check — or a shot of
 /// a state no URL reaches — run without naming a session. Mechanism is
-/// honest, and differs by step: `click`, `fill` and `submit` are synthesized
-/// DOM events (`isTrusted` false); `hover`, `type` and `press` are real
+/// honest, and differs by step: `fill` and `submit` are synthesized DOM
+/// events (`isTrusted` false); `click`, `hover`, `type` and `press` are real
 /// `NSEvent`s sent through the host's window (`isTrusted` true, default
 /// actions run); `focus` is the element's own `focus()`, as by keyboard.
 public enum ActionStep: Friendly {

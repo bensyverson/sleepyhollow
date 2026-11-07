@@ -3,7 +3,8 @@ import Foundation
 import SleepyCLIKit
 import SleepyHollow
 
-/// `sleepy click` — press an element, or a point, in a live session.
+/// `sleepy click` — click an element, or a point, in a live session, with a
+/// real click (``ClickOperation``).
 ///
 /// An act verb: it requires `--session`, because acting on a page that
 /// vanishes at exit is write-only. For a one-shot flow, ride a loading verb
@@ -17,20 +18,22 @@ struct ClickCommand: AsyncParsableCommand {
         commandName: "click",
         abstract: "Click an element by selector, or whatever renders at a point, in a live session.",
         discussion: """
-        Synthesized events, not OS-level hit-testing: pointerdown, mousedown, pointerup, mouseup, click.
+        A real click (isTrusted true): the pointer moves to the target and the button goes down and up through the page's window, so the page sees pointermove, pointerdown, mousedown, pointerup, mouseup, click, and the browser runs the default action — a link is followed, a form submitted, a checkbox toggled — even with --no-js. Focus moves as in Safari (a field or link takes it, a button does not), and the pointer stays where it clicked, so :hover matches there afterwards.
 
-        --at x,y is in document CSS px: the page's top-left corner is 0,0, unscrolled — the same space `query` reports geometry in and `shot --rect` crops in, so a rect measured off a full-page capture, a tile index, or a query pastes straight across, at any scroll position. The point is scrolled into view, hit-tested with elementFromPoint, and followed down through every open shadow root, so the button a component renders is what gets clicked.
+        WebKit hit-tests the click, as it does a user's: it lands on whatever is on top at the point. --selector clicks the element's center, and refuses (exit 1) when something else covers that point, when the element is disabled, or when it has no box; as a one-shot --click step it waits for that to clear instead.
 
-        --at takes fractions (--at 100.75,300.25) and the hit test uses them exactly, but WebKit truncates a mouse event's clientX/clientY to whole px: a page's mousedown, mouseup and click handlers see 100,300, and pointerdown and pointerup see 100.75,300.25. A handler that rescales clientX on a canvas drawn below 1x can land one box off; read the position from pointerdown/pointerup, or click the element's center with --selector.
+        --at x,y is in document CSS px: the page's top-left corner is 0,0, unscrolled — the same space `query` reports geometry in and `shot --rect` crops in, so a rect measured off a full-page capture, a tile index, or a query pastes straight across, at any scroll position. The point is scrolled into view and clicked; the output's hit names what is there, found with elementFromPoint and followed down through every open shadow root, so the button a component renders is what gets clicked and named.
 
-        A --selector click cannot reach that button: CSS does not cross a shadow boundary, and an event dispatched at the host travels up to the document, never down into what the host renders. A closed shadow root exposes nothing to anyone, this tool included, so a point over one clicks its host.
+        --at takes fractions (--at 100.75,300.25) and the click carries them, but WebKit gives a mouse event whole-px clientX/clientY: a page's mousedown, mouseup and click handlers see 100,300, and pointerdown and pointerup see 100.75,300.25. A handler that rescales clientX on a canvas drawn below 1x can land one box off; read the position from pointerdown/pointerup, or click the element's center with --selector.
+
+        A --selector click cannot reach a button inside a shadow root, because CSS does not cross a shadow boundary; click its coordinates instead. A closed shadow root exposes nothing to anyone, this tool included, so the hit names its host.
 
         Examples:
           sleepy click --session login --selector '#sign-in'
           sleepy click --session app --at 620,180             # pierces shadow roots
           sleepy dom http://localhost:3000/ --click '#go'     # one shot, no session
 
-        Exit codes: 0 clicked, 1 nothing matched, the element is disabled, or nothing but the page background is at the point (the reason is on stderr; nothing on stdout), 2 usage — including a URL instead of --session, or naming both --selector and --at, 5 no such session.
+        Exit codes: 0 clicked, 1 nothing matched, the element is disabled, covered or has no box, or nothing but the page background is at the point (the reason is on stderr; nothing on stdout), 2 usage — including a URL instead of --session, or naming both --selector and --at, 5 no such session.
         """,
     )
 
@@ -49,7 +52,7 @@ struct ClickCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
-        help: "Click x,y in document CSS px with a real hit test, descending through open shadow roots.",
+        help: "Click x,y in document CSS px: a real click, on whatever is on top there, shadow roots included.",
     )
     var at: String?
 

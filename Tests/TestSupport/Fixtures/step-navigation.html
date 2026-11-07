@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Step navigation fixture</title>
+  <!-- #here links to /landing, which the test registers. #nothing links to
+       /no-content, a 204: a navigation WebKit decides and starts and never
+       commits. No script, so the page reads the same with scripts off. -->
+</head>
+<body>
+  <h1>Step navigation fixture</h1>
+  <a id="here" href="/landing">here</a>
+  <a id="nothing" href="/no-content">nothing</a>
+</body>
+</html>

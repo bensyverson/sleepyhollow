@@ -22,7 +22,7 @@ extension ActionScript {
     /// `:focus-visible` matches as it does after keyboard navigation —
     /// whatever the last pointer did. An element that does not end up
     /// focused (a plain `<div>`) is refused rather than reported focused.
-    static let focusBody: String = composedContainsHelper + "\n" + """
+    static let focusBody: String = hitTestHelpers + "\n" + """
     const found = sleepyLocate(selector);
     if (found.error) return found;
     const element = found.element;
@@ -38,25 +38,13 @@ extension ActionScript {
     /// A hover's first half: scroll the element into view and answer the
     /// viewport point at its center, refusing one with no box or one another
     /// element covers there — the pointer would land on that instead.
-    static let hoverLocateBody: String = hitTestHelpers + "\n" + composedContainsHelper + "\n" + """
+    static let hoverLocateBody: String = hitTestHelpers + "\n" + """
     const found = sleepyLocate(selector);
     if (found.error) return found;
     const element = found.element;
-    const tag = sleepyTag(element);
-    if (typeof element.scrollIntoView === 'function') {
-      element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
-    const rect = element.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return { error: 'not-visible', tagName: tag };
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    const hit = sleepyHitTest(x, y);
-    const top = hit ? hit.element : document.elementFromPoint(x, y);
-    if (!top || !sleepyComposedContains(element, top)) {
-      return { error: 'covered', tagName: tag, detail: top ? sleepyTag(top) : null };
-    }
-    window[hoverKey] = element;
-    return { tagName: tag, x, y };
+    const target = sleepyPointerTarget(element, 'nearest');
+    if (!target.error) window[hoverKey] = element;
+    return target;
     """
 
     /// A hover's second half: whether the element the pointer was moved to
@@ -89,19 +77,5 @@ extension ActionScript {
     }
     if (element.isContentEditable) return { tagName: tag, value: element.textContent };
     return { tagName: tag };
-    """
-
-    /// Page-side helper the input bodies add to ``helpers``: containment that
-    /// crosses shadow boundaries, since a hit test descends into open shadow
-    /// roots and `Node.contains` stops at them.
-    static let composedContainsHelper: String = """
-    function sleepyComposedContains(outer, inner) {
-      let node = inner;
-      while (node) {
-        if (node === outer) return true;
-        node = node.parentNode || (node instanceof ShadowRoot ? node.host : null);
-      }
-      return false;
-    }
     """
 }

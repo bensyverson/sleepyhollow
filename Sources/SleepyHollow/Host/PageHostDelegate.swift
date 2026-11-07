@@ -41,8 +41,19 @@ final class PageHostDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKSc
         {
             navigationRequests += 1
         }
-        decisionHandler(.allow)
+        if let holdDecision {
+            holdDecision(navigationAction.request.url) { decisionHandler(.allow) }
+        } else {
+            decisionHandler(.allow)
+        }
     }
+
+    /// A test seam: when set, each navigation decision is handed here with
+    /// the call that allows it, so a test can hold a navigation's start for
+    /// as long as a loaded machine might — the condition a settle that bets
+    /// on a wall-clock window loses. `nil`, the only production value,
+    /// allows at once.
+    var holdDecision: ((URL?, @escaping @MainActor () -> Void) -> Void)?
 
     /// Whether `target` differs from `current` only by its fragment.
     private static func isFragmentChange(from current: URL?, to target: URL?) -> Bool {
@@ -89,8 +100,21 @@ final class PageHostDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKSc
     }
 
     func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: any Error) {
+        abandonedNavigations += 1
         host?.finishNavigation(.failed, failure: error)
     }
+
+    /// Main-frame navigations that ended before committing, behind
+    /// ``PageHost/navigationProgress``.
+    ///
+    /// Measured 2026-11-06 (`NavigationSignalMeasurementTests`): every
+    /// navigation WebKit decides and then drops ends here — a `204`, a
+    /// response the policy cancels, a top-level `data:` URL (all
+    /// `WebKitErrorDomain` 102), a `mailto:` or unknown scheme
+    /// (`NSURLErrorDomain` -1002) — so a wait for "committed or abandoned"
+    /// always ends. A download-only response (`Content-Disposition:
+    /// attachment`) with the response allowed commits instead.
+    private(set) var abandonedNavigations: Int = 0
 
     func webView(
         _: WKWebView,

@@ -103,7 +103,10 @@ extension ActionScript {
             return SleepyError(
                 kind: .negative,
                 message: "\(opening) is covered at its center by \(cover), so the pointer would land on that.",
-                nextMove: "Hover what is on top, or dismiss it first (--click, --press Escape).",
+                nextMove: action == .click
+                    ? "Click what is on top with --at, or dismiss it first (--press Escape, or click its close "
+                    + "button)."
+                    : "Hover what is on top, or dismiss it first (--click, --press Escape).",
             )
         case "not-hovered":
             let hovered: String = report.detail.map { "the pointer is over a <\($0)>" } ?? "nothing is hovered"

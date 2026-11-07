@@ -18,20 +18,16 @@ import Foundation
 /// honestly, and ran out of budget.
 ///
 /// **A step that navigates is waited for.** A click on a submit button or a
-/// link starts a navigation the verb's read would otherwise race; the page
-/// itself says whether that happened (``ActionOutcome/startedNavigation``),
-/// and this phase then waits for the new document to be complete before the
-/// next step or the read.
+/// link starts a navigation the verb's read would otherwise race; the step
+/// says whether that happened (``ActionOutcome/startedNavigation``), and this
+/// phase then waits — on the navigation delegate's own signals, never on a
+/// window of wall-clock time — for the navigation to commit or be dropped,
+/// and a committed document to be complete, before the next step or the
+/// read.
 extension PageHost {
     /// How often a not-yet-actionable step is retried.
     private static var actionRetryInterval: TimeInterval {
         0.1
-    }
-
-    /// How long a step that reported a navigation is given to *start* one
-    /// before the phase concludes nothing is coming.
-    private static var navigationStartGrace: TimeInterval {
-        0.5
     }
 
     /// How often the navigation is re-checked. Cheap: it is a property read
@@ -40,10 +36,29 @@ extension PageHost {
         0.02
     }
 
-    /// The isolated-world global a document is marked with, so a navigation
-    /// is detectable even when the URL does not change.
-    private static var documentMarkKey: String {
-        "__sleepyStepMark"
+    /// Where the host's navigation-delegate counts stand: read before a step,
+    /// compared after it.
+    struct NavigationProgress: Friendly {
+        /// Main-frame navigations WebKit has asked the host to decide.
+        var requests: Int
+        /// Main-frame documents committed.
+        var commits: Int
+        /// Main-frame navigations that ended without committing.
+        var abandoned: Int
+
+        /// Whether a navigation has committed or been dropped since `earlier`.
+        func hasEnded(since earlier: NavigationProgress) -> Bool {
+            commits > earlier.commits || abandoned > earlier.abandoned
+        }
+    }
+
+    /// The host's navigation counts now, from the navigation delegate.
+    var navigationProgress: NavigationProgress {
+        NavigationProgress(
+            requests: delegate.navigationRequests,
+            commits: delegate.navigations.count,
+            abandoned: delegate.abandonedNavigations,
+        )
     }
 
     /// Executes ``LoadOptions/steps`` in flag order, sharing the load's
@@ -61,13 +76,12 @@ extension PageHost {
             guard DispatchTime.now() < deadline else {
                 throw stepTimeout(at: index, step: step, detail: "before it could run")
             }
-            // Only a click, a submit or a key can navigate, and the mark has
-            // to be written before the step it detects — so a fill, a focus
-            // or a hover pays nothing.
-            let mark: String? = Self.mayNavigate(step) ? await markDocument() : nil
+            // Read before the step, so a navigation that commits before the
+            // step even returns is still counted as the step's.
+            let before: NavigationProgress = navigationProgress
             let outcome: ActionOutcome = try await performWaiting(step, at: index, by: deadline)
-            if outcome.startedNavigation {
-                try await settleNavigation(after: step, at: index, mark: mark, by: deadline)
+            if outcome.startedNavigation, Self.mayNavigate(step) {
+                try await settleNavigation(after: step, at: index, since: before, by: deadline)
             }
         }
     }
@@ -126,16 +140,31 @@ extension PageHost {
 
     /// Waits for a step's navigation to land, so the next step and the verb's
     /// read see the new document rather than a torn-down one.
+    ///
+    /// **Signals, not a window.** First, whether the host was asked to decide
+    /// a navigation at all since `before` — ordered, by
+    /// ``navigationStarted(sinceRequests:)``; a step that reported one the
+    /// host never heard of (a link into another window) has nothing to wait
+    /// for. Then until that navigation commits or WebKit drops it — a `204`,
+    /// a cancelled response, an unsupported scheme all end in a provisional
+    /// failure — and, once committed, until it finishes loading and parsing.
+    /// Between the decision and the start, `isLoading` is still false and
+    /// the old document still answers: measured 2026-11-06, a cross-site
+    /// link leaves that gap open 60–80 ms while WebKit swaps web content
+    /// processes on an idle Mac, longer on a loaded one. The half-second
+    /// grace this replaced bet on that gap and read the old page when it
+    /// lost (issue `7mWLWK`).
     private func settleNavigation(
         after step: ActionStep,
         at index: Int,
-        mark: String?,
+        since before: NavigationProgress,
         by deadline: DispatchTime,
     ) async throws {
-        let graceEnd = DispatchTime.now() + Self.navigationStartGrace
-        while DispatchTime.now() < min(graceEnd, deadline) {
-            if webView.isLoading { break }
-            if let mark, await documentIsStillMarked(mark) == false { break }
+        guard await navigationStarted(sinceRequests: before.requests) else { return }
+        while navigationProgress.hasEnded(since: before) == false {
+            guard DispatchTime.now() < deadline else {
+                throw stepTimeout(at: index, step: step, detail: "started a navigation that never committed")
+            }
             await pause()
         }
         while webView.isLoading {
@@ -150,18 +179,6 @@ extension PageHost {
             }
             await pause()
         }
-    }
-
-    /// Tags the current document in the isolated world; the tag's absence
-    /// afterwards is proof a *different* document is loaded, which is how a
-    /// same-URL navigation is spotted.
-    func markDocument() async -> String? {
-        let mark: String = UUID().uuidString
-        let written: String? = try? await evaluate(
-            "window[key] = mark; return true;",
-            arguments: ["key": Self.documentMarkKey, "mark": mark],
-        )
-        return written == "true" ? mark : nil
     }
 
     /// How many main-frame navigations WebKit has asked this host to decide
@@ -208,16 +225,6 @@ extension PageHost {
     /// it has run by the time it answers.
     private static var orderingBarrier: String {
         "await new Promise((resolve) => setTimeout(resolve, 0)); return true;"
-    }
-
-    /// Whether the marked document is still the one loaded. A page that
-    /// cannot answer is a page that is being replaced.
-    private func documentIsStillMarked(_ mark: String) async -> Bool {
-        let answer: String? = try? await evaluate(
-            "return window[key] === mark;",
-            arguments: ["key": Self.documentMarkKey, "mark": mark],
-        )
-        return answer == "true"
     }
 
     private func documentIsComplete() async -> Bool {

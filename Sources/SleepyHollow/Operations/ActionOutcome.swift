@@ -8,7 +8,8 @@
 public struct ActionOutcome: Friendly {
     /// Which primitive produced this outcome.
     public enum Action: String, Friendly {
-        /// A synthesized pointer/mouse/click sequence.
+        /// A real click — pointer move, button down and up — sent through
+        /// the host's window.
         case click
         /// A value set natively, with `input` and `change` dispatched.
         case fill
@@ -47,7 +48,9 @@ public struct ActionOutcome: Friendly {
 
     /// What a coordinate click's hit test found, for a click addressed by
     /// ``ActionTarget/point(_:)`` — `nil` for every selector-addressed
-    /// action, which did no hit test and so has nothing to report.
+    /// action, whose element the selector already names (a selector click
+    /// hit-tests only to refuse a covered element, and reports nothing
+    /// new when it is not).
     public var hit: HitElement?
 
     /// Creates an outcome.

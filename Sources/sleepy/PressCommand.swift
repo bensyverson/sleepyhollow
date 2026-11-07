@@ -14,7 +14,7 @@ struct PressCommand: AsyncParsableCommand {
         commandName: "press",
         abstract: "Press keys or type text in a live session, as real keystrokes (isTrusted true).",
         discussion: """
-        Real input, unlike click, fill and submit: each key is an AppKit key event sent through the page's window, so the page sees isTrusted true and the browser runs the key's default action — text goes into the focused field, Tab moves focus, Enter submits the form, Escape closes a modal dialog.
+        Real input, like click and unlike fill and submit: each key is an AppKit key event sent through the page's window, so the page sees isTrusted true and the browser runs the key's default action — text goes into the focused field, Tab moves focus, Enter submits the form, Escape closes a modal dialog.
 
         Keys use Playwright's names, DOM KeyboardEvent.key with modifiers joined by '+': Enter, Tab, Escape, Backspace, Delete, ArrowUp/Down/Left/Right, Home, End, PageUp, PageDown, F1-F12, Space, a single character (a, A, 7, !), and the modifiers Shift, Control, Alt, Meta (ControlOrMeta is Meta on a Mac). Names are case-sensitive. Several keys are pressed in order.
 

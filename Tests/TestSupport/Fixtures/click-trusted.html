@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Trusted click fixture</title>
+  <style>
+    body { margin: 0; font: 16px system-ui, sans-serif; }
+    #go { position: absolute; left: 20px; top: 20px; width: 160px; height: 40px; }
+    #go:hover { outline: 3px solid rgb(255, 0, 0); }
+    /* A button whose box only a transform-aware hit test finds: the
+       container is rotated and scaled, so its untransformed layout box is
+       elsewhere. */
+    #turned { position: absolute; left: 300px; top: 20px; width: 200px; height: 100px;
+      transform: translate(40px, 120px) rotate(30deg) scale(1.5); transform-origin: 0 0; }
+    #spin { width: 120px; height: 40px; }
+    /* A button under a transparent sheet: a script click reaches it; a real
+       one lands on the sheet. */
+    #under { position: absolute; left: 20px; top: 300px; width: 160px; height: 40px; }
+    #sheet { position: absolute; left: 0; top: 280px; width: 220px; height: 80px; }
+    /* A button under a sheet the pointer passes through. */
+    #through { position: absolute; left: 300px; top: 300px; width: 160px; height: 40px; }
+    #ghost { position: absolute; left: 280px; top: 280px; width: 220px; height: 80px; pointer-events: none; }
+    #agree { position: absolute; left: 20px; top: 420px; }
+    #away { position: absolute; left: 20px; top: 470px; }
+    #log { position: absolute; left: 20px; top: 520px; }
+  </style>
+</head>
+<body>
+  <button id="go" type="button">Go</button>
+  <div id="turned"><button id="spin" type="button">Spin</button></div>
+  <button id="under" type="button">Under</button>
+  <div id="sheet"></div>
+  <button id="through" type="button">Through</button>
+  <div id="ghost"></div>
+  <input id="agree" type="checkbox">
+  <a id="away" href="/landing">away</a>
+  <p id="log"></p>
+  <script>
+    // Every pointer, mouse and click event anywhere, in order, with what
+    // received it and where: read back as window.sleepyEvents.
+    window.sleepyEvents = [];
+    for (const type of ['pointermove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick']) {
+      document.addEventListener(type, (event) => {
+        window.sleepyEvents.push({
+          type,
+          target: event.target.id || event.target.tagName.toLowerCase(),
+          isTrusted: event.isTrusted,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          detail: event.detail,
+          button: event.button,
+          buttons: event.buttons,
+        });
+      }, true);
+    }
+  </script>
+</body>
+</html>

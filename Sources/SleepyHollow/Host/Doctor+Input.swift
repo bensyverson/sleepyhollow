@@ -3,7 +3,8 @@ import WebKit
 
 public extension Doctor {
     /// The `WKWebView` selectors ``checkInput(selectors:)`` asks for by
-    /// default: the SPI behind `press`, `--type`, `--press` and `--hover`.
+    /// default: the SPI behind `press`, `click`, `--type`, `--press`,
+    /// `--click` and `--hover`.
     static var inputSelectors: [String] {
         InputSPI.all
     }
@@ -11,7 +12,7 @@ public extension Doctor {
     /// Whether this WebKit has the private selectors real keyboard and
     /// pointer input rest on (see `TrustedInput`).
     ///
-    /// Without them `press` and the `--hover` step refuse with an environment
+    /// Without them `press`, `click` and the `--hover` step refuse with an environment
     /// error rather than fall back to untrusted events, so this names the
     /// missing selectors before an agent meets that refusal.
     ///
@@ -24,10 +25,10 @@ public extension Doctor {
         guard missing.isEmpty else {
             return .failed(
                 .input,
-                "This WebKit has no -[WKWebView \(missing.joined(separator: ", "))], so `press`, --type, --press "
-                    + "and --hover cannot deliver real keystrokes or pointer moves, and refuse.",
-                nextMove: "Use the synthesized act verbs (click, fill, submit), which say they are untrusted, "
-                    + "and report this macOS version as a seam bug.",
+                "This WebKit has no -[WKWebView \(missing.joined(separator: ", "))], so `press`, `click`, "
+                    + "--type, --press, --click and --hover cannot deliver real keystrokes or clicks, and refuse.",
+                nextMove: "Report this macOS version as a seam bug; fill and submit still work, as synthesized "
+                    + "events that say they are untrusted.",
             )
         }
         return .passed(.input, "Real keyboard and pointer input is available (WebKit's input SPI is present).")

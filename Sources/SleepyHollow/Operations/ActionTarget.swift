@@ -9,9 +9,9 @@ import Foundation
 /// the CLI only hands over what the agent typed.
 ///
 /// A point is the only way into an open shadow root: CSS selectors cannot
-/// cross a shadow boundary and a synthesized click on the host does not
-/// propagate down to what the host renders (the 2026-08-24 field report,
-/// item 6). ``ClickOperation`` resolves a point by hit test instead.
+/// cross a shadow boundary (the 2026-08-24 field report, item 6), while a
+/// click at a point lands on whatever renders there, shadow content
+/// included. ``ClickOperation`` names what a point reaches by hit test.
 public enum ActionTarget: Friendly, CustomStringConvertible {
     /// The first element a CSS selector matches, in document order.
     case selector(String)

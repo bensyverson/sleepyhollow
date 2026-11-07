@@ -4,14 +4,14 @@ import Foundation
 /// page-side, decode what the page reports, and turn a refusal into a
 /// ``SleepyError`` that teaches the next move.
 ///
-/// Honest about mechanism (vision doc §3): for `click`, `fill` and `submit`
-/// these are real DOM events dispatched at the element — `pointerdown`/`mousedown`/`pointerup`/
-/// `mouseup`/`click`, `input`/`change`, a cancellable `submit` — not OS-level
-/// hit-testing. `isTrusted` is `false` and the page can see that; a page that
-/// refuses untrusted events refuses these, which is the truth an agent needs
-/// rather than a pretence. `press` and the hover step are the exception:
-/// their events come from the host's window (``TrustedInput``), and this
-/// seam only resolves and checks what they act on.
+/// Honest about mechanism (vision doc §3): for `fill` and `submit` these are
+/// real DOM events dispatched at the element — `input`/`change`, a
+/// cancellable `submit` — not OS-level input. `isTrusted` is `false` and the
+/// page can see that; a page that refuses untrusted events refuses these,
+/// which is the truth an agent needs rather than a pretence. `click`, `press`
+/// and the hover step are the exception: their events come from the host's
+/// window (``TrustedInput``), and this seam only resolves and checks what
+/// they act on.
 ///
 /// Actions run in the tool's isolated ``InjectedScript/World``: the DOM is
 /// shared across worlds, so the page's listeners receive every event, while
@@ -34,9 +34,11 @@ enum ActionScript {
         var navigating: Bool?
         /// What a coordinate click's hit test found.
         var hit: HitElement?
-        /// Where a hover puts the pointer: viewport CSS px, horizontal.
+        /// Where a hover or a click puts the pointer: viewport CSS px,
+        /// horizontal.
         var x: Double?
-        /// Where a hover puts the pointer: viewport CSS px, vertical.
+        /// Where a hover or a click puts the pointer: viewport CSS px,
+        /// vertical.
         var y: Double?
     }
 
@@ -67,9 +69,9 @@ enum ActionScript {
             named["point"] = ["x": point.x, "y": point.y]
         }
         // With the page's scripts off the page-side submit watcher hears
-        // nothing, so the host judges a navigation itself — only for a click
-        // or a submit, the two that can start one without a page script.
-        let requests: Int? = host.options.pageScripts == .disabled && (action == .click || action == .submit)
+        // nothing, so the host judges a navigation itself — only for a
+        // submit, the one synthesized action that can start one.
+        let requests: Int? = host.options.pageScripts == .disabled && action == .submit
             ? host.navigationRequestCount
             : nil
         let report: Report = try await report(for: action, target: target, body: body, arguments: named, on: host)

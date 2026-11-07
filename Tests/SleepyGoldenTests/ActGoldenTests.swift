@@ -109,6 +109,14 @@ struct ActGoldenTests {
         #expect(result.standardOutput.lowercased().contains("shadow"))
     }
 
+    @Test func `click --help says the click is real input, and that a covered element is refused`() async throws {
+        let result = try await GoldenBinary.runOffPool(["click", "--help"])
+        #expect(result.exitCode == 0)
+        #expect(result.standardOutput.contains("isTrusted"))
+        #expect(result.standardOutput.contains("covered"))
+        #expect(!result.standardOutput.contains("Synthesized"))
+    }
+
     @Test func `another option's value that spells --click is not an action step`() async throws {
         try await FixtureServer.withRunning { _, baseURL in
             let page = baseURL.appendingPathComponent("static.html").absoluteString

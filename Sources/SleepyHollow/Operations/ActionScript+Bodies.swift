@@ -1,6 +1,6 @@
 extension ActionScript {
     /// Page-side helpers every action body shares: element lookup, the
-    /// disabled test, and the submit watcher that tells a click whether the
+    /// disabled test, and the submit watcher that tells a submit whether the
     /// page really started navigating.
     ///
     /// The watcher listens for `submit` in the *capture* phase at the
@@ -38,62 +38,11 @@ extension ActionScript {
       };
     }
 
-    function sleepyFollowsLink(element) {
-      const anchor = element.closest ? element.closest('a[href]') : null;
-      if (!anchor) return false;
-      const href = (anchor.getAttribute('href') || '').trim();
-      if (href === '' || href.startsWith('#')) return false;
-      return !href.toLowerCase().startsWith('javascript:');
-    }
-
-    function sleepyDispatchClick(element, x, y) {
-      const stopWatching = sleepyWatchSubmits();
-      let allowed = true;
-      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-        const pressing = type === 'pointerdown' || type === 'mousedown';
-        const init = {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          view: window,
-          button: 0,
-          buttons: pressing ? 1 : 0,
-          detail: type === 'click' ? 1 : 0,
-          clientX: x,
-          clientY: y,
-        };
-        const pointer = type.startsWith('pointer') && typeof PointerEvent === 'function';
-        const event = pointer
-          ? new PointerEvent(type, Object.assign({ pointerId: 1, pointerType: 'mouse', isPrimary: true }, init))
-          : new MouseEvent(type, init);
-        const proceeded = element.dispatchEvent(event);
-        if (type === 'click') allowed = proceeded;
-      }
-      const submitted = stopWatching();
-      return submitted || (allowed && sleepyFollowsLink(element));
-    }
-
     function sleepyNativeSetter(element, property) {
       const prototype = Object.getPrototypeOf(element);
       const descriptor = Object.getOwnPropertyDescriptor(prototype, property);
       return descriptor && descriptor.set ? descriptor.set.bind(element) : null;
     }
-    """
-
-    /// A click: the pointer, mouse and click sequence a page listens for,
-    /// dispatched at the element's centre.
-    static let clickBody: String = """
-    const found = sleepyLocate(selector);
-    if (found.error) return found;
-    const element = found.element;
-    if (sleepyDisabled(element)) return { error: 'disabled', tagName: sleepyTag(element) };
-    if (typeof element.scrollIntoView === 'function') {
-      element.scrollIntoView({ block: 'center', inline: 'center' });
-    }
-    if (typeof element.focus === 'function') element.focus();
-    const rect = element.getBoundingClientRect();
-    const navigating = sleepyDispatchClick(element, rect.left + rect.width / 2, rect.top + rect.height / 2);
-    return { tagName: sleepyTag(element), navigating };
     """
 
     /// A fill: the value set through the native setter, then `input` and

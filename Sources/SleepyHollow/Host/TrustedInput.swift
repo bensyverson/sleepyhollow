@@ -7,10 +7,10 @@ import WebKit
 /// browser runs their default actions — text typed into a field, Tab moving
 /// focus, Enter submitting a form, `:hover` following the pointer.
 ///
-/// This is what separates `press` and the hover step from the synthesized DOM
-/// events of `click`, `fill` and `submit` (``ActionScript``): those are
-/// dispatched page-side and the page can tell; these come from AppKit, the
-/// way a keyboard's do. It works because every ``PageHost/Hosting/live``
+/// This is what separates `press`, `click` and the hover step from the
+/// synthesized DOM events of `fill` and `submit` (``ActionScript``): those
+/// are dispatched page-side and the page can tell; these come from AppKit,
+/// the way a keyboard's and a mouse's do. It works because every ``PageHost/Hosting/live``
 /// host is parked in an ``OffscreenWindow`` that claims key status: the web
 /// view is made first responder there, and WebKit treats key events sent to
 /// that window as the frontmost window's. A ``PageHost/Hosting/windowless``
@@ -19,11 +19,13 @@ import WebKit
 /// **Keys** go through `NSWindow.sendEvent(_:)`: a `flagsChanged` per
 /// modifier going down, `keyDown`/`keyUp`, then the modifiers released in
 /// reverse — so the page sees `keydown Shift` before `keydown Tab`, as from
-/// a keyboard. **The pointer** cannot go that way: measured 2026-11-06, a
-/// `mouseMoved` event sent to the window, to the web view, or to the web
-/// view's tracking-area owner reaches no page (the app is never active), so
-/// it goes through `-[WKWebView _simulateMouseMove:]`, WebKit's own entry for
-/// a pointer move in a window that is not frontmost.
+/// a keyboard. **The pointer moves** through
+/// `-[WKWebView _simulateMouseMove:]`, WebKit's own entry for a pointer move
+/// in a window that is not frontmost: measured 2026-11-06, a `mouseMoved`
+/// event sent to the window, to the web view, or to the web view's
+/// tracking-area owner reaches no page (the app is never active). **Its
+/// button** goes through `NSWindow.sendEvent(_:)` like a key, so WebKit
+/// hit-tests the press itself (`TrustedInput+Pointer.swift`).
 ///
 /// **Landing is awaited, not slept on.** WebKit queues input in the UI
 /// process and sends the next event only once the page has handled the last,
@@ -137,45 +139,11 @@ struct TrustedInput {
         Keystroke.modifierKeyCodes[modifier] ?? Keystroke.unidentifiedKeyCode
     }
 
-    // MARK: - Pointer
-
-    /// Moves the pointer to a point in viewport CSS px and waits until the
-    /// page has handled the move.
-    ///
-    /// - Throws: ``SleepyError/Kind/environment`` when this WebKit lacks the
-    ///   SPI, and a ``SleepyError/Kind/timeout`` when the page does not
-    ///   handle the move within the host's call budget.
-    func movePointer(toViewport point: CGPoint) async throws {
-        let view: WKWebView = host.webView
-        let scale: CGFloat = view.pageZoom * view.magnification
-        let local = NSPoint(
-            x: point.x * scale,
-            y: view.isFlipped ? point.y * scale : view.bounds.height - point.y * scale,
-        )
-        guard let event = NSEvent.mouseEvent(
-            with: .mouseMoved,
-            location: view.convert(local, to: nil),
-            modifierFlags: [],
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: window.windowNumber,
-            context: nil,
-            eventNumber: 0,
-            clickCount: 0,
-            pressure: 0,
-        ) else { return }
-        let selector = NSSelectorFromString(InputSPI.simulateMouseMove)
-        guard view.responds(to: selector) else { throw Self.missing(InputSPI.simulateMouseMove, for: "a pointer move") }
-        typealias Move = @convention(c) (AnyObject, Selector, NSEvent) -> Void
-        let move = unsafeBitCast(view.method(for: selector), to: Move.self)
-        move(view, selector, event)
-        try await drain(InputSPI.afterPendingMouseEvents, naming: "the pending pointer events")
-    }
-
     // MARK: - Landing
 
     /// Calls a WebKit "after all pending events" SPI and waits for its
     /// callback, inside the host's call budget.
-    private func drain(_ name: String, naming call: String) async throws {
+    func drain(_ name: String, naming call: String) async throws {
         let view: WKWebView = host.webView
         let selector = NSSelectorFromString(name)
         guard view.responds(to: selector) else { throw Self.missing(name, for: call) }
@@ -188,12 +156,14 @@ struct TrustedInput {
         }
     }
 
-    private static func missing(_ name: String, for call: String) -> SleepyError {
+    /// The refusal for a WebKit that lacks the SPI `name`, which `call`
+    /// needed — an environment fault, never a fallback to untrusted events.
+    static func missing(_ name: String, for call: String) -> SleepyError {
         SleepyError(
             kind: .environment,
             message: "This WebKit has no -[WKWebView \(name)], so the host cannot deliver \(call) as real input.",
-            nextMove: "Report this macOS version as a seam bug; until then use the synthesized act verbs "
-                + "(click, fill, submit), which say they are untrusted.",
+            nextMove: "Report this macOS version as a seam bug, and run `sleepy doctor` to see which input "
+                + "calls it lacks; --fill and --submit still work, as synthesized events.",
         )
     }
 }

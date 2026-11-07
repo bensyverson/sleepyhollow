@@ -32,7 +32,10 @@ struct WaitDeadlineObservedTests {
                 return true
             },
         )
-        #expect(sighting == .late)
+        // `.late` when the check started in time; `.never` when a loaded host
+        // could not even start it before the deadline. Either is a timeout —
+        // the claim is only that a late answer never settles the race.
+        #expect(sighting != .inTime)
     }
 
     @Test

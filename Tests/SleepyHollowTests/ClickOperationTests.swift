@@ -3,8 +3,8 @@ import Foundation
 import Testing
 import TestSupport
 
-/// `ClickOperation`: an honest synthesized event sequence, and the answers a
-/// page gives back when the target can't be clicked.
+/// `ClickOperation`: a real click through the host's window, and the answers
+/// a page gives back when the target can't be clicked.
 @Suite("ClickOperation", .serialized)
 struct ClickOperationTests {
     @MainActor
@@ -40,12 +40,12 @@ struct ClickOperationTests {
 
     @Test
     @MainActor
-    func `the synthesized click is honest about being untrusted, and lands on the element`() async throws {
+    func `the click arrives trusted, and lands on the element`() async throws {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let host = try await host(loading: "act-events.html", base: base)
             _ = try await host.execute(ClickOperation(selector: "#go"))
             let log: String = try await text(of: "#click-log", in: host)
-            #expect(log.contains("\\\"isTrusted\\\":false"))
+            #expect(log.contains("\\\"isTrusted\\\":true"))
             #expect(log.contains("\\\"insideX\\\":true"))
             #expect(log.contains("\\\"insideY\\\":true"))
         }

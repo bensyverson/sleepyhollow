@@ -51,6 +51,15 @@ sleepy query --session app --selector 'my-widget'
 sleepy click --session app --at 620,180
 ```
 
+Click as a user would, so a page that checks `isTrusted` takes it → `click`
+is already real input. A click refused as covered names what is on top:
+dismiss it, or click that instead
+
+```sh
+sleepy press --session app Escape
+sleepy click --session app --selector '#save'
+```
+
 Check another breakpoint without reopening → `resize`
 
 ```sh
