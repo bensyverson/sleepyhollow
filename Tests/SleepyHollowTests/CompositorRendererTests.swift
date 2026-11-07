@@ -66,7 +66,11 @@ struct CompositorRendererTests {
         try await FixtureServer.withRunningOnMainActor { _, base in
             let host = PageHost()
             _ = try await host.load(#require(URL(string: "static.html", relativeTo: base)))
-            let layer = try #require(host.webView.layer)
+            // Through compositedLayer(), which runs the window's first display
+            // pass: straight after a load on a loaded machine, a just-parked
+            // view's layer may have no superlayer yet, and this test is about
+            // the capture moving it, not about when the first pass runs.
+            let layer = try host.compositedLayer()
             let parent = layer.superlayer
             #expect(parent != nil)
             let capture = try await ShotOperation().render(on: host)

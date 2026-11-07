@@ -67,6 +67,7 @@ public extension LoadFlagOptions {
         case let .submit(selector): ["--submit", selector]
         case let .focus(selector): ["--focus", selector]
         case let .hover(selector): ["--hover", selector]
+        case .leave: ["--leave"]
         case let .type(text): ["--type", text]
         case let .press(chord): ["--press", chord.description]
         }

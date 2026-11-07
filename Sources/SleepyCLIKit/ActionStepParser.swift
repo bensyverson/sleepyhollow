@@ -3,8 +3,9 @@ import SleepyHollow
 
 /// Scans a raw argument vector for the step flags — `--click`, `--fill`,
 /// `--submit`, `--focus`, `--hover`, `--type` and `--press` (both
-/// `--flag value` and `--flag=value` forms) — and returns the `ActionStep`s
-/// they describe in the order they appeared.
+/// `--flag value` and `--flag=value` forms), and `--leave`, which takes no
+/// value — and returns the `ActionStep`s they describe in the order they
+/// appeared.
 ///
 /// ArgumentParser collects each flag into its own array, losing the
 /// interleave order across the step flags — ``LoadFlagOptions``
@@ -31,6 +32,12 @@ public enum ActionStepParser {
         case hover = "--hover"
         case type = "--type"
         case press = "--press"
+        case leave = "--leave"
+
+        /// Whether the flag is followed by a value.
+        var takesValue: Bool {
+            self != .leave
+        }
     }
 
     /// Every value-taking long option the tool declares, so the scan never
@@ -61,8 +68,9 @@ public enum ActionStepParser {
     /// - Parameter valueTakingOptions: value-taking long options beyond
     ///   ``knownValueTakingOptions``, whose values must not be read as steps.
     /// - Throws: a teaching `SleepyError` when a recognized flag has no
-    ///   value, when a `--fill` value is missing its `=`, or when a `--press`
-    ///   value is not a key chord (``KeyChord/init(parsing:)``).
+    ///   value, when `--leave` is given one, when a `--fill` value is missing
+    ///   its `=`, or when a `--press` value is not a key chord
+    ///   (``KeyChord/init(parsing:)``).
     public static func parse(
         _ arguments: [String],
         valueTakingOptions: Set<String> = [],
@@ -85,6 +93,20 @@ public enum ActionStepParser {
             guard
                 let flag = Flag.allCases.first(where: { token == $0.rawValue || token.hasPrefix($0.rawValue + "=") })
             else {
+                index += 1
+                continue
+            }
+
+            guard flag.takesValue else {
+                guard token == flag.rawValue else {
+                    throw SleepyError(
+                        kind: .usage,
+                        message: "'\(flag.rawValue)' takes no value, but was given '\(token)'.",
+                        nextMove: "Write '\(flag.rawValue)' on its own, after the step it follows, "
+                            + "e.g. --click '#btn' \(flag.rawValue).",
+                    )
+                }
+                steps.append(.leave)
                 index += 1
                 continue
             }
@@ -121,6 +143,8 @@ public enum ActionStepParser {
             return .focus(selector: value)
         case .hover:
             return .hover(selector: value)
+        case .leave:
+            return .leave
         case .type:
             return .type(text: value)
         case .press:

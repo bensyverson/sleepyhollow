@@ -147,4 +147,48 @@ struct ActionStepParserTests {
     @Test func `the press verb's --text value is never read as a step`() throws {
         #expect(try ActionStepParser.parse(["press", "--text", "--hover", "Enter"]).isEmpty)
     }
+
+    // MARK: - The leave step
+
+    @Test func `--leave takes no value and interleaves with the other steps in order`() throws {
+        let steps = try ActionStepParser.parse([
+            "shot", "http://example.com",
+            "--click", "#go",
+            "--leave",
+            "--hover", "#menu",
+            "--leave",
+        ])
+        #expect(steps == [.click(selector: "#go"), .leave, .hover(selector: "#menu"), .leave])
+    }
+
+    @Test func `--leave as the last argument is a step, not a missing value`() throws {
+        #expect(try ActionStepParser.parse(["shot", "http://example.com", "--leave"]) == [.leave])
+    }
+
+    @Test func `--leave given a value is a usage error`() {
+        do {
+            _ = try ActionStepParser.parse(["--leave=#go"])
+            Issue.record("parsed")
+        } catch let error as SleepyError {
+            #expect(error.kind == .usage)
+            #expect(error.message.contains("--leave"))
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
+
+    @Test func `--leave parses as a repeatable flag and reaches the session helper in order`() throws {
+        let flags: LoadFlagOptions = try LoadFlagOptions.parse(["--click", "#go", "--leave", "--leave"])
+        #expect(flags.leave == 2)
+        let steps: [ActionStep] = [.click(selector: "#go"), .leave]
+        #expect(try ActionStepParser.parse(flags.sessionArguments(steps: steps)) == steps)
+    }
+
+    @Test func `--leave shapes a load, so a session refuses it`() throws {
+        let flags: LoadFlagOptions = try LoadFlagOptions.parse(["--leave"])
+        #expect(PageExecution.loadShapingFlags(flags) == ["--leave"])
+        #expect(throws: SleepyError.self) {
+            try PageExecution.requireSessionCompatible(flags)
+        }
+    }
 }

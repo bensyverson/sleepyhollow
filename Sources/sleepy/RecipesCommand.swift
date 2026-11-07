@@ -65,6 +65,16 @@ struct RecipesCommand: ParsableCommand {
       sleepy press --session app Escape
       sleepy click --session app --selector '#save'
 
+    Capture a control's normal, hover and clicked states as separate shots →
+    shot with --hover, then --click followed by --leave. A click leaves the
+    pointer where it clicked, as a user's does, so the clicked shot would
+    also show hover; --leave moves the pointer off the page first. It fires
+    mouseleave on what the pointer was over, so a menu that opens on hover
+    closes
+      sleepy shot http://localhost:3000/ --selector '#btn' --out normal.png
+      sleepy shot http://localhost:3000/ --selector '#btn' --hover '#btn' --out hover.png
+      sleepy shot http://localhost:3000/ --selector '#btn' --click '#btn' --leave --out clicked.png
+
     Check another breakpoint without reopening → resize
       sleepy resize --session app 390x844
       sleepy shot --session app --out narrow.png

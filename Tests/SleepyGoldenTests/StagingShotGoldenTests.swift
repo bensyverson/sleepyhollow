@@ -6,7 +6,10 @@ import TestSupport
 
 /// A shot staged with `--hover` shows the `:hover` style, and one staged
 /// with `--focus` shows the keyboard focus style, end to end through the
-/// real binary (leaf `fFz9DI`, criterion `bzl`).
+/// real binary (leaf `fFz9DI`, criterion `bzl`). A `--click` leaves the
+/// clicked element hovered, as a user's click does, and `--leave` takes the
+/// pointer off the page so the shot shows neither (Ben's ruling,
+/// 2026-11-06).
 ///
 /// `stage-hover-focus.html` paints flat colors only a real pointer or real
 /// focus produce: `#card` gray, green under `:hover`; `#action` gray, orange
@@ -52,6 +55,30 @@ struct StagingShotGoldenTests {
         let image = try await shot(staging: ["--hover", "#card"])
         let card = try #require(Self.pixel(in: image, at: Self.cardCenter))
         #expect(card.isClose(to: Self.green), "card: \(card)")
+    }
+
+    @Test func `a shot after --click shows the clicked element's hover style`() async throws {
+        let image = try await shot(staging: ["--click", "#card"])
+        let card = try #require(Self.pixel(in: image, at: Self.cardCenter))
+        #expect(card.isClose(to: Self.green), "card: \(card)")
+    }
+
+    @Test func `a shot after --click then --leave shows no hover style`() async throws {
+        let image = try await shot(staging: ["--click", "#card", "--leave"])
+        let card = try #require(Self.pixel(in: image, at: Self.cardCenter))
+        #expect(card.isClose(to: Self.gray), "card: \(card)")
+    }
+
+    @Test func `a shot after --hover then --leave shows no hover style`() async throws {
+        let image = try await shot(staging: ["--hover", "#card", "--leave"])
+        let card = try #require(Self.pixel(in: image, at: Self.cardCenter))
+        #expect(card.isClose(to: Self.gray), "card: \(card)")
+    }
+
+    @Test func `recipes shows capturing the after-click state without hover`() async throws {
+        let recipes = try await GoldenBinary.runOffPool(["recipes"])
+        #expect(recipes.exitCode == 0)
+        #expect(recipes.standardOutput.contains("--click '#btn' --leave"))
     }
 
     @Test func `a shot staged with --focus shows the keyboard focus style`() async throws {

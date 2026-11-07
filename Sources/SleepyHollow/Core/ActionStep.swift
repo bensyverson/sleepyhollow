@@ -3,14 +3,22 @@
 /// its selector to become actionable within the load's budget.
 ///
 /// These are the flag forms (`--click`, `--fill`, `--submit`, `--focus`,
-/// `--hover`, `--type`, `--press`) that let a two-step check — or a shot of
-/// a state no URL reaches — run without naming a session. Mechanism is
-/// honest, and differs by step: `fill` and `submit` are synthesized DOM
-/// events (`isTrusted` false); `click`, `hover`, `type` and `press` are real
-/// `NSEvent`s sent through the host's window (`isTrusted` true, default
-/// actions run); `focus` is the element's own `focus()`, as by keyboard.
+/// `--hover`, `--leave`, `--type`, `--press`) that let a two-step check — or
+/// a shot of a state no URL reaches — run without naming a session.
+/// Mechanism is honest, and differs by step: `fill` and `submit` are
+/// synthesized DOM events (`isTrusted` false); `click`, `hover`, `leave`,
+/// `type` and `press` are real `NSEvent`s sent through the host's window
+/// (`isTrusted` true, default actions run); `focus` is the element's own
+/// `focus()`, as by keyboard.
+///
+/// **The pointer stays where a step left it.** After ``click(selector:)``
+/// and ``hover(selector:)`` the element under the pointer matches `:hover`,
+/// as after a user's click; ``leave`` is the explicit step that takes the
+/// pointer off the page, so `[.click(selector: "#btn"), .leave]` stages the
+/// clicked state without the hover one.
 public enum ActionStep: Friendly {
-    /// Click the first element matching `selector`.
+    /// Click the first element matching `selector`; the pointer stays over
+    /// it (see ``ClickOperation``).
     case click(selector: String)
     /// Set the value of the first element matching `selector` and dispatch
     /// input events.
@@ -23,6 +31,10 @@ public enum ActionStep: Friendly {
     /// Move a real pointer over the center of the first element matching
     /// `selector`, so `:hover` matches (see ``HoverOperation``).
     case hover(selector: String)
+    /// Take a real pointer off the page, so nothing matches `:hover` and
+    /// what it was over receives `mouseleave`/`pointerleave` (see
+    /// ``LeaveOperation``).
+    case leave
     /// Type `text` into whatever has focus, one real keystroke per character.
     case type(text: String)
     /// Press one key chord on whatever has focus.

@@ -46,11 +46,13 @@ can differ from run to run. Wait for the settled state with
 ``LoadOptions/wait`` instead of sleeping. ``PageHost/Hosting/windowless`` is
 the opt-out, and it freezes animation time.
 
-**Act as a user would.** ``ClickOperation``, ``PageHost/press(_:focusing:)``
-and the hover step send real input through that window: the page sees
-`isTrusted` true and WebKit runs the default action, even with scripts off.
-A windowless host has no window to send it through, and refuses rather than
-dispatch script events in its place.
+**Act as a user would.** ``ClickOperation``, ``PageHost/press(_:focusing:)``,
+``HoverOperation`` and ``LeaveOperation`` send real input through that window:
+the page sees `isTrusted` true and WebKit runs the default action, even with
+scripts off. The pointer stays where a click or hover left it, as a user's
+does; ``LeaveOperation`` takes it off the page when a capture should show no
+hover. A windowless host has no window to send it through, and refuses rather
+than dispatch script events in its place.
 
 Pages that need one identity — sign in once, then render many — are built as
 members of a ``HostGroup``.

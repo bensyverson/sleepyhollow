@@ -30,7 +30,7 @@ public enum PageExecution {
     /// them: the order they appear in ``LoadFlagOptions``.
     public static let loadShapingFlagNames: [String] = [
         "--size", "--theme", "--transparent", "--no-js", "--jar", "--file-root", "--inject", "--inject-world",
-        "--wait-for", "--confirm", "--prompt-text", "--click", "--fill", "--submit",
+        "--wait-for", "--confirm", "--prompt-text", "--click", "--fill", "--submit", "--leave",
     ]
 
     /// Which load-shaping flags `flags` actually carries.
@@ -59,6 +59,7 @@ public enum PageExecution {
             !flags.click.isEmpty,
             !flags.fill.isEmpty,
             !flags.submit.isEmpty,
+            flags.leave > 0,
         ]
         return zip(loadShapingFlagNames, given).compactMap { name, wasGiven in wasGiven ? name : nil }
     }

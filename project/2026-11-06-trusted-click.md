@@ -62,11 +62,34 @@ Fixture `click-trusted.html`; `TrustedInput.click(atViewport:)` on a live host.
 2. **A covered element is refused, not clicked through.** A real click on `#under` lands on the sheet. Clicking the sheet while reporting `#under` would be a plausible wrong answer; the `covered` refusal names what is on top (`<div>`), exits 1 and, as a step, is retried until the budget — so a toast that fades is waited for, as Playwright does. This is the same rule `--hover` already follows.
 3. **Navigation is judged by the host for every click.** The page's own word (a submit watcher and a link heuristic) cannot see a trusted event's default action, and the host's policy-decision count is ordered and needs no listener. A submit the page cancels asks for no decision, so it still reports `false` (`ClickOperationTests`).
 4. **Visible differences an existing user may notice, all of them what a user's click does:** focus no longer lands on a clicked button; the pointer stays over what was clicked, so a `shot` after a click shows its `:hover` style; `buttons` reads 0 during the press. None changed an existing test's outcome. The second is a product question (below).
+
+   > **Ruled 2026-11-06:** the pointer stays (see [Ruling](#ruling-ben-2026-11-06)); `--leave` is the explicit step that takes it off the page.
 5. **The settle's red test needs a seam.** `PageHostDelegate.holdDecision` is `nil` in production and lets a test hold a navigation decision; no FixtureGate placement reproduces the losing gap, because a held response keeps `isLoading` true.
 
-## Open question for Ben
+## Ruling (Ben, 2026-11-06)
 
-**Should the pointer stay where a click left it?** Today it does, as with `--hover` and as after a user's click, so `sleepy shot <url> --click '#menu'` captures the menu with its hover style. The alternative is to move the pointer off the page after each click, so a capture after a click shows no hover. Recommendation: keep it — it is what the page does for a real user, and `--hover` elsewhere is the explicit way to put the pointer somewhere else.
+**A click stays realistic: the pointer stays where it clicked.** `click`, `--click` and `ClickOperation` do not move it afterwards, so `:hover` matches the clicked element, as after a user's click. **Taking the pointer off the page is its own explicit step, `--leave`** (no argument; `ActionStep.leave`, `LeaveOperation`), usable after `--click` or `--hover` and run in flag order with the other steps. After it, nothing matches `:hover` and the element the pointer was over has received trusted `pointerleave` and `mouseleave`.
+
+Why: the right answer depends on who is calling. A caller driving the mouse needs the pointer to stay — parking it after every click would fire `mouseleave`, close a hover-opened menu, and break the next click into it. A caller collecting screenshots wants a capture after a click not also to show hover, because normal, hover and clicked states are recorded separately and a click that leaves hover on mixes two of them. One ordered, explicit step serves both, and no verb changes behavior silently.
+
+How it is done, and what was measured first: [Leaving the page](#leaving-the-page) below.
+
+## Leaving the page
+
+Measured on this Mac (macOS 27, 2026-11-06, load average 20–30), by `SLEEPY_MEASURE=1 swift test --filter PointerParkMeasurement`: on `click-trusted.html`, a trusted click on `#go`, a text field focused, then one candidate route, then a wait on `_doAfterProcessingAllPendingMouseEvents:`.
+
+| Route | `:hover` afterwards | Events on `#go` | Focus |
+|---|---|---|---|
+| `_simulateMouseMove:` to (-1, -1), to the right of the view, or to (-100000, -100000) | still `html>body>go` | none | kept |
+| `-[WKWebView mouseExited:]`, with a `mouseMoved` or a real `mouseExited` event | still `html>body>go` | none | kept |
+| `_simulateMouseMove:` with a `mouseExited` event | still `html>body>go` | none | kept |
+| `NSWindow.sendEvent(_:)` with a `mouseMoved` outside the view | still `html>body>go` | none | kept |
+| **first responder cleared, `_simulateMouseMove:` to (-1, -1), responder restored, same turn** | **nothing** | pointerout, mouseout, pointerleave, mouseleave (trusted) | **kept: no blur, `:focus-visible` kept, `hasFocus()` true** |
+| `_simulateMouseMove:` to (1, 1), inside the view over the page background | `html` | pointerout, mouseout, pointerleave, mouseleave | kept |
+
+Why the plain move fails: the web view is the window's first responder (it was in every case measured), and WebKit ignores a mouse move outside a first-responder view's visible rect, since a first responder is sent moves from anywhere in its window. The off-screen window is exactly the view's size, so there is no "in the window, outside the view" point either. Clearing the responder for the length of the synchronous send lets the move through; restoring it before the first suspension leaves the page's focus untouched, as measured above (presumably WebKit coalesces the two responder changes before telling the web process — unverified, so the test pins the behavior rather than the reason). The in-view move was rejected: it clears the element's hover but leaves `html` hovered — over the page, not off it — so an `html:hover` or `body:hover` rule would still show.
+
+So `TrustedInput.parkPointer()` takes the cleared-responder route and waits for the move to land, `LeaveOperation` runs it, and `ActionStep.leave` / `--leave` is the step. `LeaveStepTests` pins the result: hover cleared after a click and after a hover, trusted `pointerleave` then `mouseleave`, focus and `:focus-visible` kept with no `blur`, a click alone still hovered, and a windowless host refused.
 
 ## Existing tests
 

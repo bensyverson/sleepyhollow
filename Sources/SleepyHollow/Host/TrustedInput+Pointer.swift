@@ -3,7 +3,7 @@ import Foundation
 import WebKit
 
 /// The pointer half of ``TrustedInput``: moving it, and pressing its primary
-/// button, at a point in viewport CSS px.
+/// button, at a point in viewport CSS px — and taking it off the page.
 ///
 /// A move goes through `-[WKWebView _simulateMouseMove:]` (the only route to
 /// the page from a window whose app is never active); a press and release go
@@ -33,7 +33,8 @@ extension TrustedInput {
     /// click's default action — a link followed, a form submitted, a checkbox
     /// toggled, focus moved — with or without the page's scripts. The pointer
     /// stays where it clicked, as a user's would, so `:hover` matches there
-    /// afterwards.
+    /// afterwards; ``parkPointer()`` is the separate, explicit move off the
+    /// page.
     ///
     /// - Throws: ``SleepyError/Kind/environment`` when this WebKit lacks the
     ///   SPI, and a ``SleepyError/Kind/timeout`` when the page does not
@@ -43,6 +44,48 @@ extension TrustedInput {
         try sendMove(to: location)
         postButton(.leftMouseDown, at: location)
         postButton(.leftMouseUp, at: location)
+        try await pointerLanded()
+    }
+
+    /// Moves the pointer off the page and waits until the page has handled
+    /// the move: nothing matches `:hover` afterwards, and whatever the
+    /// pointer was over receives `pointerout`, `mouseout`, `pointerleave` and
+    /// `mouseleave`, each with `isTrusted` true — as when a user's mouse
+    /// leaves the window.
+    ///
+    /// **The web view gives up first responder for the length of the move.**
+    /// WebKit drops a move outside the view while the view is first
+    /// responder, since a first responder is sent moves from anywhere in the
+    /// window: measured 2026-11-06, a `_simulateMouseMove:` to any point
+    /// outside the view, `mouseExited:` with either event type, and a
+    /// `mouseMoved` through the window all left `:hover` in place. So the
+    /// window's first responder is cleared, the move sent, and the responder
+    /// restored, all in one main-actor turn, and the page sees no focus
+    /// change — no `blur`, the active element and its `:focus-visible` kept
+    /// (measured, and pinned by `LeaveStepTests`; presumably because WebKit
+    /// coalesces the two responder changes before telling the page, which is
+    /// unverified). A move to a point inside the view, over the page
+    /// background, would also clear the element's hover, but leaves `html`
+    /// matching `:hover`: over the page, not off it.
+    ///
+    /// - Throws: ``SleepyError/Kind/environment`` when this WebKit lacks the
+    ///   SPI, and a ``SleepyError/Kind/timeout`` when the page does not
+    ///   handle the move within the host's call budget.
+    func parkPointer() async throws {
+        let view: WKWebView = host.webView
+        let outside: NSPoint = view.convert(NSPoint(x: view.bounds.minX - 1, y: view.bounds.minY - 1), to: nil)
+        let responder: NSResponder? = window.firstResponder
+        let holdsFocus: Bool = (responder as? NSView)?.isDescendant(of: view) ?? false
+        if holdsFocus {
+            window.makeFirstResponder(nil)
+        }
+        // Restored before the first suspension, so the page never sees the
+        // web view lose focus.
+        let sent: Result<Void, Error> = Result { try sendMove(to: outside) }
+        if holdsFocus {
+            window.makeFirstResponder(responder)
+        }
+        try sent.get()
         try await pointerLanded()
     }
 

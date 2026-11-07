@@ -1,8 +1,8 @@
 import Foundation
 
 /// The load pipeline's action-step phase: the ordered one-shot
-/// `--click`/`--fill`/`--submit`/`--focus`/`--hover`/`--type`/`--press`
-/// steps, executed after the load event and before ``LoadOptions/wait``
+/// `--click`/`--fill`/`--submit`/`--focus`/`--hover`/`--leave`/`--type`/
+/// `--press` steps, executed after the load event and before ``LoadOptions/wait``
 /// gates the verb's read.
 ///
 /// This is what makes `sleepy dom <url> --fill '#title=Hello' --click '#save'`
@@ -111,7 +111,7 @@ extension PageHost {
     private static func mayNavigate(_ step: ActionStep) -> Bool {
         switch step {
         case .click, .submit, .type, .press: true
-        case .fill, .focus, .hover: false
+        case .fill, .focus, .hover, .leave: false
         }
     }
 
@@ -129,6 +129,8 @@ extension PageHost {
             try await execute(FocusOperation(selector: selector))
         case let .hover(selector):
             try await execute(HoverOperation(selector: selector))
+        case .leave:
+            try await execute(LeaveOperation())
         case let .type(text):
             try await execute(PressOperation(text: text))
         case let .press(chord):
@@ -262,6 +264,8 @@ extension PageHost {
             "--focus '\(selector)'"
         case let .hover(selector):
             "--hover '\(selector)'"
+        case .leave:
+            "--leave"
         case let .type(text):
             "--type '\(text)'"
         case let .press(chord):

@@ -1,5 +1,5 @@
 /// What one act primitive did: the answer `click`, `fill`, `submit` and
-/// `press` share, and the `--focus` and `--hover` steps too.
+/// `press` share, and the `--focus`, `--hover` and `--leave` steps too.
 ///
 /// Deliberately small and factual. It reports what was acted on and whether
 /// the page reacted by starting a navigation — the fact the load pipeline
@@ -22,6 +22,9 @@ public struct ActionOutcome: Friendly {
         case focus
         /// A real pointer moved over an element.
         case hover
+        /// A real pointer taken off the page; names no element, so its
+        /// ``ActionOutcome/tagName`` is empty.
+        case leave
     }
 
     /// The primitive that ran.

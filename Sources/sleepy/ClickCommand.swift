@@ -18,7 +18,7 @@ struct ClickCommand: AsyncParsableCommand {
         commandName: "click",
         abstract: "Click an element by selector, or whatever renders at a point, in a live session.",
         discussion: """
-        A real click (isTrusted true): the pointer moves to the target and the button goes down and up through the page's window, so the page sees pointermove, pointerdown, mousedown, pointerup, mouseup, click, and the browser runs the default action — a link is followed, a form submitted, a checkbox toggled — even with --no-js. Focus moves as in Safari (a field or link takes it, a button does not), and the pointer stays where it clicked, so :hover matches there afterwards.
+        A real click (isTrusted true): the pointer moves to the target and the button goes down and up through the page's window, so the page sees pointermove, pointerdown, mousedown, pointerup, mouseup, click, and the browser runs the default action — a link is followed, a form submitted, a checkbox toggled — even with --no-js. Focus moves as in Safari (a field or link takes it, a button does not), and the pointer stays where it clicked, so :hover matches there afterwards. To capture the clicked state without the hover one, follow a one-shot --click with --leave, which moves the pointer off the page; the element then gets mouseleave/pointerleave, so a menu that opens on hover closes.
 
         WebKit hit-tests the click, as it does a user's: it lands on whatever is on top at the point. --selector clicks the element's center, and refuses (exit 1) when something else covers that point, when the element is disabled, or when it has no box; as a one-shot --click step it waits for that to clear instead.
 

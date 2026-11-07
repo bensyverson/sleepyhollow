@@ -55,6 +55,9 @@ struct ShotCommand: AsyncParsableCommand {
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --tile --out strips.png
           sleepy shot http://localhost:3000/ --full-page --max-size 2000 --grid lines --out map.png
           sleepy shot --session app --selector '.toast' -o toast.png
+          sleepy shot http://localhost:3000/ --selector '#btn' --click '#btn' --leave --out clicked.png
+
+        Steps (--click, --fill, --submit, --focus, --hover, --leave, --type, --press) run in the order given, before the capture. The pointer stays where a --click or --hover left it, so the shot shows that element's :hover style; --leave moves the pointer off the page first, for a clicked state without the hover one. It fires mouseleave on what the pointer was over, so a menu that opens on hover closes.
 
         --tile writes strips-01.png, strips-02.png … next to --out and prints a JSON index on stdout: each entry's x, y, width and height are CSS document px, so a strip worth a closer look is --rect x,y,width,height with no arithmetic. Adjacent strips share 40 CSS px, and 'scale' is how many pixels of the file stand for one CSS px.
 

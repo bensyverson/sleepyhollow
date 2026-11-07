@@ -29,7 +29,11 @@ import CoreGraphics
 /// **What a user's click does that a script's did not:** focus moves the way
 /// Safari moves it — a text field or link takes focus, a button does not —
 /// and the pointer stays where it clicked, so `:hover` matches there
-/// afterwards. **Whether the page navigated** is judged by the host
+/// afterwards — for a caller driving the page, a hover-opened menu stays open
+/// for the next click. To capture the clicked state without the hover one,
+/// follow the click with ``LeaveOperation`` (the `--leave` step), which takes
+/// the pointer off the page and fires `mouseleave`/`pointerleave` on what it
+/// was over (Ben's ruling, 2026-11-06). **Whether the page navigated** is judged by the host
 /// (``PageHost/navigationStarted(sinceRequests:)``), after the click has
 /// landed.
 ///

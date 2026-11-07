@@ -13,8 +13,8 @@ import SleepyHollow
 /// (``LoadOptions/PageScripts/disabled``) is here for the same reason.
 ///
 /// The step flags (`--click`, `--fill`, `--submit`, `--focus`, `--hover`,
-/// `--type`, `--press`) are declared here only so `--help` renders
-/// them; ArgumentParser loses interleave order across separate array
+/// `--leave`, `--type`, `--press`) are declared here only so `--help`
+/// renders them; ArgumentParser loses interleave order across separate array
 /// options, so the ordered truth comes from ``ActionStepParser`` scanning
 /// the raw argument vector instead. Pass its result to
 /// ``resolveLoadOptions(steps:)`` to assemble a full `LoadOptions`.
@@ -130,6 +130,14 @@ public struct LoadFlagOptions: ParsableArguments {
         help: "Move a real pointer over the selector's center, so :hover matches, in order (repeatable).",
     )
     public var hover: [String] = []
+
+    /// How many `--leave` steps were given; their order comes from
+    /// ``ActionStepParser``.
+    @Flag(
+        name: .long,
+        help: "Move the pointer off the page, so nothing matches :hover, in order (repeatable).",
+    )
+    public var leave: Int
 
     @Option(
         name: .long,

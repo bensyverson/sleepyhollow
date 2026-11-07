@@ -53,6 +53,18 @@
         });
       }, true);
     }
+    // The pointer leaving #go, as `type` with `!` marking an untrusted one:
+    // read back as window.goLeaves. These do not bubble, so they are heard
+    // on #go itself.
+    window.goLeaves = [];
+    for (const type of ['pointerleave', 'mouseleave']) {
+      document.getElementById('go').addEventListener(type, (event) => {
+        window.goLeaves.push(type + (event.isTrusted ? '' : '!'));
+      });
+    }
+    // Every time #agree loses focus: read back as window.agreeBlurs.
+    window.agreeBlurs = 0;
+    document.getElementById('agree').addEventListener('blur', () => { window.agreeBlurs += 1; });
   </script>
 </body>
 </html>
